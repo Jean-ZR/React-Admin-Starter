@@ -1,12 +1,15 @@
+'use client';
+
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar"; // Assuming a full calendar component exists or needs creation
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, Clock, User, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useState } from 'react'; // Need client component for state
+import { format } from 'date-fns'; // Import format for date display
 
 // Mock data - Replace with actual data fetching
-const scheduledEvents = {
+const scheduledEvents: Record<string, Array<{ id: string; time: string; service: string; client: string; technician: string; status: string }>> = {
   '2024-08-15': [
     { id: 'EVT001', time: '10:00 AM', service: 'Network Setup', client: 'Beta Industries', technician: 'John Doe', status: 'Scheduled' },
     { id: 'EVT002', time: '02:00 PM', service: 'Standard IT Support', client: 'Alpha Corp', technician: 'Jane Smith', status: 'Scheduled' },
@@ -16,11 +19,23 @@ const scheduledEvents = {
   ]
 };
 
+// Simplified mock events for display without a full calendar
+const mockEvents = [
+   { id: 'EVT001', date: '2024-08-15', time: '10:00 AM', service: 'Network Setup', client: 'Beta Industries', technician: 'John Doe', status: 'Scheduled' },
+   { id: 'EVT002', date: '2024-08-15', time: '02:00 PM', service: 'Standard IT Support', client: 'Alpha Corp', technician: 'Jane Smith', status: 'Scheduled' },
+   { id: 'EVT003', date: '2024-08-20', time: '09:00 AM', service: 'Server Maintenance', client: 'Gamma Solutions', technician: 'John Doe', status: 'Completed' },
+];
+
+
 export default function ServiceSchedulingPage() {
   // Basic date state - replace with robust calendar state management
-  // const [date, setDate] = useState<Date | undefined>(new Date());
-  // const selectedDateString = date ? date.toISOString().split('T')[0] : null;
-  // const todaysEvents = selectedDateString ? scheduledEvents[selectedDateString] || [] : [];
+  const [date, setDate] = useState<Date | undefined>(new Date());
+  const selectedDateString = date ? format(date, "yyyy-MM-dd") : null;
+  // Filter mock events for the selected date (demonstration)
+  const todaysEvents = selectedDateString
+    ? mockEvents.filter(event => event.date === selectedDateString)
+    : [];
+
 
   // NOTE: Calendar component from shadcn is just a date picker.
   // A full calendar view (like FullCalendar) would be needed here.
@@ -43,75 +58,53 @@ export default function ServiceSchedulingPage() {
           <CardTitle>Service Calendar</CardTitle>
           <CardDescription>Manage and view scheduled service appointments.</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-6 md:grid-cols-[280px_1fr]">
-          {/* Placeholder for Calendar View */}
-          <div className="border rounded-md p-3 flex justify-center items-center min-h-[300px] bg-muted/50">
-             {/* <Calendar
+        <CardContent className="grid gap-6 md:grid-cols-[auto_1fr] lg:grid-cols-[280px_1fr]">
+          {/* Calendar Date Picker */}
+          <div className="border rounded-md p-3 self-start">
+             <Calendar
               mode="single"
               selected={date}
               onSelect={setDate}
-              className="rounded-md border"
-            /> */}
-            <p className="text-center text-muted-foreground p-4">
-              Full calendar view component needed here to display events visually.
-              <br/><br/>
-              (Shadcn `Calendar` is only a date picker).
-            </p>
+              className="rounded-md"
+            />
+             <p className="text-xs text-center text-muted-foreground mt-2">(Select a date to view events)</p>
           </div>
 
-          {/* Placeholder for Events on Selected Day */}
+          {/* Events List for Selected Day */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">
-              Events for: [Selected Date]
-              {/* {date ? format(date, "PPP") : "Select a date"} */}
+              Events for: {date ? format(date, "PPP") : "Select a date"}
             </h3>
-             {/* Mock display - replace with dynamic rendering */}
-            <div className="space-y-3">
-                <Card>
-                  <CardContent className="p-4 flex justify-between items-start">
-                    <div>
-                      <p className="font-semibold">Network Setup</p>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1"><User className="h-3 w-3" /> Beta Industries</p>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> 10:00 AM - John Doe</p>
-                    </div>
-                     <Badge variant="outline">Scheduled</Badge>
-                  </CardContent>
-                </Card>
-                 <Card>
-                  <CardContent className="p-4 flex justify-between items-start">
-                     <div>
-                      <p className="font-semibold">Standard IT Support</p>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1"><User className="h-3 w-3" /> Alpha Corp</p>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> 02:00 PM - Jane Smith</p>
-                    </div>
-                    <Badge variant="outline">Scheduled</Badge>
-                  </CardContent>
-                </Card>
-                 <Card className="opacity-70">
-                  <CardContent className="p-4 flex justify-between items-start">
-                     <div>
-                      <p className="font-semibold">Server Maintenance</p>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1"><User className="h-3 w-3" /> Gamma Solutions</p>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> 09:00 AM (Aug 20) - John Doe</p>
-                    </div>
-                     <Badge variant="default" className="bg-green-600 hover:bg-green-700"><Check className="h-3 w-3 mr-1"/>Completed</Badge>
-                  </CardContent>
-                </Card>
-
-            </div>
-              {/* {todaysEvents.length > 0 ? (
+            <div className="space-y-3 min-h-[200px]">
+              {todaysEvents.length > 0 ? (
                 todaysEvents.map(event => (
-                  // Render event card here
+                   <Card key={event.id} className={event.status === 'Completed' ? 'opacity-70' : ''}>
+                    <CardContent className="p-4 flex justify-between items-start gap-4">
+                      <div>
+                        <p className="font-semibold">{event.service}</p>
+                        <p className="text-sm text-muted-foreground flex items-center gap-1"><User className="h-3 w-3" /> {event.client}</p>
+                        <p className="text-sm text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> {event.time} - {event.technician}</p>
+                      </div>
+                      <Badge
+                        variant={event.status === 'Completed' ? 'default' : 'outline'}
+                        className={event.status === 'Completed' ? 'bg-green-600 hover:bg-green-700' : ''}
+                       >
+                         {event.status === 'Completed' && <Check className="h-3 w-3 mr-1"/>}
+                         {event.status}
+                      </Badge>
+                    </CardContent>
+                  </Card>
                 ))
               ) : (
-                <p className="text-muted-foreground italic">No events scheduled for this date.</p>
-              )} */}
+                <p className="text-muted-foreground italic pt-4">No events scheduled for this date.</p>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
 
       <p className="text-sm text-muted-foreground">
-        Calendar-based service management. Requires a full calendar component implementation. Audit logs and role-based access are applied.
+        Calendar-based service management. Requires a full calendar component implementation for visual event display. Audit logs and role-based access are applied.
       </p>
     </div>
   );

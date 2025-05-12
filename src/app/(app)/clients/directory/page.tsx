@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ClientFormModal } from '@/components/clients/client-form-modal'; // Import modal
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog'; // Import delete dialog
+import { exportToCSV, exportToPDF } from '@/lib/export'; // Import export functions
 
 const clients = [
   { id: 'CLI001', name: 'Alpha Corp', contact: 'Alice Johnson', email: 'alice@alpha.com', phone: '555-1234', status: 'Active', address: '123 Main St', dataAiHint: 'building office' },
@@ -33,6 +34,9 @@ export default function ClientDirectoryPage() {
     const [editingClient, setEditingClient] = useState<Client | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
+
+    // TODO: Replace with actual data fetching and state management (e.g., React Query, Zustand)
+    const [currentClients, setCurrentClients] = useState(clients);
 
     const handleAddClient = () => {
         setEditingClient(null);
@@ -53,6 +57,8 @@ export default function ClientDirectoryPage() {
         if (clientToDelete) {
             console.log("Deleting client:", clientToDelete.id); // Replace with actual delete logic
             // TODO: Call API to delete client
+            // Example: Simulating deletion from local state
+             setCurrentClients(currentClients.filter(client => client.id !== clientToDelete.id));
             setIsDeleteDialogOpen(false);
             setClientToDelete(null);
             // Optionally refetch data here
@@ -63,17 +69,42 @@ export default function ClientDirectoryPage() {
         if (editingClient) {
             console.log("Updating client:", editingClient.id, formData);
             // TODO: Call API to update client
+            // Example: Simulating update in local state
+            setCurrentClients(currentClients.map(client =>
+                 client.id === editingClient.id ? { ...client, ...formData } : client
+            ));
         } else {
             console.log("Adding new client:", formData);
             // TODO: Call API to add client
+            // Example: Simulating addition to local state
+             const newClient = { ...formData, id: `CLI${String(currentClients.length + 1).padStart(3, '0')}`, dataAiHint: 'office building' }; // Generate ID and hint
+             setCurrentClients([...currentClients, newClient]);
         }
         // Optionally refetch data here
+        setIsModalOpen(false); // Close modal after save
     };
 
-    const handleExport = () => {
-        console.log("Exporting clients..."); // Placeholder for export logic
-        // TODO: Implement actual CSV/PDF export
-        alert("Export functionality not yet implemented.");
+    const handleExportCSV = () => {
+        exportToCSV(currentClients, 'client_directory');
+    };
+
+    const handleExportPDF = () => {
+        // Define columns for PDF export
+        const columns = [
+            { header: 'ID', dataKey: 'id' },
+            { header: 'Name', dataKey: 'name' },
+            { header: 'Contact', dataKey: 'contact' },
+            { header: 'Email', dataKey: 'email' },
+            { header: 'Phone', dataKey: 'phone' },
+            { header: 'Status', dataKey: 'status' },
+            { header: 'Address', dataKey: 'address' },
+        ];
+        exportToPDF({
+            data: currentClients,
+            columns: columns,
+            title: 'Client Directory',
+            filename: 'client_directory.pdf',
+        });
     };
 
   return (
@@ -108,10 +139,19 @@ export default function ClientDirectoryPage() {
               <DropdownMenuCheckboxItem>Prospect</DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button size="sm" variant="outline" className="h-9 gap-1" onClick={handleExport}>
-            <FileDown className="h-3.5 w-3.5" />
-            <span className="sr-only sm:not-sr-only">Export</span>
-          </Button>
+           {/* Export Dropdown */}
+           <DropdownMenu>
+             <DropdownMenuTrigger asChild>
+               <Button size="sm" variant="outline" className="h-9 gap-1">
+                 <FileDown className="h-3.5 w-3.5" />
+                 <span className="sr-only sm:not-sr-only">Export</span>
+               </Button>
+             </DropdownMenuTrigger>
+             <DropdownMenuContent align="end">
+               <DropdownMenuItem onClick={handleExportCSV}>Export as CSV</DropdownMenuItem>
+               <DropdownMenuItem onClick={handleExportPDF}>Export as PDF</DropdownMenuItem>
+             </DropdownMenuContent>
+           </DropdownMenu>
           <Button size="sm" className="h-9 gap-1" onClick={handleAddClient}>
             <PlusCircle className="h-3.5 w-3.5" />
             <span className="sr-only sm:not-sr-only">Add Client</span>
@@ -140,7 +180,7 @@ export default function ClientDirectoryPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {clients.map((client) => (
+              {currentClients.map((client) => (
                 <TableRow key={client.id}>
                  <TableCell className="hidden sm:table-cell">
                      <Avatar className="h-9 w-9">
@@ -212,7 +252,3 @@ export default function ClientDirectoryPage() {
     </div>
   );
 }
-```
-  </change>
-  <change>
-    <file>src/app/(app)/clients/history/

@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Search, Calendar, MessageSquare, FileText, DollarSign, FileDown } from "lucide-react"; // Added FileDown
+import { Search, Calendar, MessageSquare, FileText, DollarSign, FileDown } from "lucide-react"; // Added FileDown, DollarSign
 // import { DatePickerWithRange } from "@/components/ui/date-picker-with-range"; // Assuming this component exists
 
 const history = [
@@ -149,7 +149,3 @@ export default function ClientHistoryPage() {
     </div>
   );
 }
-```
-  </change>
-  <change>
-    <file>src/app/(app)/inventory/

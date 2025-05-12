@@ -157,7 +157,3 @@ export default function OperationalReportsPage() {
     </div>
   );
 }
-```
-  </change>
-  <change>
-    <file>src/app/(app)/services/history/page.tsx</file

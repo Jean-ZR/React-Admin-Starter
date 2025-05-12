@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableCaption } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, ArrowUpCircle, ArrowDownCircle, Package, User, ArrowRightLeft, Settings, FileDown, PlusCircle } from "lucide-react"; // Added FileDown, PlusCircle
+import { Search, ArrowUpCircle, ArrowDownCircle, Package, User, ArrowRightLeft, Settings2, FileDown, PlusCircle } from "lucide-react"; // Added FileDown, PlusCircle, Settings2
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 // import { DatePickerWithRange } from "@/components/ui/date-picker-with-range"; // Assuming this component exists
 
@@ -130,7 +130,7 @@ export default function StockMovementsPage() {
                         {mov.type === 'Inbound' && <ArrowDownCircle className="h-3 w-3 text-green-600" />}
                         {mov.type === 'Outbound' && <ArrowUpCircle className="h-3 w-3 text-red-600" />}
                          {mov.type === 'Transfer' && <ArrowRightLeft className="h-3 w-3 text-blue-600" />}
-                          {mov.type === 'Adjustment' && <Settings className="h-3 w-3 text-orange-600" />}
+                          {mov.type === 'Adjustment' && <Settings2 className="h-3 w-3 text-orange-600" />}
                        {mov.type}
                      </Badge>
                    </TableCell>
@@ -158,6 +158,3 @@ export default function StockMovementsPage() {
      </div>
   );
 }
-```
-  </change>
-  <change>

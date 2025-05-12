@@ -207,7 +207,3 @@ export default function StockManagementPage() {
     </div>
   );
 }
-```
-  </change>
-  <change>
-    <file>src/app/(app)/reports/custom/page.tsx

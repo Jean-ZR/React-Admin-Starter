@@ -164,6 +164,3 @@ export default function SignupPage() {
     </div>
   );
 }
-```
-  </change>
-  

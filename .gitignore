@@ -1,42 +1,58 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# Dependencies
+# dependencies
 /node_modules
 /.pnp
 .pnp.js
-.yarn/install-state.gz
 
-# Testing
+# testing
 /coverage
 
-# Next.js
+# next.js
 /.next/
 /out/
 
-# Production
+# production
 /build
 
-# Misc
+# misc
 .DS_Store
 *.pem
 
-# Logs
+# debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Local Environment Variables
+# local env files
 .env*.local
 
-# Editor directories and files
+# turbo cache
+.turbo
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# vscode
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
-*.sublime-workspace
+*.code-workspace
 
-# Temp files
-*.tsbuildinfo
-next-env.d.ts
+# IDX
+**.idx/**
+.idx
+
+# Firebase / Genkit
+.firebase/*
+!.firebase/firebase.json
+!.firebase/firestore.rules
+!.firebase/storage.rules
+genkit-state.json

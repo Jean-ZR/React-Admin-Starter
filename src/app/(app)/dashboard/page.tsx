@@ -1,4 +1,4 @@
-import { Package } from 'lucide-react';
+import { Package, Users, DollarSign, Wrench } from 'lucide-react'; // Added Users, DollarSign, Wrench
 import { SampleDataGrid } from '@/components/sample-data-grid';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 

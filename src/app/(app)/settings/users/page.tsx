@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label"; // Import Label
 
 const users = [
   { id: 'USR001', name: 'Alice Johnson', email: 'alice.j@example.com', role: 'Administrator', status: 'Active', lastLogin: '2024-07-21 10:00 AM', avatar: 'https://picsum.photos/40/40?random=11', dataAiHint: 'woman portrait' },

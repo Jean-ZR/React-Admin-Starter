@@ -144,6 +144,3 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
-```
-  </change>
-  <change

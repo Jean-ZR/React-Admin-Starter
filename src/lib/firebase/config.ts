@@ -38,5 +38,3 @@ if (process.env.NODE_ENV === 'development') {
         console.warn(`Firebase config missing environment variables: ${missingVars.join(', ')}. Please create a .env.local file.`);
     }
 }
-```
-  </change>

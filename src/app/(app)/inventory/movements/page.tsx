@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableCaption } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, ArrowUpCircle, ArrowDownCircle, Package, User } from "lucide-react";
+import { Search, ArrowUpCircle, ArrowDownCircle, Package, User, ArrowRightLeft, Settings } from "lucide-react"; // Added ArrowRightLeft, Settings
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 // import { DatePickerWithRange } from "@/components/ui/date-picker-with-range"; // Assuming this component exists
 

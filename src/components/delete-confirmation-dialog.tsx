@@ -53,5 +53,4 @@ export function DeleteConfirmationDialog({
 ```
   </change>
   <change>
-    <file>src/components/dashboard-header.tsx</file>
-    <description>Remove component as header logic is now integrated into src
+    <file>src/components

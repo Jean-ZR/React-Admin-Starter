@@ -1,10 +1,12 @@
+'use client'; // Required for onClick handler
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Search, Calendar, MessageSquare, FileText, DollarSign } from "lucide-react"; // Added DollarSign import
+import { Search, Calendar, MessageSquare, FileText, DollarSign, FileDown } from "lucide-react"; // Added FileDown
 // import { DatePickerWithRange } from "@/components/ui/date-picker-with-range"; // Assuming this component exists
 
 const history = [
@@ -16,6 +18,19 @@ const history = [
 ];
 
 export default function ClientHistoryPage() {
+
+    const handleExport = () => {
+        console.log("Exporting client history..."); // Placeholder for export logic
+        // TODO: Implement actual CSV/PDF export based on current filters
+        alert("Export functionality not yet implemented.");
+    };
+
+     const handleApplyFilters = () => {
+        console.log("Applying filters...");
+        // TODO: Implement filter logic and refetch data
+        alert("Filter functionality not yet implemented.");
+    };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -31,7 +46,10 @@ export default function ClientHistoryPage() {
               className="pl-8 sm:w-[300px]"
             />
           </div>
-          <Button size="sm">Export</Button>
+          <Button size="sm" variant="outline" className="h-9 gap-1" onClick={handleExport}>
+             <FileDown className="h-3.5 w-3.5" />
+             <span className="sr-only sm:not-sr-only">Export</span>
+          </Button>
         </div>
       </div>
 
@@ -70,12 +88,13 @@ export default function ClientHistoryPage() {
                 </SelectContent>
               </Select>
            </div>
-           {/* <div>
-              <label htmlFor="date-range-filter" className="text-sm font-medium mb-1 block">Date Range</label>
-             <DatePickerWithRange id="date-range-filter" />
+           {/* Date Picker Example (uncomment if component exists) */}
+           {/* <div className="space-y-2">
+              <label htmlFor="date-range-filter" className="text-sm font-medium">Date Range</label>
+             <DatePickerWithRange id="date-range-filter" className="w-full"/>
            </div> */}
-           <div className="flex items-end">
-             <Button className="w-full lg:w-auto">Apply Filters</Button>
+           <div className="flex items-end col-start-auto md:col-start-4">
+             <Button className="w-full lg:w-auto" onClick={handleApplyFilters}>Apply Filters</Button>
            </div>
          </CardContent>
        </Card>
@@ -130,3 +149,7 @@ export default function ClientHistoryPage() {
     </div>
   );
 }
+```
+  </change>
+  <change>
+    <file>src/app/(app)/inventory/

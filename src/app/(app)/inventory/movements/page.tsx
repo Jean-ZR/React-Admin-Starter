@@ -1,9 +1,11 @@
+'use client'; // Required for onClick handlers
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableCaption } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, ArrowUpCircle, ArrowDownCircle, Package, User, ArrowRightLeft, Settings } from "lucide-react"; // Added ArrowRightLeft, Settings
+import { Search, ArrowUpCircle, ArrowDownCircle, Package, User, ArrowRightLeft, Settings, FileDown, PlusCircle } from "lucide-react"; // Added FileDown, PlusCircle
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 // import { DatePickerWithRange } from "@/components/ui/date-picker-with-range"; // Assuming this component exists
 
@@ -16,6 +18,25 @@ const movements = [
 ];
 
 export default function StockMovementsPage() {
+
+    const handleExport = () => {
+        console.log("Exporting movement log..."); // Placeholder for export logic
+        // TODO: Implement actual CSV/PDF export based on current filters
+        alert("Export functionality not yet implemented.");
+    };
+
+    const handleRecordMovement = () => {
+        console.log("Opening record movement modal...");
+        // TODO: Implement modal for recording new stock movements (Inbound, Outbound, Adjustment, Transfer)
+        alert("Record Movement functionality not yet implemented.");
+    };
+
+    const handleApplyFilters = () => {
+        console.log("Applying filters...");
+        // TODO: Implement filter logic and refetch data
+        alert("Filter functionality not yet implemented.");
+    };
+
   return (
     <div className="space-y-6">
        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -31,8 +52,14 @@ export default function StockMovementsPage() {
               className="pl-8 sm:w-[300px]"
             />
           </div>
-          <Button size="sm">Export Log</Button>
-          <Button size="sm">Record Movement</Button>
+           <Button size="sm" variant="outline" className="h-9 gap-1" onClick={handleExport}>
+                <FileDown className="h-3.5 w-3.5" />
+                <span className="sr-only sm:not-sr-only">Export Log</span>
+          </Button>
+           <Button size="sm" className="h-9 gap-1" onClick={handleRecordMovement}>
+                <PlusCircle className="h-3.5 w-3.5" />
+                 <span className="sr-only sm:not-sr-only">Record Movement</span>
+            </Button>
          </div>
        </div>
 
@@ -65,12 +92,13 @@ export default function StockMovementsPage() {
               <label htmlFor="user-filter" className="text-sm font-medium mb-1 block">User</label>
                <Input id="user-filter" placeholder="e.g., Admin" />
            </div>
-           {/* <div>
-              <label htmlFor="date-range-filter" className="text-sm font-medium mb-1 block">Date Range</label>
-             <DatePickerWithRange id="date-range-filter" />
+           {/* Date Picker Example (uncomment if component exists) */}
+           {/* <div className="space-y-2">
+              <label htmlFor="date-range-filter" className="text-sm font-medium">Date Range</label>
+             <DatePickerWithRange id="date-range-filter" className="w-full"/>
            </div> */}
-           <div className="flex items-end">
-             <Button className="w-full lg:w-auto">Apply Filters</Button>
+           <div className="flex items-end col-start-auto md:col-start-4">
+             <Button className="w-full lg:w-auto" onClick={handleApplyFilters}>Apply Filters</Button>
            </div>
          </CardContent>
        </Card>
@@ -130,3 +158,6 @@ export default function StockMovementsPage() {
      </div>
   );
 }
+```
+  </change>
+  <change>

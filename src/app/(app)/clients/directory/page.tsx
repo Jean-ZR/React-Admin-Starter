@@ -1,9 +1,12 @@
+'use client'; // Required for state and handlers
+
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, ListFilter, MoreHorizontal } from "lucide-react";
+import { Search, ListFilter, MoreHorizontal, PlusCircle, FileDown } from "lucide-react"; // Added icons
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,16 +15,67 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
+import { ClientFormModal } from '@/components/clients/client-form-modal'; // Import modal
+import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog'; // Import delete dialog
 
 const clients = [
-  { id: 'CLI001', name: 'Alpha Corp', contact: 'Alice Johnson', email: 'alice@alpha.com', phone: '555-1234', status: 'Active' },
-  { id: 'CLI002', name: 'Beta Industries', contact: 'Bob Williams', email: 'bob@beta.com', phone: '555-5678', status: 'Active' },
-  { id: 'CLI003', name: 'Gamma Solutions', contact: 'Charlie Brown', email: 'charlie@gamma.com', phone: '555-9012', status: 'Inactive' },
-  { id: 'CLI004', name: 'Delta Services', contact: 'Diana Davis', email: 'diana@delta.com', phone: '555-3456', status: 'Active' },
+  { id: 'CLI001', name: 'Alpha Corp', contact: 'Alice Johnson', email: 'alice@alpha.com', phone: '555-1234', status: 'Active', address: '123 Main St', dataAiHint: 'building office' },
+  { id: 'CLI002', name: 'Beta Industries', contact: 'Bob Williams', email: 'bob@beta.com', phone: '555-5678', status: 'Active', address: '456 Oak Ave', dataAiHint: 'factory industrial' },
+  { id: 'CLI003', name: 'Gamma Solutions', contact: 'Charlie Brown', email: 'charlie@gamma.com', phone: '555-9012', status: 'Inactive', address: '789 Pine Rd', dataAiHint: 'code computer' },
+  { id: 'CLI004', name: 'Delta Services', contact: 'Diana Davis', email: 'diana@delta.com', phone: '555-3456', status: 'Active', address: '101 Maple Dr', dataAiHint: 'support callcenter' },
 ];
 
+type Client = typeof clients[0]; // Define Client type
+
 export default function ClientDirectoryPage() {
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingClient, setEditingClient] = useState<Client | null>(null);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
+
+    const handleAddClient = () => {
+        setEditingClient(null);
+        setIsModalOpen(true);
+    };
+
+    const handleEditClient = (client: Client) => {
+        setEditingClient(client);
+        setIsModalOpen(true);
+    };
+
+    const handleDeleteClick = (client: Client) => {
+        setClientToDelete(client);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const confirmDelete = () => {
+        if (clientToDelete) {
+            console.log("Deleting client:", clientToDelete.id); // Replace with actual delete logic
+            // TODO: Call API to delete client
+            setIsDeleteDialogOpen(false);
+            setClientToDelete(null);
+            // Optionally refetch data here
+        }
+    };
+
+    const handleSaveClient = (formData: any) => {
+        if (editingClient) {
+            console.log("Updating client:", editingClient.id, formData);
+            // TODO: Call API to update client
+        } else {
+            console.log("Adding new client:", formData);
+            // TODO: Call API to add client
+        }
+        // Optionally refetch data here
+    };
+
+    const handleExport = () => {
+        console.log("Exporting clients..."); // Placeholder for export logic
+        // TODO: Implement actual CSV/PDF export
+        alert("Export functionality not yet implemented.");
+    };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -54,8 +108,14 @@ export default function ClientDirectoryPage() {
               <DropdownMenuCheckboxItem>Prospect</DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button size="sm">Export</Button>
-          <Button size="sm">Add Client</Button>
+          <Button size="sm" variant="outline" className="h-9 gap-1" onClick={handleExport}>
+            <FileDown className="h-3.5 w-3.5" />
+            <span className="sr-only sm:not-sr-only">Export</span>
+          </Button>
+          <Button size="sm" className="h-9 gap-1" onClick={handleAddClient}>
+            <PlusCircle className="h-3.5 w-3.5" />
+            <span className="sr-only sm:not-sr-only">Add Client</span>
+          </Button>
         </div>
       </div>
 
@@ -68,6 +128,9 @@ export default function ClientDirectoryPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                 <TableHead className="hidden w-[64px] sm:table-cell">
+                  <span className="sr-only">Avatar</span>
+                </TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Contact Person</TableHead>
                 <TableHead>Email</TableHead>
@@ -79,19 +142,23 @@ export default function ClientDirectoryPage() {
             <TableBody>
               {clients.map((client) => (
                 <TableRow key={client.id}>
-                  <TableCell className="font-medium">
-                     <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
+                 <TableCell className="hidden sm:table-cell">
+                     <Avatar className="h-9 w-9">
                         {/* Placeholder - generate initials or use image */}
+                        <AvatarImage src={`https://picsum.photos/40/40?random=${client.id}`} alt={client.name} data-ai-hint={client.dataAiHint} />
                         <AvatarFallback>{client.name.substring(0, 1)}</AvatarFallback>
                       </Avatar>
-                       <div className="font-medium">{client.name}</div>
-                     </div>
-                  </TableCell>
+                   </TableCell>
+                  <TableCell className="font-medium">{client.name}</TableCell>
                   <TableCell>{client.contact}</TableCell>
                   <TableCell>{client.email}</TableCell>
                   <TableCell>{client.phone}</TableCell>
-                  <TableCell>{client.status}</TableCell>
+                  <TableCell>
+                      <Badge variant={client.status === 'Active' ? 'default' : 'outline'}
+                         className={client.status === 'Active' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'text-muted-foreground'}>
+                        {client.status}
+                    </Badge>
+                  </TableCell>
                    <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -103,10 +170,15 @@ export default function ClientDirectoryPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuItem>View Details</DropdownMenuItem>
-                        <DropdownMenuItem>Edit</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEditClient(client)}>Edit</DropdownMenuItem>
                         <DropdownMenuItem>View History</DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                        <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => handleDeleteClick(client)}
+                        >
+                            Delete
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -121,6 +193,26 @@ export default function ClientDirectoryPage() {
       <p className="text-sm text-muted-foreground">
         Maintain client database with contact information, search, and export. Audit logs and role-based access are applied.
       </p>
+
+       {/* Add/Edit Modal */}
+      <ClientFormModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleSaveClient}
+        clientData={editingClient}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={confirmDelete}
+        itemName={clientToDelete?.name || 'this client'}
+      />
     </div>
   );
 }
+```
+  </change>
+  <change>
+    <file>src/app/(app)/clients/history/

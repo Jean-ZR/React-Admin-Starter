@@ -1,9 +1,11 @@
+'use client'; // Required for onClick handler
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableCaption } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, ListFilter, FileText, User, Clock, AlertTriangle } from "lucide-react";
+import { Search, ListFilter, FileText, User, Clock, AlertTriangle, FileDown } from "lucide-react"; // Added FileDown
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 // import { DatePickerWithRange } from "@/components/ui/date-picker-with-range"; // Assuming this component exists
 
@@ -17,6 +19,20 @@ const systemLogs = [
 ];
 
 export default function SystemLogsPage() {
+
+    const handleExport = () => {
+        console.log("Exporting system logs..."); // Placeholder for export logic
+        // TODO: Implement actual CSV/PDF export based on current filters
+        alert("Export functionality not yet implemented.");
+    };
+
+     const handleApplyFilters = () => {
+        console.log("Applying log filters...");
+        // TODO: Implement filter logic and refetch data
+        alert("Filter functionality not yet implemented.");
+    };
+
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -32,7 +48,10 @@ export default function SystemLogsPage() {
               className="pl-8 sm:w-[300px]"
             />
           </div>
-           <Button size="sm" variant="outline">Export Logs</Button>
+           <Button size="sm" variant="outline" className="h-9 gap-1" onClick={handleExport}>
+                <FileDown className="h-3.5 w-3.5" />
+                <span className="sr-only sm:not-sr-only">Export Logs</span>
+            </Button>
         </div>
       </div>
 
@@ -65,12 +84,13 @@ export default function SystemLogsPage() {
                 </SelectContent>
               </Select>
            </div>
-           {/* <div>
-              <label htmlFor="date-range-log-filter" className="text-sm font-medium mb-1 block">Date Range</label>
-             <DatePickerWithRange id="date-range-log-filter" />
+           {/* Date Picker Example (uncomment if component exists) */}
+           {/* <div className="space-y-2">
+              <label htmlFor="date-range-log-filter" className="text-sm font-medium">Date Range</label>
+             <DatePickerWithRange id="date-range-log-filter" className="w-full"/>
            </div> */}
-           <div className="flex items-end">
-             <Button className="w-full lg:w-auto">Apply Filters</Button>
+           <div className="flex items-end col-start-auto md:col-start-4">
+             <Button className="w-full lg:w-auto" onClick={handleApplyFilters}>Apply Filters</Button>
            </div>
          </CardContent>
        </Card>
@@ -115,7 +135,7 @@ export default function SystemLogsPage() {
         </CardContent>
          <CardFooter>
             <div className="text-xs text-muted-foreground">
-              Showing <strong>1-6</strong> of <strong>{systemLogs.length}</strong> log entries.
+              Showing <strong>1-{systemLogs.length}</strong> of <strong>{systemLogs.length}</strong> log entries.
             </div>
             {/* Add Pagination component here */}
          </CardFooter>
@@ -127,3 +147,5 @@ export default function SystemLogsPage() {
     </div>
   );
 }
+```
+  </

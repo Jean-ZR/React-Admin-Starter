@@ -1,13 +1,42 @@
+'use client'; // Required for onClick handlers
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Save, FileCog, PlusCircle, Trash2, GripVertical } from "lucide-react";
+import { Save, FileCog, PlusCircle, Trash2, GripVertical, RotateCcw, Eye } from "lucide-react"; // Added RotateCcw, Eye
 // import { DatePickerWithRange } from "@/components/ui/date-picker-with-range"; // Assuming this component exists
 
 export default function CustomReportsPage() {
+
+    const handleGenerateExport = () => {
+        console.log("Generating and exporting custom report...");
+        // TODO: Gather all selected fields, filters, sorting, grouping
+        // TODO: Call backend API to generate the report data
+        // TODO: Trigger download of the generated file (CSV/PDF)
+        alert("Custom report generation and export functionality not yet implemented.");
+    };
+
+     const handlePreviewReport = () => {
+        console.log("Previewing custom report...");
+        // TODO: Gather selections and potentially show a preview in a modal or new section
+         alert("Report preview functionality not yet implemented.");
+    };
+
+    const handleLoadReport = () => {
+        console.log("Loading saved report configuration...");
+        // TODO: Implement logic to load saved report settings (modal to select?)
+        alert("Load Saved Report functionality not yet implemented.");
+    };
+
+    const handleSaveReport = () => {
+        console.log("Saving current report configuration...");
+         // TODO: Implement logic to save the current report settings (prompt for name?)
+        alert("Save Report functionality not yet implemented.");
+    };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -15,8 +44,8 @@ export default function CustomReportsPage() {
           Custom Report Builder
         </h1>
          <div className="flex gap-2">
-           <Button variant="outline" size="sm">Load Saved Report</Button>
-           <Button size="sm" className="gap-1"><Save className="h-3.5 w-3.5"/> Save Report</Button>
+           <Button variant="outline" size="sm" onClick={handleLoadReport}>Load Saved Report</Button>
+           <Button size="sm" className="gap-1" onClick={handleSaveReport}><Save className="h-3.5 w-3.5"/> Save Report</Button>
          </div>
       </div>
 
@@ -102,6 +131,8 @@ export default function CustomReportsPage() {
                              <SelectItem value="neq">Not Equals</SelectItem>
                              <SelectItem value="gt">Greater than</SelectItem>
                              <SelectItem value="lt">Less than</SelectItem>
+                             <SelectItem value="contains">Contains</SelectItem>
+                             <SelectItem value="in">In List</SelectItem>
                          </SelectContent>
                     </Select>
                 </div>
@@ -132,6 +163,7 @@ export default function CustomReportsPage() {
                      <SelectItem value="category">Category</SelectItem>
                      <SelectItem value="location">Location</SelectItem>
                      <SelectItem value="status">Status</SelectItem>
+                     <SelectItem value="assigned_to">Assigned To</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -148,6 +180,7 @@ export default function CustomReportsPage() {
                             <SelectItem value="name">Name</SelectItem>
                             <SelectItem value="purchase_date">Purchase Date</SelectItem>
                             <SelectItem value="cost">Cost</SelectItem>
+                            <SelectItem value="asset_id">Asset ID</SelectItem>
                          </SelectContent>
                     </Select>
                     <Select>
@@ -171,8 +204,8 @@ export default function CustomReportsPage() {
 
         </CardContent>
         <CardFooter className="flex justify-end gap-2 border-t pt-6">
-            <Button variant="outline">Preview Report</Button>
-            <Button className="gap-1"><FileCog className="h-4 w-4"/> Generate & Export</Button>
+            <Button variant="outline" onClick={handlePreviewReport} className="gap-1"><Eye className="h-4 w-4"/> Preview Report</Button>
+            <Button onClick={handleGenerateExport} className="gap-1"><FileCog className="h-4 w-4"/> Generate & Export</Button>
         </CardFooter>
       </Card>
 
@@ -183,3 +216,7 @@ export default function CustomReportsPage() {
     </div>
   );
 }
+```
+  </change>
+  <change>
+    <file>src/app/(

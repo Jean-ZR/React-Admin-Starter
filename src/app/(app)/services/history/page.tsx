@@ -1,3 +1,5 @@
+'use client'; // Required for onClick handler
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -24,6 +26,13 @@ const serviceHistory = [
 ];
 
 export default function ServiceHistoryPage() {
+
+    const handleExport = () => {
+        console.log("Exporting service history..."); // Placeholder for export logic
+        // TODO: Implement actual CSV/PDF export based on current filters
+        alert("Export functionality not yet implemented.");
+    };
+
   return (
     <div className="space-y-6">
        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -55,7 +64,7 @@ export default function ServiceHistoryPage() {
               <DropdownMenuCheckboxItem checked>Closed</DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
-           <Button size="sm" variant="outline" className="h-9 gap-1">
+           <Button size="sm" variant="outline" className="h-9 gap-1" onClick={handleExport}>
             <FileDown className="h-3.5 w-3.5" />
             <span className="sr-only sm:not-sr-only">Export</span>
           </Button>
@@ -109,7 +118,7 @@ export default function ServiceHistoryPage() {
          </CardContent>
           <CardFooter>
             <div className="text-xs text-muted-foreground">
-              Showing <strong>1-5</strong> of <strong>{serviceHistory.length}</strong> records
+              Showing <strong>1-{serviceHistory.length}</strong> of <strong>{serviceHistory.length}</strong> records
             </div>
          </CardFooter>
        </Card>
@@ -120,3 +129,6 @@ export default function ServiceHistoryPage() {
      </div>
   );
 }
+```
+  </change>
+  <change>

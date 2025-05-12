@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // Added useEffect
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
@@ -10,7 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react'; // Import Loader2
+import { Loader2, AlertTriangle } from 'lucide-react'; // Import Loader2 and AlertTriangle
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'; // Import Alert components
+
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -19,15 +21,24 @@ export default function SignupPage() {
   const [role, setRole] = useState(''); // State for selected role
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { signup, user } = useAuth();
+  const { signup, user, loading: authLoading, isFirebaseConfigured } = useAuth(); // Get loading and config status
   const router = useRouter();
   const { toast } = useToast();
+  const [showConfigError, setShowConfigError] = useState(false);
 
-  // Redirect if already logged in
-  if (user) {
-    router.replace('/dashboard');
-    return null; // Render nothing while redirecting
-  }
+   useEffect(() => {
+      // Show config error only after initial auth check is done
+      if (!authLoading && !isFirebaseConfigured) {
+          setShowConfigError(true);
+      }
+  }, [authLoading, isFirebaseConfigured]);
+
+  // Redirect if already logged in and Firebase is configured
+  useEffect(() => {
+    if (!authLoading && user && isFirebaseConfigured) {
+      router.replace('/dashboard');
+    }
+   }, [user, authLoading, isFirebaseConfigured, router]);
 
   // Basic password strength check (example)
   const isPasswordStrong = (pw: string): boolean => {
@@ -38,6 +49,13 @@ export default function SignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+     if (!isFirebaseConfigured) {
+        setError("Signup is disabled because Firebase is not configured correctly. Please contact the administrator.");
+        toast({ title: 'Configuration Error', description: 'Firebase not configured.', variant: 'destructive' });
+        return;
+    }
+
 
     if (password !== confirmPassword) {
       setError('Passwords do not match.');
@@ -65,11 +83,27 @@ export default function SignupPage() {
       router.push('/login'); // Redirect to login after successful signup
     } catch (err: any) {
       console.error('Signup error:', err);
-      setError(err.message || 'Failed to create account.');
-      toast({ title: 'Signup Failed', description: err.message || 'Could not create account.', variant: 'destructive' });
+       // Map Firebase error codes to user-friendly messages
+        let errorMessage = 'Failed to create account.';
+        if (err.code === 'auth/email-already-in-use') {
+            errorMessage = 'This email address is already registered.';
+        } else if (err.code === 'auth/invalid-email') {
+             errorMessage = 'Invalid email format.';
+        } else if (err.code === 'auth/weak-password') {
+            // This check is redundant due to isPasswordStrong, but good fallback
+             errorMessage = 'Password is too weak.';
+        }
+      setError(errorMessage);
+      toast({ title: 'Signup Failed', description: errorMessage, variant: 'destructive' });
       setLoading(false);
     }
   };
+
+   // Render loading or null while checking auth state or redirecting
+   if (authLoading || (user && isFirebaseConfigured)) {
+     return <div className="flex h-screen items-center justify-center">Loading...</div>;
+   }
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
@@ -94,6 +128,15 @@ export default function SignupPage() {
           <CardDescription>Enter your details to sign up.</CardDescription>
         </CardHeader>
         <CardContent>
+           {showConfigError && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Configuration Error</AlertTitle>
+                <AlertDescription>
+                  Signup is currently unavailable due to a configuration issue. Please contact support.
+                </AlertDescription>
+              </Alert>
+            )}
           <form onSubmit={handleSignup} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -104,7 +147,7 @@ export default function SignupPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
+                disabled={loading || showConfigError}
               />
             </div>
             <div className="space-y-2">
@@ -115,7 +158,7 @@ export default function SignupPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
+                disabled={loading || showConfigError}
                 aria-describedby="password-hint"
               />
                <p id="password-hint" className="text-xs text-muted-foreground">
@@ -130,12 +173,12 @@ export default function SignupPage() {
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                disabled={loading}
+                disabled={loading || showConfigError}
               />
             </div>
             <div className="space-y-2">
                 <Label htmlFor="role">Role</Label>
-                <Select onValueChange={setRole} value={role} required disabled={loading}>
+                <Select onValueChange={setRole} value={role} required disabled={loading || showConfigError}>
                     <SelectTrigger id="role">
                         <SelectValue placeholder="Select your role" />
                     </SelectTrigger>
@@ -149,14 +192,14 @@ export default function SignupPage() {
             </div>
 
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading || showConfigError}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sign Up'}
             </Button>
           </form>
         </CardContent>
         <CardFooter className="flex flex-col items-center text-sm text-muted-foreground">
              <p>Already have an account?</p>
-             <Link href="/login" className="text-primary hover:underline font-medium">
+             <Link href="/login" className={`text-primary hover:underline font-medium ${showConfigError ? 'pointer-events-none opacity-50' : ''}`}>
                  Log in here
              </Link>
         </CardFooter>

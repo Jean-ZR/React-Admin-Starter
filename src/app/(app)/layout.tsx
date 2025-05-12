@@ -42,6 +42,7 @@ import {
   ClipboardList,
   LogOut,
   UserCircle,
+  AlertTriangle, // Import AlertTriangle
 } from 'lucide-react';
 import {
   Sidebar,
@@ -60,7 +61,6 @@ import {
   SidebarSeparator,
   SidebarTrigger, // Import SidebarTrigger
 } from '@/components/ui/sidebar';
-// Removed DashboardHeader import as it's no longer needed
 import { Separator } from '@/components/ui/separator';
 import { AuthProvider, useAuth } from '@/contexts/auth-context'; // Import AuthProvider and useAuth
 import { ThemeToggle } from '@/components/theme-toggle'; // Import ThemeToggle
@@ -74,26 +74,56 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'; // Import Alert components
+
 
 // Inner layout component that uses the auth context
 function AppLayoutContent({ children }: { children: ReactNode }) {
-  const { user, loading, logout, role } = useAuth();
+  const { user, loading, logout, role, isFirebaseConfigured } = useAuth(); // Add isFirebaseConfigured
   const router = useRouter();
 
+   // Display error if Firebase is not configured
+  if (!isFirebaseConfigured && !loading) {
+    return (
+       <div className="flex h-screen items-center justify-center p-4">
+        <Alert variant="destructive" className="max-w-lg">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Configuration Error</AlertTitle>
+            <AlertDescription>
+                Firebase is not configured correctly. Please check your `.env.local` file and ensure all `NEXT_PUBLIC_FIREBASE_` variables are set. Authentication and database features will not work.
+                <div className="mt-4">
+                 {/* Optionally add a link to documentation or back button */}
+                  <Button variant="outline" onClick={() => window.location.reload()}>Reload Page</Button>
+                </div>
+            </AlertDescription>
+        </Alert>
+       </div>
+    );
+  }
+
   useEffect(() => {
-    if (!loading && !user) {
+     // Only check auth state if Firebase is configured
+    if (isFirebaseConfigured && !loading && !user) {
       router.replace('/login'); // Redirect to login if not authenticated
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, isFirebaseConfigured]); // Add isFirebaseConfigured dependency
 
-  if (loading || !user) {
+  if (loading) { // Show loading if initial auth check is happening OR if firebase is configuring
     // You can render a loading spinner here
     return (
       <div className="flex h-screen items-center justify-center">
-        Loading...
+        Loading Application...
       </div>
     );
   }
+
+   // If firebase is configured but user is null after loading, redirect happens via useEffect
+   // If user is present, render the layout
+   if (!user && isFirebaseConfigured) {
+     // This state should ideally be brief due to the redirect effect
+     return <div className="flex h-screen items-center justify-center">Redirecting...</div>;
+   }
+
 
   // Determine user initials for AvatarFallback
   const getInitials = (email: string | null | undefined) => {

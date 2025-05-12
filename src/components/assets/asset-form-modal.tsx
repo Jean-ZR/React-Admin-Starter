@@ -212,8 +212,34 @@ export function AssetFormModal({ isOpen, onClose, onSubmit, assetData }: AssetFo
                  )}
                />
                 {/* Add Date Pickers - Assuming DatePicker component integrates with react-hook-form */}
-               {/* <FormField name="purchaseDate" render={...} /> */}
-                {/* <FormField name="warrantyEnd" render={...} /> */}
+               <FormField
+                control={form.control}
+                name="purchaseDate"
+                render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                        <FormLabel>Purchase Date</FormLabel>
+                        <DatePicker
+                            value={field.value ?? undefined}
+                            onSelect={field.onChange} // Pass the onChange handler
+                        />
+                        <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="warrantyEnd"
+                render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                        <FormLabel>Warranty End Date</FormLabel>
+                        <DatePicker
+                            value={field.value ?? undefined}
+                            onSelect={field.onChange}
+                        />
+                        <FormMessage />
+                    </FormItem>
+                )}
+                />
 
             </div>
              {/* Description Textarea */}
@@ -244,259 +270,3 @@ export function AssetFormModal({ isOpen, onClose, onSubmit, assetData }: AssetFo
     </Dialog>
   );
 }
-```
-  </change>
-  <change>
-    <file>src/components/clients/client-form-modal.tsx</file>
-    <description>Create a reusable modal component for adding/editing clients.</description>
-    <content><![CDATA['use client';
-
-import React, { useEffect } from 'react';
-import { useForm, SubmitHandler } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
-    DialogClose,
-} from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-
-// Define Zod schema for validation
-const clientSchema = z.object({
-  name: z.string().min(2, { message: "Client name must be at least 2 characters." }),
-  contact: z.string().min(2, { message: "Contact name must be at least 2 characters." }),
-  email: z.string().email({ message: "Invalid email address." }),
-  phone: z.string().min(10, { message: "Phone number must be at least 10 digits." }).optional().or(z.literal('')),
-  address: z.string().optional(),
-  status: z.string().min(1, { message: "Please select a status." }),
-  // Add other fields as needed, e.g., notes: z.string().optional()
-});
-
-type ClientFormData = z.infer<typeof clientSchema>;
-
-interface ClientFormModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (data: ClientFormData) => void;
-  clientData?: ClientFormData | null; // Data for editing
-}
-
-// Example data for selects (replace with fetched data if needed)
-const statuses = ["Active", "Inactive", "Prospect"];
-
-export function ClientFormModal({ isOpen, onClose, onSubmit, clientData }: ClientFormModalProps) {
-  const form = useForm<ClientFormData>({
-    resolver: zodResolver(clientSchema),
-    defaultValues: clientData || {
-      name: '',
-      contact: '',
-      email: '',
-      phone: '',
-      address: '',
-      status: '',
-    },
-  });
-
-   // Reset form when clientData changes
-    useEffect(() => {
-        if (clientData) {
-            form.reset(clientData);
-        } else {
-            form.reset({
-                name: '', contact: '', email: '', phone: '', address: '', status: ''
-            });
-        }
-    }, [clientData, form]);
-
-
-  const handleFormSubmit: SubmitHandler<ClientFormData> = (data) => {
-    onSubmit(data);
-    onClose(); // Close modal after submit
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>{clientData ? 'Edit Client' : 'Add New Client'}</DialogTitle>
-          <DialogDescription>
-            {clientData ? 'Update the details of the client.' : 'Fill in the details for the new client.'}
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="grid gap-4 py-4">
-            {/* Form Fields */}
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Client Name *</FormLabel>
-                        <FormControl>
-                        <Input placeholder="e.g., Alpha Corp" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                 <FormField
-                    control={form.control}
-                    name="contact"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Contact Person *</FormLabel>
-                        <FormControl>
-                        <Input placeholder="e.g., Alice Johnson" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                 />
-                <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Email *</FormLabel>
-                        <FormControl>
-                        <Input type="email" placeholder="e.g., contact@alpha.com" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                 />
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Phone</FormLabel>
-                        <FormControl>
-                        <Input type="tel" placeholder="e.g., 555-123-4567" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                 />
-                 <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Status *</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a status" />
-                            </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            {statuses.map(stat => <SelectItem key={stat} value={stat}>{stat}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                 />
-             </div>
-              {/* Address Textarea */}
-              <FormField
-                control={form.control}
-                name="address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Address</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="e.g., 123 Main St, Anytown, USA 12345" {...field} rows={3} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-            <DialogFooter>
-               <DialogClose asChild>
-                 <Button type="button" variant="outline">Cancel</Button>
-               </DialogClose>
-              <Button type="submit">{clientData ? 'Save Changes' : 'Add Client'}</Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-```
-  </change>
-  <change>
-    <file>src/components/delete-confirmation-dialog.tsx</file>
-    <description>Create a reusable delete confirmation dialog component.</description>
-    <content><![CDATA['use client';
-
-import React from 'react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from './ui/button'; // For styling action button
-
-interface DeleteConfirmationDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  itemName?: string; // Optional item name for more specific message
-}
-
-export function DeleteConfirmationDialog({
-  isOpen,
-  onClose,
-  onConfirm,
-  itemName = "this item",
-}: DeleteConfirmationDialogProps) {
-  return (
-    <AlertDialog open={isOpen} onOpenChange={onClose}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete {itemName}
-            and remove its data from our servers.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>
-           {/* Apply destructive variant styling to the confirm button */}
-          <AlertDialogAction
-            onClick={onConfirm}
-             className={Button({ variant: "destructive" }).className} // Apply button variant class
-           >
-            Delete
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-}
-```
-  </change>
-  <change>
-    <file>src/components/dashboard-header.tsx</file>
-    <description>Remove component as header logic is now integrated into src/app/(app)/layout.tsx.</description>
-    <content><![CDATA[

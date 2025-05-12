@@ -186,7 +186,3 @@ export function ClientFormModal({ isOpen, onClose, onSubmit, clientData }: Clien
     </Dialog>
   );
 }
-```
-  </change>
-  <change>
-    <file>src/components/

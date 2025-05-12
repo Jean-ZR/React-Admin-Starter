@@ -13,13 +13,17 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 
-interface DatePickerProps extends React.ComponentProps<typeof Button> {
+// Update props to accept value and onSelect for form integration
+interface DatePickerProps extends Omit<React.ComponentProps<typeof Button>, 'onSelect' | 'value'> {
  id?: string;
+ value?: Date; // Accept Date object value
+ onSelect?: (date: Date | undefined) => void; // Function to call when date is selected
 }
 
 
-export function DatePicker({ className, id, ...props }: DatePickerProps) {
-  const [date, setDate] = React.useState<Date>()
+export function DatePicker({ className, id, value, onSelect, ...props }: DatePickerProps) {
+  // Removed internal state, rely on props for value and updates
+  // const [date, setDate] = React.useState<Date>()
 
   return (
     <Popover>
@@ -29,20 +33,20 @@ export function DatePicker({ className, id, ...props }: DatePickerProps) {
           variant={"outline"}
           className={cn(
             "w-full justify-start text-left font-normal",
-            !date && "text-muted-foreground",
+            !value && "text-muted-foreground", // Check value prop
              className
           )}
            {...props}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? format(date, "PPP") : <span>Pick a date</span>}
+          {value ? format(value, "PPP") : <span>Pick a date</span>} {/* Use value prop */}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0">
         <Calendar
           mode="single"
-          selected={date}
-          onSelect={setDate}
+          selected={value} // Use value prop
+          onSelect={onSelect} // Use onSelect prop
           initialFocus
         />
       </PopoverContent>

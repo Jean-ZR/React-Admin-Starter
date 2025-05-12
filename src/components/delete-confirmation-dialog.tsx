@@ -50,7 +50,3 @@ export function DeleteConfirmationDialog({
     </AlertDialog>
   );
 }
-```
-  </change>
-  <change>
-    <file>src/components

@@ -1,72 +1,241 @@
-'use client'; // Required for state and handlers
 
-import React, { useState } from 'react';
+'use client';
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableCaption } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
-import { Search, ListFilter, PlusCircle, FileDown, MoreHorizontal } from "lucide-react"; // Added MoreHorizontal
+import { Search, ListFilter, PlusCircle, FileDown, MoreHorizontal, Loader2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem, // Added DropdownMenuItem
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-// Import modals (assuming they exist or will be created)
-// import { ItemFormModal } from '@/components/inventory/item-form-modal';
-// import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
+import { ItemFormModal, type ItemFormData } from '@/components/inventory/item-form-modal';
+import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
+import { useToast } from "@/hooks/use-toast";
+import { db } from '@/lib/firebase/config';
+import {
+  collection,
+  addDoc,
+  onSnapshot,
+  doc,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp,
+  query,
+  where,
+  orderBy,
+  Timestamp,
+  type DocumentData,
+} from 'firebase/firestore';
+import { exportToCSV, exportToPDF } from '@/lib/export';
 
-const stockItems = [
-  { id: 'SKU001', name: 'Wireless Mouse', category: 'Peripherals', quantity: 50, reorderLevel: 10, location: 'Shelf A1', cost: 25.99, image: 'https://picsum.photos/40/40?random=1', dataAiHint: 'mouse computer' },
-  { id: 'SKU002', name: 'USB Keyboard', category: 'Peripherals', quantity: 5, reorderLevel: 15, location: 'Shelf A2', cost: 45.00, image: 'https://picsum.photos/40/40?random=2', dataAiHint: 'keyboard computer' },
-  { id: 'SKU003', name: '24" Monitor', category: 'Displays', quantity: 20, reorderLevel: 5, location: 'Shelf B1', cost: 199.99, image: 'https://picsum.photos/40/40?random=3', dataAiHint: 'monitor screen' },
-  { id: 'SKU004', name: 'Laptop Stand', category: 'Accessories', quantity: 75, reorderLevel: 20, location: 'Shelf C3', cost: 30.50, image: 'https://picsum.photos/40/40?random=4', dataAiHint: 'laptop stand' },
-  { id: 'SKU005', name: 'Webcam HD', category: 'Peripherals', quantity: 12, reorderLevel: 10, location: 'Shelf A1', cost: 55.00, image: 'https://picsum.photos/40/40?random=5', dataAiHint: 'webcam camera' },
-];
+export interface StockItem extends ItemFormData {
+  id: string;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+}
 
-type StockItem = typeof stockItems[0]; // Define type
+const ALL_STATUS_OPTIONS = ["In Stock", "Low Stock", "Out of Stock"];
 
 export default function StockManagementPage() {
-    // State for modals would go here if implemented
-    // const [isModalOpen, setIsModalOpen] = useState(false);
-    // const [editingItem, setEditingItem] = useState<StockItem | null>(null);
-    // const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-    // const [itemToDelete, setItemToDelete] = useState<StockItem | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingItem, setEditingItem] = useState<StockItem | null>(null);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState<StockItem | null>(null);
+    
+    const [allStockItems, setAllStockItems] = useState<StockItem[]>([]); // Raw data from Firestore
+    const [displayedStockItems, setDisplayedStockItems] = useState<StockItem[]>([]); // Data after all filters
+    const [isLoading, setIsLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilters, setStatusFilters] = useState<string[]>([]);
+    const [categoryFilters, setCategoryFilters] = useState<string[]>([]);
+    const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+    const { toast } = useToast();
+
+    // Fetch initial stock items from Firestore
+    useEffect(() => {
+      setIsLoading(true);
+      const itemsCollectionRef = collection(db, 'inventoryItems');
+      const q = query(itemsCollectionRef, orderBy('name', 'asc'));
+
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const itemsData = snapshot.docs.map(docSnapshot => {
+          const data = docSnapshot.data();
+          return {
+            id: docSnapshot.id,
+            ...data,
+          } as StockItem;
+        });
+        setAllStockItems(itemsData);
+        
+        // Extract unique categories for filtering
+        const uniqueCategories = Array.from(new Set(itemsData.map(item => item.category).filter(Boolean)));
+        setAvailableCategories(uniqueCategories.sort());
+
+        setIsLoading(false);
+      }, (error) => {
+        console.error("Error fetching stock items:", error);
+        toast({ title: "Error", description: "Could not fetch stock items.", variant: "destructive" });
+        setIsLoading(false);
+      });
+
+      return () => unsubscribe();
+    }, [toast]);
+
+    // Apply filters and search whenever dependencies change
+    useEffect(() => {
+      let filtered = [...allStockItems];
+
+      // Category filtering
+      if (categoryFilters.length > 0) {
+        filtered = filtered.filter(item => categoryFilters.includes(item.category));
+      }
+
+      // Search term filtering
+      if (searchTerm) {
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        filtered = filtered.filter(item =>
+          item.name.toLowerCase().includes(lowerSearchTerm) ||
+          item.sku.toLowerCase().includes(lowerSearchTerm) ||
+          item.category.toLowerCase().includes(lowerSearchTerm) ||
+          (item.location && item.location.toLowerCase().includes(lowerSearchTerm))
+        );
+      }
+
+      // Status filtering (client-side due to complexity of reorderLevel comparison)
+      if (statusFilters.length > 0) {
+        filtered = filtered.filter(item => {
+          if (statusFilters.includes("Out of Stock") && item.quantity === 0) return true;
+          if (statusFilters.includes("Low Stock") && item.quantity > 0 && item.quantity <= item.reorderLevel) return true;
+          if (statusFilters.includes("In Stock") && item.quantity > item.reorderLevel) return true;
+          return false;
+        });
+      }
+      
+      setDisplayedStockItems(filtered);
+    }, [allStockItems, searchTerm, statusFilters, categoryFilters]);
+
 
     const handleAddItem = () => {
-        console.log("Opening Add Item modal...");
-        // setEditingItem(null);
-        // setIsModalOpen(true);
-         alert("Add Item functionality requires a modal component.");
+        setEditingItem(null);
+        setIsModalOpen(true);
     };
 
-     const handleEditItem = (item: StockItem) => {
-        console.log("Opening Edit Item modal for:", item.id);
-        // setEditingItem(item);
-        // setIsModalOpen(true);
-         alert("Edit Item functionality requires a modal component.");
+    const handleEditItem = (item: StockItem) => {
+        setEditingItem(item);
+        setIsModalOpen(true);
     };
 
-     const handleDeleteClick = (item: StockItem) => {
-        console.log("Opening Delete Confirmation for:", item.id);
-        // setItemToDelete(item);
-        // setIsDeleteDialogOpen(true);
-        alert("Delete Item functionality requires a confirmation dialog.");
+    const handleDeleteClick = (item: StockItem) => {
+        setItemToDelete(item);
+        setIsDeleteDialogOpen(true);
     };
 
-    // const confirmDelete = () => { ... };
-    // const handleSaveItem = (formData: any) => { ... };
-
-    const handleExport = () => {
-        console.log("Exporting stock items..."); // Placeholder for export logic
-        // TODO: Implement actual CSV/PDF export
-        alert("Export functionality not yet implemented.");
+    const confirmDelete = async () => {
+        if (itemToDelete) {
+            try {
+                await deleteDoc(doc(db, 'inventoryItems', itemToDelete.id));
+                toast({ title: "Success", description: "Item deleted successfully." });
+            } catch (error) {
+                console.error("Error deleting item:", error);
+                toast({ title: "Error", description: "Could not delete item.", variant: "destructive" });
+            } finally {
+                setIsDeleteDialogOpen(false);
+                setItemToDelete(null);
+            }
+        }
     };
+
+    const handleSaveItem = async (formData: ItemFormData) => {
+      const dataToSave: Omit<StockItem, 'id' | 'createdAt' | 'updatedAt'> & { createdAt?: Timestamp, updatedAt?: Timestamp } = {
+          ...formData,
+          image: formData.image || `https://placehold.co/600x400.png`,
+          dataAiHint: formData.dataAiHint || formData.name.toLowerCase().split(' ').slice(0,2).join(' ') || 'inventory item',
+      };
+
+      try {
+          if (editingItem) {
+              const itemDocRef = doc(db, 'inventoryItems', editingItem.id);
+              await updateDoc(itemDocRef, { ...dataToSave, updatedAt: serverTimestamp() });
+              toast({ title: "Success", description: "Item updated successfully." });
+          } else {
+              await addDoc(collection(db, 'inventoryItems'), {
+                 ...dataToSave,
+                 createdAt: serverTimestamp(),
+                 updatedAt: serverTimestamp()
+              });
+              toast({ title: "Success", description: "Item added successfully." });
+          }
+          setIsModalOpen(false);
+          setEditingItem(null);
+      } catch (error) {
+          console.error("Error saving item:", error);
+          toast({ title: "Error", description: "Could not save item.", variant: "destructive" });
+      }
+    };
+    
+    const handleStatusFilterChange = (status: string) => {
+        setStatusFilters(prevFilters =>
+            prevFilters.includes(status)
+                ? prevFilters.filter(s => s !== status)
+                : [...prevFilters, status]
+        );
+    };
+
+    const handleCategoryFilterChange = (category: string) => {
+        setCategoryFilters(prevFilters =>
+            prevFilters.includes(category)
+                ? prevFilters.filter(c => c !== category)
+                : [...prevFilters, category]
+        );
+    };
+
+    const handleExportCSV = () => {
+        if (displayedStockItems.length === 0) {
+            toast({ title: "No Data", description: "No items to export.", variant: "default" });
+            return;
+        }
+        exportToCSV(displayedStockItems.map(({ id, createdAt, updatedAt, ...rest }) => ({
+            ...rest,
+            // Any specific formatting for CSV if needed
+        })), 'stock_items_list');
+    };
+
+    const handleExportPDF = () => {
+      if (displayedStockItems.length === 0) {
+            toast({ title: "No Data", description: "No items to export.", variant: "default" });
+            return;
+        }
+        const columns = [
+            { header: 'SKU', dataKey: 'sku' },
+            { header: 'Name', dataKey: 'name' },
+            { header: 'Category', dataKey: 'category' },
+            { header: 'Location', dataKey: 'location' },
+            { header: 'Quantity', dataKey: 'quantity' },
+            { header: 'Reorder Lvl', dataKey: 'reorderLevel' },
+            { header: 'Cost', dataKey: 'cost' },
+        ];
+        exportToPDF({
+            data: displayedStockItems.map(item => ({
+              ...item,
+              cost: item.cost !== null && item.cost !== undefined ? `$${item.cost.toFixed(2)}` : 'N/A',
+              location: item.location || "N/A",
+            })),
+            columns: columns,
+            title: 'Stock Items List',
+            filename: 'stock_items_list.pdf',
+        });
+    };
+
 
   return (
     <div className="space-y-6">
@@ -80,34 +249,69 @@ export default function StockManagementPage() {
             <Input
               type="search"
               placeholder="Search stock items..."
-              className="pl-8 sm:w-[300px]"
+              className="pl-8 sm:w-[200px] lg:w-[300px]"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
            <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-9 gap-1">
                 <ListFilter className="h-3.5 w-3.5" />
-                <span className="sr-only sm:not-sr-only">Filter</span>
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                  Filter Status
+                </span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem checked>In Stock</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem>Low Stock</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem>Out of Stock</DropdownMenuCheckboxItem>
-                <DropdownMenuSeparator />
-                 <DropdownMenuLabel>Filter by Category</DropdownMenuLabel>
-                 {/* Dynamically generate categories if needed */}
-                <DropdownMenuCheckboxItem>Peripherals</DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem>Displays</DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem>Accessories</DropdownMenuCheckboxItem>
+              {ALL_STATUS_OPTIONS.map(status => (
+                <DropdownMenuCheckboxItem
+                  key={status}
+                  checked={statusFilters.includes(status)}
+                  onCheckedChange={() => handleStatusFilterChange(status)}
+                >
+                  {status}
+                </DropdownMenuCheckboxItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
-           <Button size="sm" variant="outline" className="h-9 gap-1" onClick={handleExport}>
-            <FileDown className="h-3.5 w-3.5" />
-            <span className="sr-only sm:not-sr-only">Export</span>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 gap-1">
+                <ListFilter className="h-3.5 w-3.5" />
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                  Filter Category
+                </span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Filter by Category</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {availableCategories.length > 0 ? availableCategories.map(cat => (
+                <DropdownMenuCheckboxItem
+                  key={cat}
+                  checked={categoryFilters.includes(cat)}
+                  onCheckedChange={() => handleCategoryFilterChange(cat)}
+                >
+                  {cat}
+                </DropdownMenuCheckboxItem>
+              )) : <DropdownMenuItem disabled>No categories found</DropdownMenuItem>}
+            </DropdownMenuContent>
+          </DropdownMenu>
+           <DropdownMenu>
+             <DropdownMenuTrigger asChild>
+               <Button size="sm" variant="outline" className="h-9 gap-1">
+                 <FileDown className="h-3.5 w-3.5" />
+                 <span className="sr-only sm:not-sr-only">Export</span>
+               </Button>
+             </DropdownMenuTrigger>
+             <DropdownMenuContent align="end">
+               <DropdownMenuItem onClick={handleExportCSV}>Export as CSV</DropdownMenuItem>
+               <DropdownMenuItem onClick={handleExportPDF}>Export as PDF</DropdownMenuItem>
+             </DropdownMenuContent>
+           </DropdownMenu>
           <Button size="sm" className="h-9 gap-1" onClick={handleAddItem}>
             <PlusCircle className="h-3.5 w-3.5" />
             <span className="sr-only sm:not-sr-only">Add Item</span>
@@ -121,77 +325,102 @@ export default function StockManagementPage() {
            <CardDescription>Real-time tracking of inventory items.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-             <TableCaption>List of current inventory items.</TableCaption>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="hidden w-[64px] sm:table-cell">
-                  <span className="sr-only">Image</span>
-                </TableHead>
-                <TableHead>Name (SKU)</TableHead>
-                <TableHead>Category</TableHead>
-                 <TableHead>Location</TableHead>
-                <TableHead>Status</TableHead>
-                 <TableHead className="text-right">Quantity</TableHead>
+          {isLoading ? (
+            <div className="flex justify-center items-center min-h-[200px]">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="ml-2">Loading inventory items...</p>
+            </div>
+          ) : displayedStockItems.length === 0 ? (
+             <div className="text-center py-10 text-muted-foreground">
+                No items found matching your criteria.
+              </div>
+          ) : (
+            <Table>
+              <TableCaption>List of current inventory items. {displayedStockItems.length} item(s) found.</TableCaption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="hidden w-[64px] sm:table-cell">
+                    <span className="sr-only">Image</span>
+                  </TableHead>
+                  <TableHead>Name (SKU)</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Quantity</TableHead>
                   <TableHead className="text-right">Cost</TableHead>
-                 <TableHead><span className="sr-only">Actions</span></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {stockItems.map((item) => (
-                <TableRow key={item.id}>
-                   <TableCell className="hidden sm:table-cell">
-                      <Image
-                        alt="Product image"
-                        className="aspect-square rounded-md object-cover"
-                        height="40"
-                        src={item.image}
-                        width="40"
-                        data-ai-hint={item.dataAiHint}
-                      />
-                    </TableCell>
-                  <TableCell className="font-medium">{item.name} <span className="text-xs text-muted-foreground">({item.id})</span></TableCell>
-                  <TableCell>{item.category}</TableCell>
-                   <TableCell>{item.location}</TableCell>
-                   <TableCell>
-                      <Badge variant={item.quantity <= item.reorderLevel ? (item.quantity === 0 ? "destructive" : "secondary") : "outline"}
-                             className={item.quantity <= item.reorderLevel && item.quantity > 0 ? "text-orange-600 border-orange-600 bg-orange-50 dark:bg-orange-900/20" : ""}>
-                        {item.quantity === 0 ? 'Out of Stock' : item.quantity <= item.reorderLevel ? 'Low Stock' : 'In Stock'}
-                      </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">{item.quantity}</TableCell>
-                  <TableCell className="text-right">${item.cost.toFixed(2)}</TableCell>
-                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button aria-haspopup="true" size="icon" variant="ghost">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                         <DropdownMenuItem onClick={() => handleEditItem(item)}>Edit</DropdownMenuItem>
-                        <DropdownMenuItem>Adjust Stock</DropdownMenuItem>
-                         <DropdownMenuItem>View History</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                            className="text-destructive"
-                             onClick={() => handleDeleteClick(item)}
-                        >
-                            Delete Item
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+                  <TableHead><span className="sr-only">Actions</span></TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {displayedStockItems.map((item) => {
+                  let statusLabel = 'In Stock';
+                  let statusClass = '';
+                  if (item.quantity === 0) {
+                    statusLabel = 'Out of Stock';
+                    statusClass = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
+                  } else if (item.quantity <= item.reorderLevel) {
+                    statusLabel = 'Low Stock';
+                    statusClass = 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300';
+                  } else {
+                     statusClass = 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+                  }
+
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell className="hidden sm:table-cell">
+                          <Image
+                            alt={item.name || "Item image"}
+                            className="aspect-square rounded-md object-cover"
+                            height="40"
+                            src={item.image || `https://placehold.co/40x40.png`}
+                            width="40"
+                            data-ai-hint={item.dataAiHint || 'inventory item'}
+                            onError={(e) => e.currentTarget.src = `https://placehold.co/40x40.png`}
+                          />
+                        </TableCell>
+                      <TableCell className="font-medium">{item.name} <span className="text-xs text-muted-foreground">({item.sku})</span></TableCell>
+                      <TableCell>{item.category}</TableCell>
+                      <TableCell>{item.location || 'N/A'}</TableCell>
+                      <TableCell>
+                          <Badge variant={item.quantity === 0 ? "destructive" : item.quantity <= item.reorderLevel ? "secondary" : "outline"}
+                                 className={statusClass}>
+                            {statusLabel}
+                          </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">{item.quantity}</TableCell>
+                      <TableCell className="text-right">{item.cost ? `$${item.cost.toFixed(2)}` : 'N/A'}</TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Toggle menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => handleEditItem(item)}>Edit</DropdownMenuItem>
+                            <DropdownMenuItem>View History (Not Impl.)</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => handleDeleteClick(item)}
+                            >
+                                Delete Item
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
          <CardFooter>
           <div className="text-xs text-muted-foreground">
-            Showing <strong>1-{stockItems.length}</strong> of <strong>{stockItems.length}</strong> items
+            Showing <strong>{displayedStockItems.length}</strong> of <strong>{allStockItems.length}</strong> items
           </div>
         </CardFooter>
       </Card>
@@ -200,10 +429,19 @@ export default function StockManagementPage() {
         Real-time tracking of inventory levels with search and filtering. Audit logs and role-based access are applied.
       </p>
 
-       {/* Modals would be placed here */}
-       {/* <ItemFormModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSubmit={handleSaveItem} itemData={editingItem} /> */}
-       {/* <DeleteConfirmationDialog isOpen={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)} onConfirm={confirmDelete} itemName={itemToDelete?.name || 'this item'} /> */}
-
+       <ItemFormModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleSaveItem}
+        itemData={editingItem}
+        availableCategories={availableCategories}
+      />
+       <DeleteConfirmationDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={confirmDelete}
+        itemName={itemToDelete?.name || 'this item'}
+      />
     </div>
   );
 }

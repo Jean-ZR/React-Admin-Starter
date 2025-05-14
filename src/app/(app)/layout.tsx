@@ -1,3 +1,4 @@
+
 // Wrap the layout content with AuthProvider
 // Check auth status and redirect if not logged in
 // Add conditional rendering based on role (example: User Management for admin)
@@ -42,7 +43,8 @@ import {
   ClipboardList,
   LogOut,
   UserCircle,
-  AlertTriangle, // Import AlertTriangle
+  AlertTriangle, 
+  Cog, // Import Cog for Account Settings
 } from 'lucide-react';
 import {
   Sidebar,
@@ -59,11 +61,11 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
   SidebarSeparator,
-  SidebarTrigger, // Import SidebarTrigger
+  SidebarTrigger, 
 } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
-import { useAuth } from '@/contexts/auth-context'; // Import useAuth
-import { ThemeToggle } from '@/components/theme-toggle'; // Import ThemeToggle
+import { useAuth } from '@/contexts/auth-context'; 
+import { ThemeToggle } from '@/components/theme-toggle'; 
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -74,15 +76,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'; // Import Alert components
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'; 
 
 
 // Inner layout component that uses the auth context
 function AppLayoutContent({ children }: { children: ReactNode }) {
-  const { user, loading, logout, role, isFirebaseConfigured } = useAuth(); // Add isFirebaseConfigured
+  const { user, loading, logout, role, displayName, isFirebaseConfigured } = useAuth(); 
   const router = useRouter();
 
-   // Display error if Firebase is not configured
   if (!isFirebaseConfigured && !loading) {
     return (
        <div className="flex h-screen items-center justify-center p-4">
@@ -92,7 +93,6 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
             <AlertDescription>
                 Firebase is not configured correctly. Please check your `.env.local` file and ensure all `NEXT_PUBLIC_FIREBASE_` variables are set. Authentication and database features will not work.
                 <div className="mt-4">
-                 {/* Optionally add a link to documentation or back button */}
                   <Button variant="outline" onClick={() => window.location.reload()}>Reload Page</Button>
                 </div>
             </AlertDescription>
@@ -102,14 +102,12 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-     // Only check auth state if Firebase is configured
     if (isFirebaseConfigured && !loading && !user) {
-      router.replace('/login'); // Redirect to login if not authenticated
+      router.replace('/login'); 
     }
-  }, [user, loading, router, isFirebaseConfigured]); // Add isFirebaseConfigured dependency
+  }, [user, loading, router, isFirebaseConfigured]); 
 
-  if (loading) { // Show loading if initial auth check is happening OR if firebase is configuring
-    // You can render a loading spinner here
+  if (loading) { 
     return (
       <div className="flex h-screen items-center justify-center">
         Loading Application...
@@ -117,17 +115,15 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
     );
   }
 
-   // If firebase is configured but user is null after loading, redirect happens via useEffect
-   // If user is present, render the layout
    if (!user && isFirebaseConfigured) {
-     // This state should ideally be brief due to the redirect effect
      return <div className="flex h-screen items-center justify-center">Redirecting...</div>;
    }
 
 
-  // Determine user initials for AvatarFallback
-  const getInitials = (email: string | null | undefined) => {
-    return email ? email.substring(0, 2).toUpperCase() : 'U';
+  const getInitials = (name: string | null | undefined, email: string | null | undefined) => {
+    if (name) return name.substring(0, 2).toUpperCase();
+    if (email) return email.substring(0, 2).toUpperCase();
+    return 'U';
   };
 
 
@@ -168,6 +164,15 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                 Dashboard
               </SidebarMenuButton>
             </SidebarMenuItem>
+
+            {/* Profile */}
+            <SidebarMenuItem>
+              <SidebarMenuButton href="/profile">
+                <UserCircle />
+                Profile
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
 
             {/* Asset Management */}
             <SidebarGroup>
@@ -307,7 +312,11 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                     <SlidersHorizontal /> General Config
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
-                {/* Example: Show User Management only to Admins */}
+                 <SidebarMenuSubItem>
+                  <SidebarMenuSubButton href="/settings/account">
+                    <Cog /> Account Settings
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
                 {role === 'admin' && (
                   <SidebarMenuSubItem>
                     <SidebarMenuSubButton href="/settings/users">
@@ -337,7 +346,6 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
       </Sidebar>
 
       <SidebarInset className="flex flex-col sm:gap-4 sm:py-4">
-        {/* Updated DashboardHeader with User Dropdown */}
          <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
             <SidebarTrigger className="sm:hidden" />
             <div className="ml-auto flex items-center gap-4">
@@ -350,22 +358,19 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                     className="overflow-hidden rounded-full"
                     >
                     <Avatar className="h-8 w-8">
-                        {/* Add AvatarImage if you store user photo URLs */}
-                        {/* <AvatarImage src={user.photoURL || undefined} alt="User Avatar" /> */}
-                         <AvatarFallback>{getInitials(user?.email)}</AvatarFallback>
+                        {/* <AvatarImage src={user?.photoURL || undefined} alt="User Avatar" /> */}
+                         <AvatarFallback>{getInitials(displayName, user?.email)}</AvatarFallback>
                     </Avatar>
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>{user?.email}</DropdownMenuLabel>
+                    <DropdownMenuLabel>{displayName || user?.email}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem>
-                        <UserCircle className="mr-2 h-4 w-4" />
-                         Profile (Not implemented)
+                    <DropdownMenuItem asChild>
+                        <Link href="/profile"><UserCircle className="mr-2 h-4 w-4" />Profile</Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem>
-                        <Settings className="mr-2 h-4 w-4" />
-                        Settings (Not implemented)
+                    <DropdownMenuItem asChild>
+                        <Link href="/settings/account"><Settings className="mr-2 h-4 w-4" />Settings</Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={logout}>
@@ -384,7 +389,6 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
   );
 }
 
-// Export the layout. AuthProvider is now in the root layout.
 export default function AppLayout({ children }: { children: ReactNode }) {
   return <AppLayoutContent>{children}</AppLayoutContent>;
 }

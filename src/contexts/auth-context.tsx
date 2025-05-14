@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
@@ -7,6 +8,10 @@ import {
   signInWithEmailAndPassword,
   signOut,
   sendPasswordResetEmail,
+  updateProfile,
+  updatePassword as firebaseUpdatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
   type User as FirebaseUser,
   type Auth,
 } from 'firebase/auth';
@@ -14,26 +19,29 @@ import {
   doc,
   setDoc,
   getDoc,
+  updateDoc,
   type Firestore,
 } from 'firebase/firestore';
 import {
   firebaseApp,
-  auth as configuredAuth, // Renamed to avoid conflict with Auth type
-  db as configuredDb,     // Renamed to avoid conflict
+  auth as configuredAuth, 
+  db as configuredDb,     
 } from '@/lib/firebase/config';
 
-// Indica si Firebase App y servicios están configurados
 const firebaseConfigured = !!firebaseApp && !!configuredAuth && !!configuredDb;
 
 interface AuthContextType {
   user: FirebaseUser | null;
   role: string | null;
+  displayName: string | null;
   loading: boolean;
   isFirebaseConfigured: boolean;
   login: (email: string, pass: string) => Promise<void>;
   signup: (email: string, pass: string, role: string) => Promise<void>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  updateUserDisplayName: (newName: string) => Promise<void>;
+  updateUserPassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -41,11 +49,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [role, setRole] = useState<string | null>(null);
-  const [loading, setLoading] = useState(firebaseConfigured); // Start loading only if configured
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [loading, setLoading] = useState(firebaseConfigured); 
 
   useEffect(() => {
     if (!firebaseConfigured) {
-      console.warn("AuthContext: Firebase not configured, auth state will not be managed.");
       setLoading(false);
       return;
     }
@@ -53,27 +61,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const unsubscribe = onAuthStateChanged(configuredAuth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
+        setDisplayName(currentUser.displayName); // Get displayName from Auth user object
         try {
           const userDocRef = doc(configuredDb, 'users', currentUser.uid);
           const snap = await getDoc(userDocRef);
-          setRole(snap.exists() ? snap.data().role : null);
+          if (snap.exists()) {
+            setRole(snap.data().role);
+            // If displayName is in Firestore and more up-to-date, use that
+            if (snap.data().displayName) {
+              setDisplayName(snap.data().displayName);
+            }
+          } else {
+            setRole(null);
+          }
         } catch (e) {
-          console.error('Error al obtener role:', e);
+          console.error('Error al obtener role y displayName de Firestore:', e);
           setRole(null);
         }
       } else {
         setRole(null);
+        setDisplayName(null);
       }
       setLoading(false);
     });
 
     return unsubscribe;
-  }, []); // Empty dependency array ensures this runs once on mount
+  }, []);
 
   const checkConfig = (): boolean => {
     if (!firebaseConfigured) {
       console.error('Firebase no está configurado.');
-      // Potentially show a toast or user-facing error here
       return false;
     }
     return true;
@@ -84,10 +101,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLoading(true);
     try {
       await signInWithEmailAndPassword(configuredAuth, email, pass);
-      // Role and user update will be handled by onAuthStateChanged
     } catch (e) {
       console.error('Login error:', e);
-      setLoading(false); // Ensure loading stops on error
+      setLoading(false); 
       throw e;
     }
   };
@@ -98,13 +114,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const cred = await createUserWithEmailAndPassword(configuredAuth, email, pass);
       const newUser = cred.user;
+      // It's good practice to set a default displayName on signup if available
+      const initialDisplayName = email.split('@')[0]; // Example: use email prefix as initial display name
+      await updateProfile(newUser, { displayName: initialDisplayName });
+      
       await setDoc(doc(configuredDb, 'users', newUser.uid), {
         email: newUser.email,
         role: userRole,
+        displayName: initialDisplayName, // Store displayName in Firestore as well
+        createdAt: new Date(),
       });
-      // setUser(newUser); // Not strictly necessary, onAuthStateChanged will pick it up
-      // setRole(userRole);  // Same as above
-      // setLoading(false) will be handled by onAuthStateChanged
+      setUser(newUser); // Manually update user state
+      setRole(userRole);
+      setDisplayName(initialDisplayName);
     } catch (e) {
       console.error('Signup error:', e);
       setLoading(false);
@@ -117,12 +139,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLoading(true);
     try {
       await signOut(configuredAuth);
-      // setUser(null) and setRole(null) will be handled by onAuthStateChanged
     } catch (e) {
       console.error('Logout error:', e);
-      // Even if signout fails, attempt to clear local state
       setUser(null);
       setRole(null);
+      setDisplayName(null);
       setLoading(false);
       throw e;
     }
@@ -138,9 +159,41 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const updateUserDisplayName = async (newName: string) => {
+    if (!checkConfig() || !user) {
+      throw new Error("User not authenticated or Firebase not configured.");
+    }
+    await updateProfile(user, { displayName: newName });
+    const userDocRef = doc(configuredDb, 'users', user.uid);
+    await updateDoc(userDocRef, { displayName: newName });
+    setDisplayName(newName); // Update local state
+  };
+
+  const updateUserPassword = async (currentPassword: string, newPassword: string) => {
+    if (!checkConfig() || !user || !user.email) {
+        throw new Error("User not authenticated, email missing, or Firebase not configured.");
+    }
+    const credential = EmailAuthProvider.credential(user.email, currentPassword);
+    await reauthenticateWithCredential(user, credential);
+    await firebaseUpdatePassword(user, newPassword);
+  };
+
+
   return (
     <AuthContext.Provider
-      value={{ user, role, loading, isFirebaseConfigured: firebaseConfigured, login, signup, logout, resetPassword }}
+      value={{ 
+        user, 
+        role, 
+        displayName,
+        loading, 
+        isFirebaseConfigured: firebaseConfigured, 
+        login, 
+        signup, 
+        logout, 
+        resetPassword,
+        updateUserDisplayName,
+        updateUserPassword
+      }}
     >
       {children}
     </AuthContext.Provider>

@@ -62,7 +62,7 @@ import {
   SidebarTrigger, // Import SidebarTrigger
 } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
-import { AuthProvider, useAuth } from '@/contexts/auth-context'; // Import AuthProvider and useAuth
+import { useAuth } from '@/contexts/auth-context'; // Import useAuth
 import { ThemeToggle } from '@/components/theme-toggle'; // Import ThemeToggle
 import {
   DropdownMenu,
@@ -384,11 +384,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
   );
 }
 
-// Export the layout wrapped in the AuthProvider
+// Export the layout. AuthProvider is now in the root layout.
 export default function AppLayout({ children }: { children: ReactNode }) {
-  return (
-    <AuthProvider>
-      <AppLayoutContent>{children}</AppLayoutContent>
-    </AuthProvider>
-  );
+  return <AppLayoutContent>{children}</AppLayoutContent>;
 }

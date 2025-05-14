@@ -27,34 +27,26 @@ const requiredEnvVars = [
     'NEXT_PUBLIC_FIREBASE_APP_ID',
 ];
 
-// Safely check process.env only on the client side or during build time on server
-const isBrowser = typeof window !== 'undefined';
 let missingVars: string[] = [];
 
-// Only perform the check if required vars might be available (browser or specific server context)
-// Avoid checking process.env directly at the module scope in RSCs if possible.
-// However, for client-side init, this check is necessary.
-if (isBrowser || process.env.NODE_ENV === 'development' || process.env.IS_BUILD_PROCESS) { // IS_BUILD_PROCESS is hypothetical, adjust as needed
-    missingVars = requiredEnvVars.filter(v => {
-        const value = process.env[v];
-        return !value || value.startsWith('YOUR_'); // Also check for placeholder values like YOUR_API_KEY
-    });
-} else {
-    // In environments where client env vars aren't guaranteed (like edge functions without polyfills),
-    // you might skip the check or handle it differently.
-    // For this setup, assume standard Next.js behavior where these are available.
-    missingVars = requiredEnvVars.filter(v => !process.env[v] || process.env[v]?.startsWith('YOUR_'));
-}
+// This module is 'use client', so it primarily executes in the browser.
+// NEXT_PUBLIC_ variables are exposed to the browser by Next.js.
+// Also check for empty strings.
+missingVars = requiredEnvVars.filter(v => {
+    const value = process.env[v];
+    return !value || value === '' || value.startsWith('YOUR_');
+});
 
 
 if (missingVars.length > 0) {
-    console.warn(`Firebase config missing or using placeholder environment variables: ${missingVars.join(', ')}. Please create/update the .env.local file with your actual Firebase project credentials.`);
+    console.warn(`Firebase config missing, empty, or using placeholder environment variables: ${missingVars.join(', ')}. Please ensure the .env.local file is correct and the development server has been restarted.`);
     // Avoid initializing Firebase if critical config is missing
     if (!getApps().length) {
        console.error("Firebase initialization skipped due to missing configuration."); // This error is expected if config is missing
        firebase_app = null; // Explicitly set to null
     } else {
-        firebase_app = getApps()[0]; // Use existing app if somehow initialized elsewhere, though unlikely with missing config
+        // This case is unlikely if config is truly missing, but handles if an app was initialized elsewhere.
+        firebase_app = getApps()[0];
     }
 
 } else {

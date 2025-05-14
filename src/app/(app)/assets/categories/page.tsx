@@ -31,6 +31,7 @@ import {
   orderBy,
   Timestamp,
   getCountFromServer,
+  where, // Added where import
 } from 'firebase/firestore';
 
 interface Category extends CategoryFormData {

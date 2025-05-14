@@ -1,10 +1,10 @@
-'use client'; // Required for useState and onClick handlers
 
-import React, { useState } from 'react';
+'use client';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-// Removed SampleDataGrid as we are building the table here
-import { ListFilter, Search, MoreHorizontal, PlusCircle, FileDown } from "lucide-react";
+import { ListFilter, Search, MoreHorizontal, PlusCircle, FileDown, Loader2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -12,7 +12,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuItem, // Added DropdownMenuItem
+  DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import {
     Table,
@@ -24,28 +24,124 @@ import {
     TableCaption,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import Image from "next/image"; // Keep if using images
-import { AssetFormModal } from '@/components/assets/asset-form-modal'; // Import the modal
-import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog'; // Import generic delete dialog
+import Image from "next/image";
+import { AssetFormModal, type AssetFormData } from '@/components/assets/asset-form-modal';
+import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
+import { useToast } from "@/hooks/use-toast";
+import { db } from '@/lib/firebase/config';
+import {
+  collection,
+  addDoc,
+  onSnapshot,
+  doc,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp,
+  query,
+  where,
+  orderBy,
+  Timestamp,
+  getDocs,
+} from 'firebase/firestore';
+import { exportToCSV, exportToPDF } from '@/lib/export'; // Assuming export functions are correctly set up
 
-// Sample data (replace with actual data fetching)
-const assets = [
-  { id: 'ASSET001', name: 'Laptop Pro 15"', category: 'Electronics', status: 'Active', location: 'Office A', assignedTo: 'John Doe', purchaseDate: '2023-01-15', serialNumber: 'SN12345', cost: 1200, warrantyEnd: '2025-01-15', image: 'https://picsum.photos/40/40?random=1', dataAiHint: 'laptop computer' },
-  { id: 'ASSET002', name: 'Office Chair Ergonomic', category: 'Furniture', status: 'Active', location: 'Office B', assignedTo: 'Jane Smith', purchaseDate: '2023-02-20', serialNumber: 'SN67890', cost: 350, warrantyEnd: '2024-02-20', image: 'https://picsum.photos/40/40?random=2', dataAiHint: 'office chair' },
-  { id: 'ASSET003', name: 'Monitor UltraWide', category: 'Electronics', status: 'In Repair', location: 'IT Department', assignedTo: '', purchaseDate: '2022-11-01', serialNumber: 'SN11223', cost: 600, warrantyEnd: '2024-11-01', image: 'https://picsum.photos/40/40?random=3', dataAiHint: 'monitor screen' },
-  // Add more assets as needed
-];
+interface Asset extends AssetFormData {
+  id: string;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+  // Ensure cost, purchaseDate, warrantyEnd are compatible with Firestore Timestamps if stored as such
+  cost?: number | null;
+  purchaseDate?: Timestamp | Date | null;
+  warrantyEnd?: Timestamp | Date | null;
+}
 
-type Asset = typeof assets[0]; // Define Asset type from data
+interface Category {
+  id: string;
+  name: string;
+}
+
+const ALL_STATUSES = ["Active", "Inactive", "In Repair", "Disposed", "Maintenance"];
 
 export default function AssetListPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
+    const [currentAssets, setCurrentAssets] = useState<Asset[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilters, setStatusFilters] = useState<string[]>([]);
+    const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
+    const { toast } = useToast();
+
+    const fetchCategories = useCallback(async () => {
+      try {
+        const categoriesCollectionRef = collection(db, 'assetCategories');
+        const q = query(categoriesCollectionRef, orderBy('name'));
+        const snapshot = await getDocs(q);
+        const categoriesData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          name: doc.data().name,
+        } as Category));
+        setAvailableCategories(categoriesData);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        toast({ title: "Error", description: "Could not fetch asset categories.", variant: "destructive" });
+      }
+    }, [toast]);
+
+    useEffect(() => {
+      fetchCategories();
+    }, [fetchCategories]);
+
+    const fetchAssets = useCallback(() => {
+      setIsLoading(true);
+      const assetsCollectionRef = collection(db, 'assets');
+      let q = query(assetsCollectionRef, orderBy('createdAt', 'desc'));
+
+      if (statusFilters.length > 0) {
+        q = query(q, where('status', 'in', statusFilters));
+      }
+
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        let assetsData = snapshot.docs.map(docSnapshot => {
+          const data = docSnapshot.data();
+          return {
+            id: docSnapshot.id,
+            ...data,
+            purchaseDate: data.purchaseDate instanceof Timestamp ? data.purchaseDate.toDate() : data.purchaseDate,
+            warrantyEnd: data.warrantyEnd instanceof Timestamp ? data.warrantyEnd.toDate() : data.warrantyEnd,
+            cost: data.cost !== undefined ? Number(data.cost) : null,
+          } as Asset;
+        });
+
+        if (searchTerm) {
+          assetsData = assetsData.filter(asset =>
+            asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (asset.serialNumber && asset.serialNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (asset.assignedTo && asset.assignedTo.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            asset.id.toLowerCase().includes(searchTerm.toLowerCase())
+          );
+        }
+
+        setCurrentAssets(assetsData);
+        setIsLoading(false);
+      }, (error) => {
+        console.error("Error fetching assets:", error);
+        toast({ title: "Error", description: "Could not fetch assets.", variant: "destructive" });
+        setIsLoading(false);
+      });
+
+      return unsubscribe;
+    }, [statusFilters, searchTerm, toast]);
+
+    useEffect(() => {
+      const unsubscribe = fetchAssets();
+      return () => unsubscribe();
+    }, [fetchAssets]);
 
     const handleAddAsset = () => {
-        setEditingAsset(null); // Ensure we are adding, not editing
+        setEditingAsset(null);
         setIsModalOpen(true);
     };
 
@@ -59,34 +155,99 @@ export default function AssetListPage() {
         setIsDeleteDialogOpen(true);
     };
 
-    const confirmDelete = () => {
+    const confirmDelete = async () => {
         if (assetToDelete) {
-            console.log("Deleting asset:", assetToDelete.id); // Replace with actual delete logic
-            // TODO: Call API to delete asset
-            setIsDeleteDialogOpen(false);
-            setAssetToDelete(null);
-            // Optionally refetch data here
+            try {
+                await deleteDoc(doc(db, 'assets', assetToDelete.id));
+                toast({ title: "Success", description: "Asset deleted successfully." });
+            } catch (error) {
+                console.error("Error deleting asset:", error);
+                toast({ title: "Error", description: "Could not delete asset.", variant: "destructive" });
+            } finally {
+                setIsDeleteDialogOpen(false);
+                setAssetToDelete(null);
+            }
         }
     };
 
-     const handleExport = () => {
-        console.log("Exporting assets..."); // Placeholder for export logic
-        // TODO: Implement actual CSV/PDF export
-        alert("Export functionality not yet implemented.");
-    };
+    const handleSaveAsset = async (formData: AssetFormData) => {
+        try {
+            const dataToSave = {
+                ...formData,
+                cost: formData.cost !== undefined && formData.cost !== null ? Number(formData.cost) : null,
+                purchaseDate: formData.purchaseDate ? Timestamp.fromDate(new Date(formData.purchaseDate)) : null,
+                warrantyEnd: formData.warrantyEnd ? Timestamp.fromDate(new Date(formData.warrantyEnd)) : null,
+                dataAiHint: formData.dataAiHint || formData.name.toLowerCase().split(' ').slice(0,2).join(' ') || 'asset item',
+                image: formData.image || `https://placehold.co/600x400.png`
+            };
 
-
-    const handleSaveAsset = (formData: any) => {
-        if (editingAsset) {
-            console.log("Updating asset:", editingAsset.id, formData);
-            // TODO: Call API to update asset
-        } else {
-            console.log("Adding new asset:", formData);
-            // TODO: Call API to add asset
+            if (editingAsset) {
+                const assetDocRef = doc(db, 'assets', editingAsset.id);
+                await updateDoc(assetDocRef, { ...dataToSave, updatedAt: serverTimestamp() });
+                toast({ title: "Success", description: "Asset updated successfully." });
+            } else {
+                await addDoc(collection(db, 'assets'), {
+                   ...dataToSave,
+                   createdAt: serverTimestamp()
+                });
+                toast({ title: "Success", description: "Asset added successfully." });
+            }
+            setIsModalOpen(false);
+            setEditingAsset(null);
+        } catch (error) {
+            console.error("Error saving asset:", error);
+            toast({ title: "Error", description: "Could not save asset.", variant: "destructive" });
         }
-        // Optionally refetch data here
     };
 
+    const handleStatusFilterChange = (status: string) => {
+        setStatusFilters(prevFilters =>
+            prevFilters.includes(status)
+                ? prevFilters.filter(s => s !== status)
+                : [...prevFilters, status]
+        );
+    };
+    
+    const handleExportCSV = () => {
+        if (currentAssets.length === 0) {
+            toast({ title: "No Data", description: "No assets to export.", variant: "default" });
+            return;
+        }
+        exportToCSV(currentAssets.map(({ id, createdAt, updatedAt, ...rest }) => ({
+            ...rest,
+            purchaseDate: rest.purchaseDate ? (rest.purchaseDate instanceof Date ? rest.purchaseDate.toLocaleDateString() : String(rest.purchaseDate)) : '',
+            warrantyEnd: rest.warrantyEnd ? (rest.warrantyEnd instanceof Date ? rest.warrantyEnd.toLocaleDateString() : String(rest.warrantyEnd)) : '',
+        })), 'asset_list');
+    };
+
+    const handleExportPDF = () => {
+      if (currentAssets.length === 0) {
+            toast({ title: "No Data", description: "No assets to export.", variant: "default" });
+            return;
+        }
+        const columns = [
+            { header: 'Asset ID', dataKey: 'id' },
+            { header: 'Name', dataKey: 'name' },
+            { header: 'Category', dataKey: 'category' },
+            { header: 'Status', dataKey: 'status' },
+            { header: 'Location', dataKey: 'location' },
+            { header: 'Assigned To', dataKey: 'assignedTo' },
+            { header: 'Purchase Date', dataKey: 'purchaseDate' },
+            { header: 'Cost', dataKey: 'cost' },
+        ];
+        exportToPDF({
+            data: currentAssets.map(asset => ({
+              ...asset,
+              assignedTo: asset.assignedTo || 'N/A',
+              location: asset.location || 'N/A',
+              purchaseDate: asset.purchaseDate ? (asset.purchaseDate instanceof Date ? asset.purchaseDate.toLocaleDateString() : String(asset.purchaseDate)) : 'N/A',
+              cost: asset.cost !== null && asset.cost !== undefined ? `$${asset.cost.toFixed(2)}` : 'N/A',
+            })),
+            columns: columns,
+            title: 'Asset List',
+            filename: 'asset_list.pdf',
+        });
+    };
 
   return (
     <div className="space-y-6">
@@ -101,6 +262,8 @@ export default function AssetListPage() {
               type="search"
               placeholder="Search assets..."
               className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px]"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
            <DropdownMenu>
@@ -108,29 +271,36 @@ export default function AssetListPage() {
               <Button variant="outline" size="sm" className="h-9 gap-1">
                 <ListFilter className="h-3.5 w-3.5" />
                 <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                  Filter
+                  Filter Status
                 </span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem checked>
-                Active
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem>Inactive</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem>
-                In Repair
-              </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem>
-                Disposed
-              </DropdownMenuCheckboxItem>
+              {ALL_STATUSES.map(status => (
+                <DropdownMenuCheckboxItem
+                  key={status}
+                  checked={statusFilters.includes(status)}
+                  onCheckedChange={() => handleStatusFilterChange(status)}
+                >
+                  {status}
+                </DropdownMenuCheckboxItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button size="sm" variant="outline" className="h-9 gap-1" onClick={handleExport}>
-            <FileDown className="h-3.5 w-3.5" />
-            <span className="sr-only sm:not-sr-only">Export</span>
-          </Button>
+          <DropdownMenu>
+             <DropdownMenuTrigger asChild>
+               <Button size="sm" variant="outline" className="h-9 gap-1">
+                 <FileDown className="h-3.5 w-3.5" />
+                 <span className="sr-only sm:not-sr-only">Export</span>
+               </Button>
+             </DropdownMenuTrigger>
+             <DropdownMenuContent align="end">
+               <DropdownMenuItem onClick={handleExportCSV}>Export as CSV</DropdownMenuItem>
+               <DropdownMenuItem onClick={handleExportPDF}>Export as PDF</DropdownMenuItem>
+             </DropdownMenuContent>
+           </DropdownMenu>
           <Button size="sm" className="h-9 gap-1" onClick={handleAddAsset}>
              <PlusCircle className="h-3.5 w-3.5" />
              <span className="sr-only sm:not-sr-only">Add Asset</span>
@@ -138,10 +308,23 @@ export default function AssetListPage() {
         </div>
       </div>
 
-       {/* Actual data table component */}
       <div className="overflow-hidden rounded-lg border shadow-sm">
+        {isLoading ? (
+            <div className="flex justify-center items-center min-h-[200px]">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="ml-2">Loading assets...</p>
+            </div>
+        ) : currentAssets.length === 0 && !searchTerm && statusFilters.length === 0 ? (
+            <div className="text-center py-10 text-muted-foreground">
+                No assets found. Click "Add Asset" to get started.
+            </div>
+        ): currentAssets.length === 0 ? (
+            <div className="text-center py-10 text-muted-foreground">
+                No assets found matching your criteria.
+            </div>
+        ) : (
         <Table>
-            <TableCaption>A list of your assets.</TableCaption>
+            <TableCaption>A list of your company assets. {currentAssets.length} asset(s) found.</TableCaption>
             <TableHeader>
             <TableRow>
                  <TableHead className="hidden w-[80px] sm:table-cell">
@@ -158,30 +341,36 @@ export default function AssetListPage() {
             </TableRow>
             </TableHeader>
             <TableBody>
-            {assets.map((asset) => (
+            {currentAssets.map((asset) => (
                 <TableRow key={asset.id}>
                  <TableCell className="hidden sm:table-cell">
                       <Image
-                        alt="Asset image"
+                        alt={asset.name || "Asset image"}
                         className="aspect-square rounded-md object-cover"
                         height="40"
-                        src={asset.image || 'https://picsum.photos/40/40?grayscale'} // Fallback image
+                        src={asset.image || `https://placehold.co/40x40.png`}
                         width="40"
-                        data-ai-hint={asset.dataAiHint}
+                        data-ai-hint={asset.dataAiHint || 'asset'}
+                        onError={(e) => e.currentTarget.src = `https://placehold.co/40x40.png`}
                       />
                     </TableCell>
-                <TableCell className="font-medium">{asset.id}</TableCell>
+                <TableCell className="font-medium text-xs">{asset.id}</TableCell>
                 <TableCell>{asset.name}</TableCell>
                 <TableCell>{asset.category}</TableCell>
                 <TableCell>
                     <Badge variant={asset.status === 'Active' ? 'default' : asset.status === 'In Repair' ? 'secondary' : 'outline'}
-                        className={asset.status === 'Active' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : asset.status === 'In Repair' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' : 'text-muted-foreground'}>
+                        className={
+                            asset.status === 'Active' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                            asset.status === 'In Repair' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                            asset.status === 'Maintenance' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
+                            'text-muted-foreground'
+                        }>
                     {asset.status}
                     </Badge>
                 </TableCell>
-                <TableCell>{asset.location}</TableCell>
+                <TableCell>{asset.location || 'N/A'}</TableCell>
                 <TableCell>{asset.assignedTo || 'N/A'}</TableCell>
-                <TableCell>{asset.purchaseDate}</TableCell>
+                <TableCell>{asset.purchaseDate ? (asset.purchaseDate instanceof Date ? asset.purchaseDate.toLocaleDateString() : String(asset.purchaseDate)) : 'N/A'}</TableCell>
                  <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -209,22 +398,21 @@ export default function AssetListPage() {
             ))}
             </TableBody>
         </Table>
+        )}
       </div>
-
 
       <p className="text-sm text-muted-foreground">
         Full inventory list with filtering, sorting, and search capabilities. Audit logs and role-based access are applied.
       </p>
 
-       {/* Add/Edit Modal */}
         <AssetFormModal
             isOpen={isModalOpen}
             onClose={() => setIsModalOpen(false)}
             onSubmit={handleSaveAsset}
             assetData={editingAsset}
+            availableCategories={availableCategories}
         />
 
-        {/* Delete Confirmation Dialog */}
         <DeleteConfirmationDialog
             isOpen={isDeleteDialogOpen}
             onClose={() => setIsDeleteDialogOpen(false)}

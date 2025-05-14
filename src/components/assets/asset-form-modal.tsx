@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect } from 'react';
@@ -6,10 +7,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Label } from '@/components/ui/label'; // Keep Label if used outside Form context, FormLabel preferred within
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { DatePicker } from '@/components/ui/date-picker'; // Assuming date picker handles date objects or strings
+import { DatePicker } from '@/components/ui/date-picker';
 import {
     Dialog,
     DialogContent,
@@ -29,68 +30,75 @@ const assetSchema = z.object({
   location: z.string().optional(),
   assignedTo: z.string().optional(),
   serialNumber: z.string().optional(),
-  cost: z.coerce.number().positive({ message: "Cost must be a positive number." }).optional().or(z.literal('')), // Allow empty string or positive number
-  purchaseDate: z.date().optional().nullable(), // Assuming DatePicker provides Date object
+  cost: z.union([z.string().regex(/^\d+(\.\d{1,2})?$/, "Must be a valid monetary value or empty").optional(), z.number().positive({ message: "Cost must be a positive number." })]).transform(val => val === "" || val === undefined ? undefined : Number(val)).optional(),
+  purchaseDate: z.date().optional().nullable(),
   warrantyEnd: z.date().optional().nullable(),
   description: z.string().optional(),
+  image: z.string().url({ message: "Please enter a valid image URL." }).optional().or(z.literal('')),
+  dataAiHint: z.string().optional(),
 });
 
-type AssetFormData = z.infer<typeof assetSchema>;
+export type AssetFormData = z.infer<typeof assetSchema>;
 
 interface AssetFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: AssetFormData) => void;
-  assetData?: AssetFormData | null; // Data for editing
+  onSubmit: (data: AssetFormData) => Promise<void>; // Made onSubmit async
+  assetData?: (AssetFormData & { id?: string; purchaseDate?: any; warrantyEnd?: any; cost?: any }) | null; // Data for editing, allow flexible input types for dates/cost
+  availableCategories?: Array<{ id: string; name: string }>; // For category dropdown
 }
 
 // Example data for selects (replace with fetched data if needed)
-const categories = ["Electronics", "Furniture", "Office Supplies", "Software Licenses"];
-const statuses = ["Active", "Inactive", "In Repair", "Disposed"];
+const statuses = ["Active", "Inactive", "In Repair", "Disposed", "Maintenance"];
 
-export function AssetFormModal({ isOpen, onClose, onSubmit, assetData }: AssetFormModalProps) {
+export function AssetFormModal({ isOpen, onClose, onSubmit, assetData, availableCategories = [] }: AssetFormModalProps) {
   const form = useForm<AssetFormData>({
     resolver: zodResolver(assetSchema),
-    defaultValues: assetData || {
+    defaultValues: {
       name: '',
       category: '',
       status: '',
       location: '',
       assignedTo: '',
       serialNumber: '',
-      cost: '',
+      cost: undefined,
       purchaseDate: null,
       warrantyEnd: null,
       description: '',
+      image: '',
+      dataAiHint: '',
     },
   });
 
-   // Reset form when assetData changes (e.g., opening modal for different asset)
+   // Reset form when assetData changes or modal opens/closes
     useEffect(() => {
-        if (assetData) {
+        if (isOpen && assetData) {
         form.reset({
             ...assetData,
-            cost: assetData.cost || '', // Ensure cost is handled correctly
-            // Convert date strings to Date objects if necessary, depending on DatePicker
-            // purchaseDate: assetData.purchaseDate ? new Date(assetData.purchaseDate) : null,
-            // warrantyEnd: assetData.warrantyEnd ? new Date(assetData.warrantyEnd) : null,
+            cost: assetData.cost !== undefined && assetData.cost !== null ? Number(assetData.cost) : undefined,
+            purchaseDate: assetData.purchaseDate ? (assetData.purchaseDate.toDate ? assetData.purchaseDate.toDate() : new Date(assetData.purchaseDate)) : null,
+            warrantyEnd: assetData.warrantyEnd ? (assetData.warrantyEnd.toDate ? assetData.warrantyEnd.toDate() : new Date(assetData.warrantyEnd)) : null,
+            image: assetData.image || '',
+            dataAiHint: assetData.dataAiHint || '',
         });
-        } else {
+        } else if (isOpen && !assetData) {
         form.reset({
             name: '', category: '', status: '', location: '', assignedTo: '',
-            serialNumber: '', cost: '', purchaseDate: null, warrantyEnd: null, description: ''
+            serialNumber: '', cost: undefined, purchaseDate: null, warrantyEnd: null, description: '', image: '', dataAiHint: '',
         });
         }
-    }, [assetData, form]);
+    }, [assetData, form, isOpen]);
 
 
-  const handleFormSubmit: SubmitHandler<AssetFormData> = (data) => {
+  const handleFormSubmit: SubmitHandler<AssetFormData> = async (data) => {
      const processedData = {
         ...data,
-        cost: data.cost === '' ? undefined : Number(data.cost) // Convert empty string to undefined or number
+        cost: data.cost === undefined || data.cost === null || isNaN(Number(data.cost)) ? null : Number(data.cost),
+        image: data.image || `https://placehold.co/600x400.png`, // Default placeholder if empty
+        dataAiHint: data.dataAiHint || data.name.split(" ").slice(0,2).join(" ").toLowerCase() || 'asset item'
     };
-    onSubmit(processedData);
-    onClose(); // Close modal after submit
+    await onSubmit(processedData);
+    // No explicit onClose here, parent handles it on successful submission
   };
 
   return (
@@ -103,8 +111,7 @@ export function AssetFormModal({ isOpen, onClose, onSubmit, assetData }: AssetFo
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="grid gap-4 py-4">
-            {/* Form Fields */}
+          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                <FormField
                 control={form.control}
@@ -125,14 +132,14 @@ export function AssetFormModal({ isOpen, onClose, onSubmit, assetData }: AssetFo
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category *</FormLabel>
-                     <Select onValueChange={field.onChange} defaultValue={field.value}>
+                     <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                         <FormControl>
                          <SelectTrigger>
                             <SelectValue placeholder="Select a category" />
                          </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                        {categories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                        {availableCategories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
                     <FormMessage />
@@ -145,7 +152,7 @@ export function AssetFormModal({ isOpen, onClose, onSubmit, assetData }: AssetFo
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Status *</FormLabel>
-                     <Select onValueChange={field.onChange} defaultValue={field.value}>
+                     <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                        <FormControl>
                          <SelectTrigger>
                            <SelectValue placeholder="Select a status" />
@@ -179,7 +186,7 @@ export function AssetFormModal({ isOpen, onClose, onSubmit, assetData }: AssetFo
                   <FormItem>
                     <FormLabel>Assigned To</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., John Doe" {...field} />
+                      <Input placeholder="e.g., John Doe / Unassigned" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -205,13 +212,12 @@ export function AssetFormModal({ isOpen, onClose, onSubmit, assetData }: AssetFo
                    <FormItem>
                      <FormLabel>Cost ($)</FormLabel>
                      <FormControl>
-                       <Input type="number" placeholder="e.g., 1200.00" step="0.01" {...field} />
+                       <Input type="number" placeholder="e.g., 1200.00" step="0.01" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))} />
                      </FormControl>
                      <FormMessage />
                    </FormItem>
                  )}
                />
-                {/* Add Date Pickers - Assuming DatePicker component integrates with react-hook-form */}
                <FormField
                 control={form.control}
                 name="purchaseDate"
@@ -220,7 +226,7 @@ export function AssetFormModal({ isOpen, onClose, onSubmit, assetData }: AssetFo
                         <FormLabel>Purchase Date</FormLabel>
                         <DatePicker
                             value={field.value ?? undefined}
-                            onSelect={field.onChange} // Pass the onChange handler
+                            onSelect={field.onChange}
                         />
                         <FormMessage />
                     </FormItem>
@@ -240,9 +246,34 @@ export function AssetFormModal({ isOpen, onClose, onSubmit, assetData }: AssetFo
                     </FormItem>
                 )}
                 />
-
+                 <FormField
+                    control={form.control}
+                    name="image"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Image URL</FormLabel>
+                        <FormControl>
+                        <Input placeholder="https://placehold.co/600x400.png" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="dataAiHint"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Image Search Hint</FormLabel>
+                        <FormControl>
+                        <Input placeholder="e.g. laptop computer" {...field} />
+                        </FormControl>
+                         <p className="text-xs text-muted-foreground">Max 2 keywords for image placeholder search.</p>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
             </div>
-             {/* Description Textarea */}
               <FormField
                 control={form.control}
                 name="description"
@@ -256,13 +287,13 @@ export function AssetFormModal({ isOpen, onClose, onSubmit, assetData }: AssetFo
                   </FormItem>
                 )}
               />
-
-
-            <DialogFooter>
+            <DialogFooter className="pt-4">
                <DialogClose asChild>
                  <Button type="button" variant="outline">Cancel</Button>
                </DialogClose>
-              <Button type="submit">{assetData ? 'Save Changes' : 'Add Asset'}</Button>
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? 'Saving...' : (assetData ? 'Save Changes' : 'Add Asset')}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

@@ -1,9 +1,4 @@
 
-// Wrap the layout content with AuthProvider
-// Check auth status and redirect if not logged in
-// Add conditional rendering based on role (example: User Management for admin)
-// Update header to include user dropdown and logout
-
 'use client'; // Make this a client component to use hooks
 
 import type { ReactNode } from 'react';
@@ -42,7 +37,6 @@ import {
   FilePieChart,
   ClipboardList,
   LogOut,
-  UserCircle,
   AlertTriangle, 
   Cog,
 } from 'lucide-react';
@@ -349,7 +343,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                     className="overflow-hidden rounded-full"
                     >
                     <Avatar className="h-8 w-8">
-                        {/* <AvatarImage src={user?.photoURL || undefined} alt="User Avatar" /> */}
+                        <AvatarImage src={user?.photoURL || undefined} alt={displayName || user?.email || "User"} data-ai-hint="person avatar" />
                          <AvatarFallback>{getInitials(displayName, user?.email)}</AvatarFallback>
                     </Avatar>
                     </Button>
@@ -358,10 +352,10 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                     <DropdownMenuLabel>{displayName || user?.email}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                        <Link href="/profile"><UserCircle className="mr-2 h-4 w-4" />Profile</Link>
+                        <Link href="/profile">Profile</Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                        <Link href="/settings/account"><Settings className="mr-2 h-4 w-4" />Settings</Link>
+                        <Link href="/settings/account">Settings</Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={logout}>
@@ -372,7 +366,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                 </DropdownMenu>
             </div>
         </header>
-        <main className="flex-1 p-4 sm:px-6 sm:py-0 md:gap-8 overflow-auto">
+        <main className="flex-1 min-h-0 p-4 sm:px-6 sm:py-0 md:gap-8 overflow-auto">
           {children}
         </main>
       </SidebarInset>
@@ -380,6 +374,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
   );
 }
 
+// Main export for the layout, ensuring AuthProvider wraps AppLayoutContent
 export default function AppLayout({ children }: { children: ReactNode }) {
   return <AppLayoutContent>{children}</AppLayoutContent>;
 }

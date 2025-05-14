@@ -19,6 +19,7 @@ import {
 import { ClientFormModal } from '@/components/clients/client-form-modal'; // Import modal
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog'; // Import delete dialog
 import { exportToCSV, exportToPDF } from '@/lib/export'; // Import export functions
+import { Badge } from "@/components/ui/badge"; // Import Badge component
 
 const clients = [
   { id: 'CLI001', name: 'Alpha Corp', contact: 'Alice Johnson', email: 'alice@alpha.com', phone: '555-1234', status: 'Active', address: '123 Main St', dataAiHint: 'building office' },

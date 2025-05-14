@@ -30,7 +30,10 @@ const assetSchema = z.object({
   location: z.string().optional(),
   assignedTo: z.string().optional(),
   serialNumber: z.string().optional(),
-  cost: z.union([z.string().regex(/^\d+(\.\d{1,2})?$/, "Must be a valid monetary value or empty").optional(), z.number().positive({ message: "Cost must be a positive number." })]).transform(val => val === "" || val === undefined ? undefined : Number(val)).optional(),
+  cost: z.union([z.string().regex(/^\d*(\.\d{1,2})?$/, "Must be a valid monetary value or empty").optional().nullable(), z.number().positive({ message: "Cost must be a positive number." }).optional().nullable()])
+    .transform(val => (val === "" || val === undefined || val === null) ? null : Number(val))
+    .nullable()
+    .optional(),
   purchaseDate: z.date().optional().nullable(),
   warrantyEnd: z.date().optional().nullable(),
   description: z.string().optional(),
@@ -61,7 +64,7 @@ export function AssetFormModal({ isOpen, onClose, onSubmit, assetData, available
       location: '',
       assignedTo: '',
       serialNumber: '',
-      cost: undefined,
+      cost: null,
       purchaseDate: null,
       warrantyEnd: null,
       description: '',
@@ -75,7 +78,7 @@ export function AssetFormModal({ isOpen, onClose, onSubmit, assetData, available
         if (isOpen && assetData) {
         form.reset({
             ...assetData,
-            cost: assetData.cost !== undefined && assetData.cost !== null ? Number(assetData.cost) : undefined,
+            cost: assetData.cost !== undefined && assetData.cost !== null ? Number(assetData.cost) : null,
             purchaseDate: assetData.purchaseDate ? (assetData.purchaseDate.toDate ? assetData.purchaseDate.toDate() : new Date(assetData.purchaseDate)) : null,
             warrantyEnd: assetData.warrantyEnd ? (assetData.warrantyEnd.toDate ? assetData.warrantyEnd.toDate() : new Date(assetData.warrantyEnd)) : null,
             image: assetData.image || '',
@@ -84,7 +87,7 @@ export function AssetFormModal({ isOpen, onClose, onSubmit, assetData, available
         } else if (isOpen && !assetData) {
         form.reset({
             name: '', category: '', status: '', location: '', assignedTo: '',
-            serialNumber: '', cost: undefined, purchaseDate: null, warrantyEnd: null, description: '', image: '', dataAiHint: '',
+            serialNumber: '', cost: null, purchaseDate: null, warrantyEnd: null, description: '', image: '', dataAiHint: '',
         });
         }
     }, [assetData, form, isOpen]);
@@ -173,7 +176,7 @@ export function AssetFormModal({ isOpen, onClose, onSubmit, assetData, available
                   <FormItem>
                     <FormLabel>Location</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., Office A, Storage" {...field} />
+                      <Input placeholder="e.g., Office A, Storage" {...field} value={field.value || ''} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -186,7 +189,7 @@ export function AssetFormModal({ isOpen, onClose, onSubmit, assetData, available
                   <FormItem>
                     <FormLabel>Assigned To</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., John Doe / Unassigned" {...field} />
+                      <Input placeholder="e.g., John Doe / Unassigned" {...field} value={field.value || ''} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -199,7 +202,7 @@ export function AssetFormModal({ isOpen, onClose, onSubmit, assetData, available
                   <FormItem>
                     <FormLabel>Serial Number</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., SN12345XYZ" {...field} />
+                      <Input placeholder="e.g., SN12345XYZ" {...field} value={field.value || ''} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -212,7 +215,14 @@ export function AssetFormModal({ isOpen, onClose, onSubmit, assetData, available
                    <FormItem>
                      <FormLabel>Cost ($)</FormLabel>
                      <FormControl>
-                       <Input type="number" placeholder="e.g., 1200.00" step="0.01" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))} />
+                       <Input
+                        type="number"
+                        placeholder="e.g., 1200.00"
+                        step="0.01"
+                        {...field}
+                        value={field.value === undefined || field.value === null ? '' : field.value}
+                        onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
+                       />
                      </FormControl>
                      <FormMessage />
                    </FormItem>
@@ -253,7 +263,7 @@ export function AssetFormModal({ isOpen, onClose, onSubmit, assetData, available
                     <FormItem>
                         <FormLabel>Image URL</FormLabel>
                         <FormControl>
-                        <Input placeholder="https://placehold.co/600x400.png" {...field} />
+                        <Input placeholder="https://placehold.co/600x400.png" {...field} value={field.value || ''} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -266,7 +276,7 @@ export function AssetFormModal({ isOpen, onClose, onSubmit, assetData, available
                     <FormItem>
                         <FormLabel>Image Search Hint</FormLabel>
                         <FormControl>
-                        <Input placeholder="e.g. laptop computer" {...field} />
+                        <Input placeholder="e.g. laptop computer" {...field} value={field.value || ''} />
                         </FormControl>
                          <p className="text-xs text-muted-foreground">Max 2 keywords for image placeholder search.</p>
                         <FormMessage />
@@ -281,7 +291,7 @@ export function AssetFormModal({ isOpen, onClose, onSubmit, assetData, available
                   <FormItem>
                     <FormLabel>Description</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Additional notes about the asset..." {...field} />
+                      <Textarea placeholder="Additional notes about the asset..." {...field} value={field.value || ''} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

@@ -44,7 +44,7 @@ import {
   LogOut,
   UserCircle,
   AlertTriangle, 
-  Cog, // Import Cog for Account Settings
+  Cog,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -164,15 +164,6 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                 Dashboard
               </SidebarMenuButton>
             </SidebarMenuItem>
-
-            {/* Profile */}
-            <SidebarMenuItem>
-              <SidebarMenuButton href="/profile">
-                <UserCircle />
-                Profile
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-
 
             {/* Asset Management */}
             <SidebarGroup>
@@ -381,7 +372,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                 </DropdownMenu>
             </div>
         </header>
-        <main className="flex-1 p-4 sm:px-6 sm:py-0 md:gap-8">
+        <main className="flex-1 p-4 sm:px-6 sm:py-0 md:gap-8 overflow-auto">
           {children}
         </main>
       </SidebarInset>

@@ -1,7 +1,8 @@
+
 'use client';
 
 import React, { useEffect } from 'react';
-import { useForm, SubmitHandler } from 'react-hook-form';
+import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -25,13 +26,16 @@ const clientSchema = z.object({
   name: z.string().min(2, { message: "Client name must be at least 2 characters." }),
   contact: z.string().min(2, { message: "Contact name must be at least 2 characters." }),
   email: z.string().email({ message: "Invalid email address." }),
-  phone: z.string().min(10, { message: "Phone number must be at least 10 digits." }).optional().or(z.literal('')),
+  phone: z.string()
+    .regex(/^\d{9}$/, { message: "Phone number must be 9 digits." })
+    .optional()
+    .or(z.literal('')),
   address: z.string().optional(),
   status: z.string().min(1, { message: "Please select a status." }),
-  // Add other fields as needed, e.g., notes: z.string().optional()
+  dataAiHint: z.string().optional(), // Added for consistency, can be auto-generated
 });
 
-type ClientFormData = z.infer<typeof clientSchema>;
+export type ClientFormData = z.infer<typeof clientSchema>;
 
 interface ClientFormModalProps {
   isOpen: boolean;
@@ -40,7 +44,7 @@ interface ClientFormModalProps {
   clientData?: ClientFormData | null; // Data for editing
 }
 
-// Example data for selects (replace with fetched data if needed)
+// Example data for selects
 const statuses = ["Active", "Inactive", "Prospect"];
 
 export function ClientFormModal({ isOpen, onClose, onSubmit, clientData }: ClientFormModalProps) {
@@ -53,6 +57,7 @@ export function ClientFormModal({ isOpen, onClose, onSubmit, clientData }: Clien
       phone: '',
       address: '',
       status: '',
+      dataAiHint: 'company client',
     },
   });
 
@@ -62,7 +67,7 @@ export function ClientFormModal({ isOpen, onClose, onSubmit, clientData }: Clien
             form.reset(clientData);
         } else {
             form.reset({
-                name: '', contact: '', email: '', phone: '', address: '', status: ''
+                name: '', contact: '', email: '', phone: '', address: '', status: '', dataAiHint: 'company client'
             });
         }
     }, [clientData, form]);
@@ -130,9 +135,9 @@ export function ClientFormModal({ isOpen, onClose, onSubmit, clientData }: Clien
                     name="phone"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Phone</FormLabel>
+                        <FormLabel>Phone (9 digits)</FormLabel>
                         <FormControl>
-                        <Input type="tel" placeholder="e.g., 555-123-4567" {...field} />
+                        <Input type="tel" placeholder="e.g., 987654321" {...field} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -168,6 +173,19 @@ export function ClientFormModal({ isOpen, onClose, onSubmit, clientData }: Clien
                     <FormLabel>Address</FormLabel>
                     <FormControl>
                       <Textarea placeholder="e.g., 123 Main St, Anytown, USA 12345" {...field} rows={3} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="dataAiHint"
+                render={({ field }) => (
+                  <FormItem className="hidden"> {/* Hidden field for AI hint, can be made visible if needed */}
+                    <FormLabel>AI Hint</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

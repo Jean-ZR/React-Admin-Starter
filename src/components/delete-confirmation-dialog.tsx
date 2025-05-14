@@ -11,7 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from './ui/button'; // For styling action button
+import { buttonVariants } from '@/components/ui/button'; // Import buttonVariants
 
 interface DeleteConfirmationDialogProps {
   isOpen: boolean;
@@ -41,7 +41,7 @@ export function DeleteConfirmationDialog({
            {/* Apply destructive variant styling to the confirm button */}
           <AlertDialogAction
             onClick={onConfirm}
-             className={Button({ variant: "destructive" }).className} // Apply button variant class
+             className={buttonVariants({ variant: "destructive" })} // Use buttonVariants function
            >
             Delete
           </AlertDialogAction>

@@ -8,9 +8,12 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { db } from '@/lib/firebase/config';
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, orderBy } from 'firebase/firestore'; // Added orderBy
 import { exportToCSV, exportToPDF } from '@/lib/export';
 import { Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge"; // Added Badge for report results
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"; // Added Table components for report results
+
 
 interface AssetForReport {
   id: string;

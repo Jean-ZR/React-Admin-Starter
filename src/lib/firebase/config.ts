@@ -29,58 +29,56 @@ const requiredEnvVars = [
 ];
 
 // Log the values of environment variables being read
-console.log("--- Firebase Configuration Check ---");
+console.log("--- Firebase Configuration Check (src/lib/firebase/config.ts) ---");
 requiredEnvVars.forEach(varName => {
   const value = process.env[varName];
-  if (!value || value === '' || value.startsWith('YOUR_')) {
-    console.warn(`Environment variable ${varName} is missing, empty, or using a placeholder: '${value}'`);
+  if (!value || value.trim() === '' || value.startsWith('YOUR_')) {
+    console.warn(`[CONFIG CHECK] Environment variable ${varName} is MISSING, empty, or using a placeholder. Value: '${value}'`);
   } else {
     // To avoid logging sensitive keys directly in production, but useful for local debugging.
-    // For a real production scenario, you might want to be more selective or hash/truncate values.
     if (process.env.NODE_ENV === 'development') {
-        console.log(`Found ${varName}: ${value.substring(0, 5)}... (partially shown for debugging)`);
+        console.log(`[CONFIG CHECK] Found ${varName}. Value starts with: '${value.substring(0, 5)}...' (partially shown for debugging)`);
     } else {
-        console.log(`${varName}: Loaded (value hidden in non-development environment)`);
+        console.log(`[CONFIG CHECK] Found ${varName}: Loaded (value hidden in non-development environment)`);
     }
   }
 });
-console.log("-----------------------------------");
+console.log("-----------------------------------------------------------------");
 
 
-let missingVars: string[] = [];
-missingVars = requiredEnvVars.filter(v => {
+const missingVars = requiredEnvVars.filter(v => {
     const value = process.env[v];
-    return !value || value === '' || value.startsWith('YOUR_');
+    // Ensure empty strings or placeholder values are considered missing for the check
+    return !value || value.trim() === '' || value.startsWith('YOUR_');
 });
 
 
 if (missingVars.length > 0) {
-    console.warn(`Firebase config missing, empty, or using placeholder environment variables: ${missingVars.join(', ')}. Please ensure the .env.local file is correct and the development server has been restarted.`);
-    // Avoid initializing Firebase if critical config is missing
+    console.warn(`[FIREBASE INIT] Firebase config is missing, empty, or using placeholder values for: ${missingVars.join(', ')}.`);
+    console.warn("[FIREBASE INIT] PLEASE CHECK: \n1. Your '.env.local' file is in the project root.\n2. All Firebase variables start with NEXT_PUBLIC_ and have correct values.\n3. You have FULLY RESTARTED your Next.js development server after changes to '.env.local'.");
+
     if (!getApps().length) {
-       console.error("Firebase initialization skipped due to missing configuration."); // This error is expected if config is missing
-       firebase_app = null; // Explicitly set to null
+       console.error("[FIREBASE INIT] Firebase initialization SKIPPED due to missing/invalid configuration.");
+       firebase_app = null;
     } else {
-        // This case is unlikely if config is truly missing, but handles if an app was initialized elsewhere.
-        firebase_app = getApps()[0];
+        firebase_app = getApps()[0]; // Should not happen if config is bad from the start
+        console.warn("[FIREBASE INIT] An existing Firebase app was found, but current configuration is missing/invalid. This may lead to issues.");
     }
 
 } else {
-    // Config seems valid, proceed with initialization
-    console.log("Firebase configuration appears valid. Attempting to initialize Firebase...");
+    console.log("[FIREBASE INIT] Firebase configuration appears valid. Attempting to initialize Firebase...");
     if (!getApps().length) {
       try {
-        firebase_app = initializeApp(firebaseConfig);
-        console.log("Firebase initialized successfully.");
-      } catch (e) {
-        console.error("Error initializing Firebase:", e);
-        firebase_app = null; // Ensure it's null on error
+        firebase_app = initializeApp(firebaseConfig); // firebaseConfig uses process.env
+        console.log("[FIREBASE INIT] Firebase initialized successfully.");
+      } catch (e: any) {
+        console.error("[FIREBASE INIT] Error initializing Firebase even with seemingly valid config:", e.message);
+        firebase_app = null;
       }
     } else {
       firebase_app = getApps()[0];
-      console.log("Firebase app already initialized. Using existing instance.");
+      console.log("[FIREBASE INIT] Firebase app already initialized. Using existing instance.");
     }
 }
 
-// Export the potentially null app
 export default firebase_app;

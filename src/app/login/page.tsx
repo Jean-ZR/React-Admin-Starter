@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react'; // Added useEffect
@@ -82,7 +81,7 @@ export default function LoginPage() {
 
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+    <div className="flex flex-1 min-h-screen items-center justify-center bg-muted/40 p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center space-y-1">
           {/* Optional Logo */}

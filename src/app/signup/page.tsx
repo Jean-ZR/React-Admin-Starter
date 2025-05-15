@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react'; // Added useEffect
@@ -78,7 +79,9 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
-      await signup(email, password, role);
+      // Use a placeholder for displayName if not explicitly collected at signup
+      const defaultDisplayName = email.split('@')[0]; 
+      await signup(email, password, role, defaultDisplayName);
       toast({ title: 'Signup Successful', description: 'Account created. Please log in.' });
       router.push('/login'); // Redirect to login after successful signup
     } catch (err: any) {
@@ -106,7 +109,7 @@ export default function SignupPage() {
 
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+    <div className="flex flex-1 min-h-screen items-center justify-center bg-muted/40 p-4"> {/* Added flex-1 here */}
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center space-y-1">
           {/* Optional Logo */}

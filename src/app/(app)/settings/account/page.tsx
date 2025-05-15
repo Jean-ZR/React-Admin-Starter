@@ -14,19 +14,22 @@ import { useToast } from '@/hooks/use-toast';
 
 export default function AccountSettingsPage() {
   const { theme, setTheme } = useTheme();
-  const { languagePreference, updateUserLanguagePreference, loading: authLoading } = useAuth();
-  const [selectedLanguage, setSelectedLanguage] = useState(languagePreference || 'en');
+  const { languagePreference: contextLanguagePreference, updateUserLanguagePreference, loading: authLoading } = useAuth();
+  const [selectedLanguage, setSelectedLanguage] = useState(contextLanguagePreference || 'en');
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    setSelectedLanguage(languagePreference || 'en');
-  }, [languagePreference]);
+    // Sync local state if context preference changes (e.g., after initial load or external update)
+    if (contextLanguagePreference) {
+      setSelectedLanguage(contextLanguagePreference);
+    }
+  }, [contextLanguagePreference]);
 
   const handleSaveChanges = async () => {
     setIsSaving(true);
     try {
-      if (selectedLanguage !== languagePreference) {
+      if (selectedLanguage !== contextLanguagePreference) {
         await updateUserLanguagePreference(selectedLanguage);
       }
       // Theme is saved automatically by next-themes
@@ -39,7 +42,7 @@ export default function AccountSettingsPage() {
     }
   };
 
-  if (authLoading) {
+  if (authLoading && !contextLanguagePreference) { // Check contextLanguagePreference to avoid rendering with default before loaded
     return (
       <div className="flex justify-center items-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -54,7 +57,7 @@ export default function AccountSettingsPage() {
         <h1 className="text-2xl font-semibold leading-none tracking-tight">
           Account Settings
         </h1>
-        <Button size="sm" className="gap-1" onClick={handleSaveChanges} disabled={isSaving}>
+        <Button size="sm" className="gap-1" onClick={handleSaveChanges} disabled={isSaving || authLoading}>
           {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
           {isSaving ? 'Saving...' : 'Save Changes'}
         </Button>

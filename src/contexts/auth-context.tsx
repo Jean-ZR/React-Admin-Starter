@@ -22,13 +22,12 @@ import {
   type Timestamp, 
 } from 'firebase/firestore';
 import {
-  firebaseApp as app, // renamed to avoid conflict if needed, though direct use is less common now
-  auth as configuredAuth, // This can be null if config is invalid
-  db as configuredDb,     // This can be null if config is invalid
-  isFirebaseConfigurationValid, // Use the new exported flag
+  firebaseApp, 
+  auth as configuredAuth, 
+  db as configuredDb,     
+  isFirebaseConfigurationValid, 
 } from '@/lib/firebase/config';
 
-// Define a default structure for notification preferences
 const defaultNotificationPreferences = {
   globalNotificationsEnabled: true,
   types: {
@@ -58,7 +57,7 @@ interface AuthContextType {
   notificationPreferences: NotificationPreferences | null;
   languagePreference: string | null;
   loading: boolean;
-  isFirebaseConfigured: boolean; // This will now reflect isFirebaseConfigurationValid
+  isFirebaseConfigured: boolean; 
   login: (email: string, pass: string) => Promise<void>;
   signup: (email: string, pass: string, role: string, displayName?: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -77,17 +76,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences | null>(defaultNotificationPreferences);
   const [languagePreference, setLanguagePreference] = useState<string | null>('en');
-  const [loading, setLoading] = useState(true); // Start true, set to false after initial check
+  const [loading, setLoading] = useState(true); 
 
   useEffect(() => {
     if (!isFirebaseConfigurationValid || !configuredAuth) {
-      // If Firebase config is invalid OR configuredAuth is null, don't attempt to use Firebase Auth.
       console.warn("[AUTH_CONTEXT] Firebase is not configured or auth service is unavailable. Auth features disabled.");
       setLoading(false);
       setUser(null);
       setRole(null);
       setDisplayName(null);
-      // Reset preferences to default if Firebase isn't usable
       setNotificationPreferences(defaultNotificationPreferences);
       setLanguagePreference('en');
       return;
@@ -97,7 +94,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(currentUser);
       if (currentUser) {
         setDisplayName(currentUser.displayName);
-        if (configuredDb) { // Check if db is available
+        if (configuredDb) { 
             try {
                 const userDocRef = doc(configuredDb, 'users', currentUser.uid);
                 const snap = await getDoc(userDocRef);
@@ -105,13 +102,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     const userData = snap.data();
                     setRole(userData.role);
                     if (userData.displayName) {
-                    setDisplayName(userData.displayName);
+                      setDisplayName(userData.displayName);
                     }
+                    // Ensure notificationPreferences and languagePreference are updated from Firestore or defaults
                     setNotificationPreferences(userData.notificationPreferences || defaultNotificationPreferences);
                     setLanguagePreference(userData.languagePreference || 'en');
                 } else {
                     console.warn(`[AUTH_CONTEXT] User document not found for UID: ${currentUser.uid}. Using default role and preferences.`);
-                    setRole(null); // Or a default role if applicable
+                    setRole(null); 
                     setNotificationPreferences(defaultNotificationPreferences);
                     setLanguagePreference('en');
                 }
@@ -123,7 +121,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
         } else {
             console.warn("[AUTH_CONTEXT] Firestore (db) is not configured. Cannot fetch user role/preferences.");
-            setRole(null); // Or a default role
+            setRole(null); 
             setNotificationPreferences(defaultNotificationPreferences);
             setLanguagePreference('en');
         }
@@ -137,30 +135,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
 
     return unsubscribe;
-  }, []); // Empty dependency array: runs once on mount
+  }, []); 
 
   const ensureServicesAvailable = (): boolean => {
     if (!isFirebaseConfigurationValid || !configuredAuth || !configuredDb) {
       console.error('[AUTH_CONTEXT] Firebase services are not available. Operation cancelled.');
-      // Optionally throw an error or show a global toast
-      // For now, just returning false and logging.
       return false;
     }
     return true;
   };
 
   const login = async (email: string, pass: string) => {
-    if (!ensureServicesAvailable() || !configuredAuth) return; // Check added for configuredAuth
+    if (!ensureServicesAvailable() || !configuredAuth) return; 
     setLoading(true);
     try {
       await signInWithEmailAndPassword(configuredAuth, email, pass);
-      // User data including preferences will be fetched by onAuthStateChanged
     } catch (e) {
       console.error('[AUTH_CONTEXT] Login error:', e);
-      setLoading(false); // Make sure loading is set to false on error
-      throw e; // Re-throw for the calling page to handle UI updates (toast, error message)
+      setLoading(false); 
+      throw e; 
     }
-    // setLoading(false) is handled by onAuthStateChanged or error catch
   };
 
   const signup = async (email: string, pass: string, userRole: string, userDisplayNameInput?: string) => {
@@ -179,9 +173,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         displayName: finalDisplayName,
         notificationPreferences: defaultNotificationPreferences,
         languagePreference: 'en',
-        createdAt: new Date(),
+        createdAt: new Date(), // Using client-side date, consider serverTimestamp
       });
-      // Manually set user state here for immediate UI update, though onAuthStateChanged will also fire
       setUser(newUser); 
       setRole(userRole);
       setDisplayName(finalDisplayName);
@@ -192,37 +185,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setLoading(false);
       throw e;
     }
-    // setLoading(false) handled by onAuthStateChanged or error
   };
 
   const logout = async () => {
-    if (!isFirebaseConfigurationValid || !configuredAuth) { // No need to check db for logout
-      // If Firebase isn't configured, clear local state and exit.
+    if (!isFirebaseConfigurationValid || !configuredAuth) { 
       setUser(null);
       setRole(null);
       setDisplayName(null);
       setNotificationPreferences(defaultNotificationPreferences);
       setLanguagePreference('en');
-      setLoading(false); // Ensure loading is false
+      setLoading(false); 
       console.warn("[AUTH_CONTEXT] Firebase not configured, performing local logout.");
       return;
     }
-    setLoading(true); // Set loading true before async operation
+    setLoading(true); 
     try {
       await signOut(configuredAuth);
-      // State updates (user, role, etc. to null) are handled by onAuthStateChanged
     } catch (e) {
       console.error('[AUTH_CONTEXT] Logout error:', e);
-      // Explicitly clear state in case onAuthStateChanged doesn't fire or has issues
       setUser(null);
       setRole(null);
       setDisplayName(null);
       setNotificationPreferences(defaultNotificationPreferences);
       setLanguagePreference('en');
-      setLoading(false); // Ensure loading is reset on error
+      setLoading(false); 
       throw e;
     }
-    // setLoading(false) handled by onAuthStateChanged
   };
 
   const resetPassword = async (email: string) => {
@@ -236,17 +224,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const updateUserDisplayName = async (newName: string) => {
-    if (!ensureServicesAvailable() || !user || !configuredAuth || !configuredDb) { // Added configuredAuth and configuredDb checks
+    if (!ensureServicesAvailable() || !user || !configuredAuth || !configuredDb) { 
       throw new Error("User not authenticated, Firebase not configured, or DB service unavailable.");
     }
     await updateProfile(user, { displayName: newName });
     const userDocRef = doc(configuredDb, 'users', user.uid);
     await updateDoc(userDocRef, { displayName: newName });
-    setDisplayName(newName); // Update local context state
+    setDisplayName(newName); 
   };
 
   const updateUserPassword = async (currentPassword: string, newPassword: string) => {
-    if (!ensureServicesAvailable() || !user || !user.email || !configuredAuth) { // Added configuredAuth check
+    if (!ensureServicesAvailable() || !user || !user.email || !configuredAuth) { 
       throw new Error("User not authenticated, email missing, Firebase not configured, or Auth service unavailable.");
     }
     const credential = EmailAuthProvider.credential(user.email, currentPassword);
@@ -255,21 +243,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const updateUserPreferences = async (preferences: NotificationPreferences) => {
-    if (!ensureServicesAvailable() || !user || !configuredDb) { // Added configuredDb check
+    if (!ensureServicesAvailable() || !user || !configuredDb) { 
       throw new Error("User not authenticated, Firebase not configured, or DB service unavailable.");
     }
     const userDocRef = doc(configuredDb, 'users', user.uid);
     await updateDoc(userDocRef, { notificationPreferences: preferences });
-    setNotificationPreferences(preferences); // Update local context state
+    setNotificationPreferences(preferences); 
   };
 
   const updateUserLanguagePreference = async (language: string) => {
-    if (!ensureServicesAvailable() || !user || !configuredDb) { // Added configuredDb check
+    if (!ensureServicesAvailable() || !user || !configuredDb) { 
       throw new Error("User not authenticated, Firebase not configured, or DB service unavailable.");
     }
     const userDocRef = doc(configuredDb, 'users', user.uid);
     await updateDoc(userDocRef, { languagePreference: language });
-    setLanguagePreference(language); // Update local context state
+    setLanguagePreference(language); 
   };
 
   return (
@@ -281,7 +269,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         notificationPreferences,
         languagePreference,
         loading,
-        isFirebaseConfigured: isFirebaseConfigurationValid, // Use the flag from config.ts
+        isFirebaseConfigured: isFirebaseConfigurationValid, 
         login,
         signup,
         logout,

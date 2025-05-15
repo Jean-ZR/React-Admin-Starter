@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react'; // Added useEffect
@@ -55,6 +56,9 @@ export default function LoginPage() {
       router.push('/dashboard'); // Redirect after successful login
     } catch (err: any) {
       console.error('Login error:', err);
+      if (isFirebaseConfigured && (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password')) {
+        console.log("[LOGIN_PAGE] Firebase is configured. The error 'auth/invalid-credential' (or similar) suggests the email/password is incorrect for this Firebase project, or the user account doesn't exist/is disabled.");
+      }
       // Map Firebase error codes to user-friendly messages
         let errorMessage = 'Failed to login. Please check your credentials.';
         if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {

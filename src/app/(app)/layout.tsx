@@ -1,5 +1,5 @@
 
-'use client'; // Make this a client component to use hooks
+'use client'; 
 
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
@@ -25,7 +25,7 @@ import {
   LineChart,
   BookOpen,
   CalendarDays,
-  ScrollText,
+  ClipboardList,
   DollarSign,
   Activity,
   FileCog,
@@ -35,7 +35,6 @@ import {
   FileText,
   FileBarChart,
   FilePieChart,
-  ClipboardList,
   LogOut,
   AlertTriangle, 
   Cog,
@@ -47,7 +46,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarInset,
+  // SidebarInset, // No longer using SidebarInset directly here, it's a main tag now
   SidebarFooter,
   SidebarGroup,
   SidebarGroupLabel,
@@ -115,18 +114,18 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
 
 
   const getInitials = (name: string | null | undefined, email: string | null | undefined) => {
-    if (name) return name.substring(0, 2).toUpperCase();
+    if (name) return name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
     if (email) return email.substring(0, 2).toUpperCase();
     return 'U';
   };
 
 
   return (
-    <div className="flex min-h-screen w-full bg-background"> {/* Changed from flex-col */}
-      <Sidebar collapsible="icon"> {/* Added collapsible="icon" for desired desktop behavior */}
+    <div className="flex min-h-screen w-full bg-background">
+      <Sidebar collapsible="icon">
         <SidebarHeader className="p-4">
           <Link
-            href="/dashboard"
+            href="/dashboard" // This link should work for the logo/title
             className="flex items-center gap-2 text-foreground hover:text-foreground/80"
           >
             <svg
@@ -149,11 +148,11 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
           </Link>
         </SidebarHeader>
         <Separator />
-        <SidebarContent className="p-2 pr-0">
+        <SidebarContent className="p-2 pr-0"> {/* Added pr-0 to prevent scrollbar overlap in icon mode */}
           <SidebarMenu>
             {/* Dashboard */}
             <SidebarMenuItem>
-              <SidebarMenuButton href="/dashboard">
+              <SidebarMenuButton href="/dashboard" isActive={router.pathname === '/dashboard'}> {/* Ensure Link is used here */}
                 <Home />
                 Dashboard
               </SidebarMenuButton>
@@ -323,17 +322,16 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
             </SidebarGroup>
           </SidebarMenu>
         </SidebarContent>
-        <SidebarFooter className="p-4 mt-auto">
+        <SidebarFooter className="p-4 mt-auto"> {/* Ensure footer is at the bottom */}
           <span className="text-xs text-muted-foreground">
             © 2024 React Admin Starter
           </span>
         </SidebarFooter>
       </Sidebar>
 
-      {/* SidebarInset renders as a <main> tag. It's set to flex-col for its children (header + content div). */}
-      <SidebarInset className="flex flex-col">
+      <main className="flex flex-1 flex-col min-h-0"> {/* flex-1 and flex-col for main area */}
          <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-            <SidebarTrigger className="sm:hidden" /> {/* For mobile */}
+            <SidebarTrigger className="sm:hidden" /> 
             <div className="ml-auto flex items-center gap-4">
                 <ThemeToggle />
                 <DropdownMenu>
@@ -367,17 +365,16 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                 </DropdownMenu>
             </div>
         </header>
-        {/* This div is the main scrollable area for page content */}
-        <div className="flex-1 min-h-0 p-4 sm:px-6 overflow-auto">
+        <div className="flex-1 p-4 sm:px-6 sm:py-4 overflow-auto"> {/* Content area with padding and scroll */}
           {children}
         </div>
-      </SidebarInset>
+      </main>
     </div>
   );
 }
 
-// Main export for the layout, ensuring AuthProvider wraps AppLayoutContent
+// Main export for the layout
 export default function AppLayout({ children }: { children: ReactNode }) {
-  // AuthProvider is now in the root layout (src/app/layout.tsx)
+  // AuthProvider is in the root layout (src/app/layout.tsx)
   return <AppLayoutContent>{children}</AppLayoutContent>;
 }

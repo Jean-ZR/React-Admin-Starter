@@ -122,8 +122,8 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
 
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-muted/40">
-      <Sidebar>
+    <div className="flex min-h-screen w-full bg-background"> {/* Changed from flex-col */}
+      <Sidebar collapsible="icon"> {/* Added collapsible="icon" for desired desktop behavior */}
         <SidebarHeader className="p-4">
           <Link
             href="/dashboard"
@@ -330,9 +330,10 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
         </SidebarFooter>
       </Sidebar>
 
-      <SidebarInset className="flex flex-col sm:gap-4 sm:py-4">
-         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-            <SidebarTrigger className="sm:hidden" />
+      {/* SidebarInset renders as a <main> tag. It's set to flex-col for its children (header + content div). */}
+      <SidebarInset className="flex flex-col">
+         <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+            <SidebarTrigger className="sm:hidden" /> {/* For mobile */}
             <div className="ml-auto flex items-center gap-4">
                 <ThemeToggle />
                 <DropdownMenu>
@@ -366,9 +367,10 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                 </DropdownMenu>
             </div>
         </header>
-        <main className="flex-1 min-h-0 p-4 sm:px-6 sm:py-0 md:gap-8 overflow-auto">
+        {/* This div is the main scrollable area for page content */}
+        <div className="flex-1 min-h-0 p-4 sm:px-6 overflow-auto">
           {children}
-        </main>
+        </div>
       </SidebarInset>
     </div>
   );
@@ -376,5 +378,6 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
 
 // Main export for the layout, ensuring AuthProvider wraps AppLayoutContent
 export default function AppLayout({ children }: { children: ReactNode }) {
+  // AuthProvider is now in the root layout (src/app/layout.tsx)
   return <AppLayoutContent>{children}</AppLayoutContent>;
 }

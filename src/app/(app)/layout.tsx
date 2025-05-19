@@ -1,28 +1,31 @@
 
-'use client'; 
+'use client';
 
 import type { ReactNode } from 'react';
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Home,
-  Package,
+  Truck,
   Users,
-  Warehouse,
+  Package,
   Wrench,
-  AreaChart,
-  Settings,
+  BarChart3,
+  FileText as FileTextIcon, // Renamed to avoid conflict
+  Settings as SettingsIcon, // Renamed
+  HelpCircle,
+  Bell as BellIcon, // Renamed
+  Home,
   List,
   Tags,
-  BarChart3,
+  FileBarChart,
   BookUser,
   Globe,
   History,
   Boxes,
   ArrowRightLeft,
   BellRing,
-  LineChart,
+  FilePieChart,
   BookOpen,
   CalendarDays,
   ClipboardList,
@@ -31,350 +34,295 @@ import {
   FileCog,
   SlidersHorizontal,
   UserCog,
-  Bell,
-  FileText,
-  FileBarChart,
-  FilePieChart,
   LogOut,
-  AlertTriangle, 
+  AlertTriangle,
   Cog,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  // SidebarInset, // No longer using SidebarInset directly here, it's a main tag now
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
-  SidebarSeparator,
-  SidebarTrigger, 
-} from '@/components/ui/sidebar';
-import { Separator } from '@/components/ui/separator';
-import { useAuth } from '@/contexts/auth-context'; 
-import { ThemeToggle } from '@/components/theme-toggle'; 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+
+import { useAuth } from '@/contexts/auth-context';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'; 
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+interface NavItem {
+  icon: React.ElementType;
+  label: string;
+  id: string;
+  href: string;
+  fields?: number; // Optional count
+  subItems?: NavItem[]; // For potential future sub-menus, though new design is flat
+}
+
+interface NavModule {
+  category: string;
+  items: NavItem[];
+}
+
+// Mapping new design to existing routes
+const navigationModules: NavModule[] = [
+  {
+    category: "PANEL",
+    items: [
+        { icon: Home, label: 'Dashboard', id: 'dashboard', href: '/dashboard' },
+    ]
+  },
+  {
+    category: 'GESTIÓN',
+    items: [
+      { icon: Truck, label: 'Activos', id: 'assets', href: '/assets/list', fields: 42 }, // Example count
+      { icon: Users, label: 'Clientes', id: 'clients', href: '/clients/directory', fields: 11 },
+      { icon: Package, label: 'Inventario', id: 'inventory', href: '/inventory/stock', fields: 12 },
+      { icon: Wrench, label: 'Servicios', id: 'services', href: '/services/catalog' },
+    ],
+  },
+  {
+    category: 'ANÁLISIS',
+    items: [
+      // { icon: BarChart3, label: 'Gráficas', id: 'graficas', href: '/reports/custom' }, // Assuming 'Gráficas' maps to custom reports or a new charts page
+      { icon: FileTextIcon, label: 'Reportes', id: 'reports', href: '/reports/financial' }, // Default to financial reports
+    ],
+  },
+  {
+    category: 'CONFIGURACIÓN',
+    items: [
+      { icon: SettingsIcon, label: 'Ajustes', id: 'settings', href: '/settings/general' },
+      // { icon: HelpCircle, label: 'Soporte', id: 'support', href: '/support' }, // Assuming a future support page
+    ],
+  },
+];
+
+// Simplified mapping for top bar title, can be expanded
+const pageTitles: { [key: string]: { title: string; subtitle: string } } = {
+  '/dashboard': { title: 'Panel de Control', subtitle: 'Resumen de gestión' },
+  '/assets/list': { title: 'Lista de Activos', subtitle: 'Gestión de inventario de activos' },
+  '/assets/categories': { title: 'Categorías de Activos', subtitle: 'Organiza tus activos' },
+  '/assets/reports': { title: 'Reportes de Activos', subtitle: 'Análisis de datos de activos' },
+  '/clients/directory': { title: 'Directorio de Clientes', subtitle: 'Administra tus clientes' },
+  '/clients/portal': { title: 'Portal del Cliente', subtitle: 'Interacciones y servicios' },
+  '/clients/history': { title: 'Historial del Cliente', subtitle: 'Registro de transacciones' },
+  '/inventory/stock': { title: 'Gestión de Stock', subtitle: 'Seguimiento de inventario' },
+  '/inventory/movements': { title: 'Movimientos de Stock', subtitle: 'Registro de entradas y salidas' },
+  '/inventory/alerts': { title: 'Alertas de Stock Bajo', subtitle: 'Notificaciones de inventario' },
+  '/inventory/reports': { title: 'Reportes de Inventario', subtitle: 'Análisis de stock' },
+  '/services/catalog': { title: 'Catálogo de Servicios', subtitle: 'Servicios ofrecidos' },
+  '/services/scheduling': { title: 'Programación de Servicios', subtitle: 'Calendario y citas' },
+  '/services/history': { title: 'Historial de Servicios', subtitle: 'Registro de trabajos' },
+  '/reports/financial': { title: 'Reportes Financieros', subtitle: 'Análisis de ingresos y gastos' },
+  '/reports/operational': { title: 'Reportes Operacionales', subtitle: 'Métricas de rendimiento' },
+  '/reports/custom': { title: 'Reportes Personalizados', subtitle: 'Crea tus propios reportes' },
+  '/settings/general': { title: 'Configuración General', subtitle: 'Parámetros del sistema' },
+  '/settings/account': { title: 'Configuración de Cuenta', subtitle: 'Preferencias personales' },
+  '/settings/users': { title: 'Gestión de Usuarios', subtitle: 'Control de acceso y roles' },
+  '/settings/notifications': { title: 'Configuración de Notificaciones', subtitle: 'Alertas y avisos' },
+  '/settings/logs': { title: 'Registros del Sistema', subtitle: 'Actividad y eventos' },
+  '/profile': { title: 'Perfil de Usuario', subtitle: 'Gestiona tu información personal' },
+};
 
 
-// Inner layout component that uses the auth context
 function AppLayoutContent({ children }: { children: ReactNode }) {
-  const { user, loading, logout, role, displayName, isFirebaseConfigured } = useAuth(); 
+  const { user, loading, logout, role, displayName, isFirebaseConfigured } = useAuth();
   const router = useRouter();
+  const pathname = usePathname(); // Get current path
+
+  const [activeModuleId, setActiveModuleId] = useState('dashboard');
+
+  useEffect(() => {
+    // Determine active module based on pathname
+    let currentModule = 'dashboard'; // Default
+    for (const modGroup of navigationModules) {
+      for (const item of modGroup.items) {
+        if (pathname.startsWith(item.href)) {
+          currentModule = item.id;
+          break;
+        }
+      }
+      if (currentModule !== 'dashboard') break;
+    }
+    // Specific handling for settings and profile sub-pages
+    if (pathname.startsWith('/settings/')) currentModule = 'settings';
+    if (pathname.startsWith('/profile')) currentModule = 'profile'; // Or manage this separately if profile isn't in sidebar
+
+    setActiveModuleId(currentModule);
+  }, [pathname]);
 
   if (!isFirebaseConfigured && !loading) {
     return (
-       <div className="flex h-screen items-center justify-center p-4">
-        <Alert variant="destructive" className="max-w-lg">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Configuration Error</AlertTitle>
-            <AlertDescription>
-                Firebase is not configured correctly. Please check your `.env.local` file and ensure all `NEXT_PUBLIC_FIREBASE_` variables are set. Authentication and database features will not work.
-                <div className="mt-4">
-                  <Button variant="outline" onClick={() => window.location.reload()}>Reload Page</Button>
-                </div>
-            </AlertDescription>
+      <div className="flex h-screen items-center justify-center p-4 bg-slate-50">
+        <Alert variant="destructive" className="max-w-lg bg-white">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Error de Configuración</AlertTitle>
+          <AlertDescription>
+            Firebase no está configurado correctamente. Por favor, revisa tu archivo `.env.local`
+            y asegúrate que todas las variables `NEXT_PUBLIC_FIREBASE_` estén correctas.
+            <div className="mt-4">
+              <Button variant="outline" onClick={() => window.location.reload()}>Recargar Página</Button>
+            </div>
+          </AlertDescription>
         </Alert>
-       </div>
+      </div>
     );
   }
 
   useEffect(() => {
     if (isFirebaseConfigured && !loading && !user) {
-      router.replace('/login'); 
+      router.replace('/login');
     }
-  }, [user, loading, router, isFirebaseConfigured]); 
+  }, [user, loading, router, isFirebaseConfigured]);
 
-  if (loading) { 
+  if (loading || (!user && isFirebaseConfigured)) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        Loading Application...
+      <div className="flex h-screen items-center justify-center bg-slate-50">
+        Cargando Aplicación...
       </div>
     );
   }
 
-   if (!user && isFirebaseConfigured) {
-     return <div className="flex h-screen items-center justify-center">Redirecting...</div>;
-   }
-
-
   const getInitials = (name: string | null | undefined, email: string | null | undefined) => {
-    if (name) return name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+    if (name) {
+      const parts = name.split(' ');
+      if (parts.length > 1) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+      }
+      return name.substring(0, 2).toUpperCase();
+    }
     if (email) return email.substring(0, 2).toUpperCase();
-    return 'U';
+    return 'UP'; // Default placeholder like in design
   };
+
+  const currentPageInfo = pageTitles[pathname] || { title: 'Admin', subtitle: 'Bienvenido' };
 
 
   return (
-    <div className="flex min-h-screen w-full bg-background">
-      <Sidebar collapsible="icon">
-        <SidebarHeader className="p-4">
-          <Link
-            href="/dashboard" // This link should work for the logo/title
-            className="flex items-center gap-2 text-foreground hover:text-foreground/80"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-6 w-6 text-primary"
-            >
-              <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-              <line x1="3" x2="21" y1="9" y2="9" />
-              <line x1="9" x2="9" y1="21" y2="9" />
-            </svg>
-            <h2 className="text-lg font-semibold tracking-tight">
-              Admin Starter
-            </h2>
-          </Link>
-        </SidebarHeader>
-        <Separator />
-        <SidebarContent className="p-2 pr-0"> {/* Added pr-0 to prevent scrollbar overlap in icon mode */}
-          <SidebarMenu>
-            {/* Dashboard */}
-            <SidebarMenuItem>
-              <SidebarMenuButton href="/dashboard" isActive={router.pathname === '/dashboard'}> {/* Ensure Link is used here */}
-                <Home />
-                Dashboard
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+    <div className="flex min-h-screen bg-slate-50 text-slate-800">
+      {/* Sidebar */}
+      <div className="w-72 bg-white border-r p-6 flex flex-col shrink-0">
+        <Link href="/dashboard" className="flex items-center mb-10">
+          <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center text-primary-foreground mr-3 shrink-0">
+            <Truck size={24} /> {/* Using Truck icon as per new design */}
+          </div>
+          <div>
+            <div className="text-xl font-bold text-slate-800">Sistema</div>
+            <div className="text-sm text-slate-500">Gestión Integral</div>
+          </div>
+        </Link>
 
-            {/* Asset Management */}
-            <SidebarGroup>
-              <SidebarGroupLabel>
-                <Package /> Asset Management
-              </SidebarGroupLabel>
-              <SidebarMenuSub>
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton href="/assets/list">
-                    <List /> Asset List
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton href="/assets/categories">
-                    <Tags /> Categories
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton href="/assets/reports">
-                    <FileBarChart /> Asset Reports
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-              </SidebarMenuSub>
-            </SidebarGroup>
-
-            {/* Client Management */}
-            <SidebarGroup>
-              <SidebarGroupLabel>
-                <Users /> Client Management
-              </SidebarGroupLabel>
-              <SidebarMenuSub>
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton href="/clients/directory">
-                    <BookUser /> Directory
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton href="/clients/portal">
-                    <Globe /> Portal
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton href="/clients/history">
-                    <History /> History
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-              </SidebarMenuSub>
-            </SidebarGroup>
-
-            {/* Inventory Control */}
-            <SidebarGroup>
-              <SidebarGroupLabel>
-                <Warehouse /> Inventory Control
-              </SidebarGroupLabel>
-              <SidebarMenuSub>
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton href="/inventory/stock">
-                    <Boxes /> Stock Management
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton href="/inventory/movements">
-                    <ArrowRightLeft /> Stock Movement
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton href="/inventory/alerts">
-                    <BellRing /> Low Stock Alerts
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton href="/inventory/reports">
-                    <FilePieChart /> Inventory Reports
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-              </SidebarMenuSub>
-            </SidebarGroup>
-
-            {/* Service Management */}
-            <SidebarGroup>
-              <SidebarGroupLabel>
-                <Wrench /> Service Management
-              </SidebarGroupLabel>
-              <SidebarMenuSub>
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton href="/services/catalog">
-                    <BookOpen /> Service Catalog
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton href="/services/scheduling">
-                    <CalendarDays /> Scheduling
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton href="/services/history">
-                    <ClipboardList /> Service History
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-              </SidebarMenuSub>
-            </SidebarGroup>
-
-            {/* Reporting System */}
-            <SidebarGroup>
-              <SidebarGroupLabel>
-                <AreaChart /> Reporting System
-              </SidebarGroupLabel>
-              <SidebarMenuSub>
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton href="/reports/financial">
-                    <DollarSign /> Financial Reports
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton href="/reports/operational">
-                    <Activity /> Operational Reports
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton href="/reports/custom">
-                    <FileCog /> Custom Reports
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-              </SidebarMenuSub>
-            </SidebarGroup>
-
-            <SidebarSeparator />
-
-            {/* System Settings */}
-            <SidebarGroup>
-              <SidebarGroupLabel>
-                <Settings /> System Settings
-              </SidebarGroupLabel>
-              <SidebarMenuSub>
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton href="/settings/general">
-                    <SlidersHorizontal /> General Config
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-                 <SidebarMenuSubItem>
-                  <SidebarMenuSubButton href="/settings/account">
-                    <Cog /> Account Settings
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-                {role === 'admin' && (
-                  <SidebarMenuSubItem>
-                    <SidebarMenuSubButton href="/settings/users">
-                      <UserCog /> User Management
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                )}
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton href="/settings/notifications">
-                    <Bell /> Notifications
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton href="/settings/logs">
-                    <FileText /> System Logs
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-              </SidebarMenuSub>
-            </SidebarGroup>
-          </SidebarMenu>
-        </SidebarContent>
-        <SidebarFooter className="p-4 mt-auto"> {/* Ensure footer is at the bottom */}
-          <span className="text-xs text-muted-foreground">
-            © 2024 React Admin Starter
-          </span>
-        </SidebarFooter>
-      </Sidebar>
-
-      <main className="flex flex-1 flex-col min-h-0"> {/* flex-1 and flex-col for main area */}
-         <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-            <SidebarTrigger className="sm:hidden" /> 
-            <div className="ml-auto flex items-center gap-4">
-                <ThemeToggle />
-                <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button
-                    variant="outline"
-                    size="icon"
-                    className="overflow-hidden rounded-full"
-                    >
-                    <Avatar className="h-8 w-8">
-                        <AvatarImage src={user?.photoURL || undefined} alt={displayName || user?.email || "User"} data-ai-hint="person avatar" />
-                         <AvatarFallback>{getInitials(displayName, user?.email)}</AvatarFallback>
-                    </Avatar>
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>{displayName || user?.email}</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                        <Link href="/profile">Profile</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                        <Link href="/settings/account">Settings</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={logout}>
-                        <LogOut className="mr-2 h-4 w-4" />
-                         Logout
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-                </DropdownMenu>
+        <nav className="flex-1 overflow-y-auto">
+          {navigationModules.map((section, idx) => (
+            <div key={idx} className="mb-6">
+              <div className="text-xs font-semibold text-slate-500 mb-3 px-3">
+                {section.category}
+              </div>
+              {section.items.map((item) => (
+                <Link
+                  href={item.href}
+                  key={item.id}
+                  onClick={() => setActiveModuleId(item.id)}
+                  className={`
+                    flex items-center p-3 rounded-xl mb-1 cursor-pointer transition-colors
+                    ${activeModuleId === item.id
+                      ? 'bg-blue-100 text-primary font-medium'
+                      : 'hover:bg-slate-100 text-slate-600'}
+                  `}
+                >
+                  <item.icon className={`mr-3 ${activeModuleId === item.id ? 'text-primary' : 'text-slate-500'}`} size={20} />
+                  <span className="flex-1">{item.label}</span>
+                  {item.fields && (
+                    <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
+                      {item.fields}
+                    </span>
+                  )}
+                </Link>
+              ))}
             </div>
-        </header>
-        <div className="flex-1 p-4 sm:px-6 sm:py-4 overflow-auto"> {/* Content area with padding and scroll */}
-          {children}
+          ))}
+        </nav>
+         {/* User profile / logout at the bottom of sidebar */}
+         <div className="mt-auto pt-6 border-t border-slate-200">
+            <div className="flex items-center p-2 rounded-lg hover:bg-slate-100 cursor-pointer group">
+                <Avatar className="h-10 w-10 mr-3">
+                   <AvatarImage src={user?.photoURL || undefined} alt={displayName || user?.email || "User"} />
+                   <AvatarFallback className="bg-blue-100 text-primary font-semibold">
+                     {getInitials(displayName, user?.email)}
+                   </AvatarFallback>
+                 </Avatar>
+                <div className="flex-1">
+                    <div className="text-sm font-medium text-slate-700 group-hover:text-slate-900">
+                        {displayName || user?.email?.split('@')[0]}
+                    </div>
+                    <div className="text-xs text-slate-500 group-hover:text-slate-600">
+                        {role ? role.charAt(0).toUpperCase() + role.slice(1) : 'Usuario'}
+                    </div>
+                </div>
+                <div className="relative">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <ChevronUp className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" side="top" className="mb-2 w-48">
+                            <DropdownMenuItem asChild>
+                                <Link href="/profile" className="flex items-center gap-2">
+                                    <UserCog size={16}/> Perfil
+                                </Link>
+                            </DropdownMenuItem>
+                             <DropdownMenuItem asChild>
+                                <Link href="/settings/account" className="flex items-center gap-2">
+                                    <SettingsIcon size={16}/> Ajustes
+                                </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <ThemeToggle /> {/* Integrate ThemeToggle directly */}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={logout} className="text-red-600 focus:bg-red-50 focus:text-red-700 flex items-center gap-2">
+                                <LogOut size={16}/> Cerrar Sesión
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            </div>
         </div>
+      </div>
+
+      {/* Main Content */}
+      <main className="flex-1 p-8 overflow-y-auto"> {/* Added overflow-y-auto */}
+        {/* Topbar */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-800">{currentPageInfo.title}</h1>
+            <p className="text-slate-500">{currentPageInfo.subtitle}</p>
+          </div>
+          <div className="flex items-center space-x-6">
+            <div className="relative cursor-pointer group">
+              <BellIcon className="text-slate-500 group-hover:text-primary transition-colors" size={24} />
+              <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-semibold rounded-full w-4.5 h-4.5 flex items-center justify-center ring-2 ring-white">
+                3
+              </span>
+            </div>
+            {/* Removed ThemeToggle from here, now in sidebar user menu */}
+            {/* User Avatar in top bar is not in the new design, it's in sidebar bottom */}
+          </div>
+        </div>
+        {children}
       </main>
     </div>
   );
 }
 
-// Main export for the layout
+// Radix DropdownMenu components (if not already globally available, ensure they are)
+// For simplicity, assuming these are available through @/components/ui/dropdown-menu
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+
 export default function AppLayout({ children }: { children: ReactNode }) {
-  // AuthProvider is in the root layout (src/app/layout.tsx)
   return <AppLayoutContent>{children}</AppLayoutContent>;
 }

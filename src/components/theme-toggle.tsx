@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { Moon, Sun, Palette } from "lucide-react" // Added Palette icon
+import { Moon, Sun, Palette } from "lucide-react"
 import { useTheme } from "next-themes"
 
 import { Button } from "@/components/ui/button"
@@ -11,47 +11,42 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator, // Added Separator
-  DropdownMenuLabel, // Added Label
+  DropdownMenuSeparator, 
+  DropdownMenuLabel, 
 } from "@/components/ui/dropdown-menu"
 
 export function ThemeToggle() {
-  const { setTheme, theme } = useTheme()
+  const { setTheme, theme: currentTheme } = useTheme() // Renamed theme to currentTheme to avoid conflict
 
   const themes = [
-    { name: "Light", value: "light" },
-    { name: "Dark", value: "dark" },
-    { name: "System", value: "system" },
-    { name: "Blue", value: "blue" },
-    { name: "Dark Purple", value: "dark-purple" },
-    { name: "Green Dark", value: "green-dark" },
-    { name: "Amber", value: "amber" },
-    { name: "Dark Red", value: "dark-red" },
-    { name: "Midnight Ocean", value: "midnight-ocean" },
-    { name: "Emerald Forest", value: "emerald-forest" },
-    { name: "Cyber Neon", value: "cyber-neon" },
-    { name: "Sunset Gold", value: "sunset-gold" },
-    { name: "Arctic Frost", value: "arctic-frost" },
+    { name: "Claro", value: "light" },
+    { name: "Oscuro", value: "dark" },
+    { name: "Sistema", value: "system" },
+    { name: "Azul", value: "blue" },
+    { name: "Morado Oscuro", value: "dark-purple" },
+    { name: "Verde Oscuro", value: "green-dark" },
+    { name: "Ámbar", value: "amber" },
+    { name: "Rojo Oscuro", value: "dark-red" },
+    { name: "Océano Medianoche", value: "midnight-ocean" },
+    { name: "Bosque Esmeralda", value: "emerald-forest" },
+    { name: "Cyber Neón", value: "cyber-neon" },
+    { name: "Dorado Atardecer", value: "sunset-gold" },
+    { name: "Escarcha Ártica", value: "arctic-frost" },
   ];
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon">
-          <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          {/* Use a different icon if current theme is not light or dark, or keep sun/moon based on resolved theme */}
-          {/* For simplicity, keeping Sun/Moon based on light/dark resolved by system or direct set */}
-          <span className="sr-only">Toggle theme</span>
+        {/* This Button can be styled or replaced if used in the new sidebar menu */}
+        <Button variant="ghost" className="w-full justify-start px-2 py-1.5 text-sm flex items-center gap-2">
+          <Palette size={16} /> Cambiar Tema
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Select Theme</DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel>Seleccionar Tema</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {themes.map((t) => (
-          <DropdownMenuItem key={t.value} onClick={() => setTheme(t.value)} className={theme === t.value ? "bg-accent" : ""}>
-            {/* Optionally add an icon next to each theme name */}
-            {/* <Palette className="mr-2 h-4 w-4" /> */}
+          <DropdownMenuItem key={t.value} onClick={() => setTheme(t.value)} className={currentTheme === t.value ? "bg-accent text-accent-foreground" : ""}>
             {t.name}
           </DropdownMenuItem>
         ))}

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react'; // Added useEffect
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
@@ -11,150 +11,146 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, AlertTriangle } from 'lucide-react'; // Import Loader2 and AlertTriangle
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'; // Import Alert components
-
+import { Loader2, AlertTriangle, UserPlus } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState(''); // State for selected role
+  const [role, setRole] = useState('');
+  const [displayName, setDisplayName] = useState(''); // Added display name state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { signup, user, loading: authLoading, isFirebaseConfigured } = useAuth(); // Get loading and config status
+  const { signup, user, loading: authLoading, isFirebaseConfigured } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [showConfigError, setShowConfigError] = useState(false);
 
    useEffect(() => {
-      // Show config error only after initial auth check is done
       if (!authLoading && !isFirebaseConfigured) {
           setShowConfigError(true);
       }
   }, [authLoading, isFirebaseConfigured]);
 
-  // Redirect if already logged in and Firebase is configured
   useEffect(() => {
     if (!authLoading && user && isFirebaseConfigured) {
       router.replace('/dashboard');
     }
    }, [user, authLoading, isFirebaseConfigured, router]);
 
-  // Basic password strength check (example)
   const isPasswordStrong = (pw: string): boolean => {
     return pw.length >= 8 && /[A-Z]/.test(pw) && /[a-z]/.test(pw) && /[0-9]/.test(pw);
   };
-
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
      if (!isFirebaseConfigured) {
-        setError("Signup is disabled because Firebase is not configured correctly. Please contact the administrator.");
-        toast({ title: 'Configuration Error', description: 'Firebase not configured.', variant: 'destructive' });
+        setError("El registro está deshabilitado porque Firebase no está configurado correctamente. Por favor, contacta al administrador.");
+        toast({ title: 'Error de Configuración', description: 'Firebase no configurado.', variant: 'destructive' });
         return;
     }
 
+    if (!displayName.trim()) {
+      setError('Por favor, ingresa tu nombre.');
+      toast({ title: 'Fallo de Registro', description: 'El nombre es requerido.', variant: 'destructive' });
+      return;
+    }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match.');
-      toast({ title: 'Signup Failed', description: 'Passwords do not match.', variant: 'destructive' });
+      setError('Las contraseñas no coinciden.');
+      toast({ title: 'Fallo de Registro', description: 'Las contraseñas no coinciden.', variant: 'destructive' });
       return;
     }
 
      if (!isPasswordStrong(password)) {
-       setError('Password is too weak. Must be 8+ chars, include upper, lower case, and a number.');
-       toast({ title: 'Signup Failed', description: 'Password is too weak.', variant: 'destructive' });
+       setError('La contraseña es muy débil. Debe tener más de 8 caracteres, incluir mayúsculas, minúsculas y un número.');
+       toast({ title: 'Fallo de Registro', description: 'Contraseña débil.', variant: 'destructive' });
       return;
     }
 
-
     if (!role) {
-      setError('Please select a role.');
-       toast({ title: 'Signup Failed', description: 'Please select a role.', variant: 'destructive' });
+      setError('Por favor, selecciona un rol.');
+       toast({ title: 'Fallo de Registro', description: 'Por favor, selecciona un rol.', variant: 'destructive' });
       return;
     }
 
     setLoading(true);
     try {
-      // Use a placeholder for displayName if not explicitly collected at signup
-      const defaultDisplayName = email.split('@')[0]; 
-      await signup(email, password, role, defaultDisplayName);
-      toast({ title: 'Signup Successful', description: 'Account created. Please log in.' });
-      router.push('/login'); // Redirect to login after successful signup
+      await signup(email, password, role, displayName);
+      toast({ title: 'Registro Exitoso', description: 'Cuenta creada. Por favor, inicia sesión.' });
+      router.push('/login'); 
     } catch (err: any) {
       console.error('Signup error:', err);
-       // Map Firebase error codes to user-friendly messages
-        let errorMessage = 'Failed to create account.';
+        let errorMessage = 'Error al crear la cuenta.';
         if (err.code === 'auth/email-already-in-use') {
-            errorMessage = 'This email address is already registered.';
+            errorMessage = 'Esta dirección de email ya está registrada.';
         } else if (err.code === 'auth/invalid-email') {
-             errorMessage = 'Invalid email format.';
+             errorMessage = 'Formato de email inválido.';
         } else if (err.code === 'auth/weak-password') {
-            // This check is redundant due to isPasswordStrong, but good fallback
-             errorMessage = 'Password is too weak.';
+             errorMessage = 'La contraseña es muy débil.';
         }
       setError(errorMessage);
-      toast({ title: 'Signup Failed', description: errorMessage, variant: 'destructive' });
+      toast({ title: 'Fallo de Registro', description: errorMessage, variant: 'destructive' });
       setLoading(false);
     }
   };
 
-   // Render loading or null while checking auth state or redirecting
    if (authLoading || (user && isFirebaseConfigured)) {
-     return <div className="flex h-screen items-center justify-center">Loading...</div>;
+     return <div className="flex h-screen items-center justify-center bg-slate-50">Cargando...</div>;
    }
 
-
   return (
-    <div className="flex flex-1 min-h-screen items-center justify-center bg-muted/40 p-4"> {/* Added flex-1 here */}
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center space-y-1">
-          {/* Optional Logo */}
-           <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-8 w-8 mx-auto text-primary"
-            >
-              <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-              <line x1="3" x2="21" y1="9" y2="9" />
-              <line x1="9" x2="9" y1="21" y2="9" />
-            </svg>
-          <CardTitle className="text-2xl">Create Account</CardTitle>
-          <CardDescription>Enter your details to sign up.</CardDescription>
+    <div className="flex flex-1 min-h-screen items-center justify-center bg-slate-100 p-4">
+      <Card className="w-full max-w-md bg-white border-slate-200 rounded-xl shadow-lg">
+        <CardHeader className="text-center space-y-2 pt-8">
+           <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-primary-foreground mb-3">
+            <UserPlus size={32} />
+          </div>
+          <CardTitle className="text-3xl font-bold text-slate-800">Crear Cuenta</CardTitle>
+          <CardDescription className="text-slate-500">Ingresa tus datos para registrarte.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6 sm:p-8">
            {showConfigError && (
-              <Alert variant="destructive" className="mb-4">
+              <Alert variant="destructive" className="mb-6">
                 <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Configuration Error</AlertTitle>
+                <AlertTitle>Error de Configuración</AlertTitle>
                 <AlertDescription>
-                  Signup is currently unavailable due to a configuration issue. Please contact support.
+                  El registro no está disponible debido a un problema de configuración. Contacta al soporte.
                 </AlertDescription>
               </Alert>
             )}
-          <form onSubmit={handleSignup} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+          <form onSubmit={handleSignup} className="space-y-5">
+            <div className="space-y-1.5">
+              <Label htmlFor="displayName" className="text-sm font-medium text-slate-700">Nombre Completo</Label>
+              <Input
+                id="displayName"
+                type="text"
+                placeholder="Ej: Juan Pérez"
+                required
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                disabled={loading || showConfigError}
+                className="h-11 text-base border-slate-300 focus:border-primary focus:ring-primary"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-sm font-medium text-slate-700">Email</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="m@example.com"
+                placeholder="tu@email.com"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading || showConfigError}
+                className="h-11 text-base border-slate-300 focus:border-primary focus:ring-primary"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className="text-sm font-medium text-slate-700">Contraseña</Label>
               <Input
                 id="password"
                 type="password"
@@ -163,13 +159,14 @@ export default function SignupPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading || showConfigError}
                 aria-describedby="password-hint"
+                className="h-11 text-base border-slate-300 focus:border-primary focus:ring-primary"
               />
-               <p id="password-hint" className="text-xs text-muted-foreground">
-                 Min 8 chars, 1 uppercase, 1 lowercase, 1 number.
+               <p id="password-hint" className="text-xs text-slate-500">
+                 Mín. 8 caracteres, 1 mayúscula, 1 minúscula, 1 número.
                </p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="confirmPassword" className="text-sm font-medium text-slate-700">Confirmar Contraseña</Label>
               <Input
                 id="confirmPassword"
                 type="password"
@@ -177,33 +174,33 @@ export default function SignupPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 disabled={loading || showConfigError}
+                className="h-11 text-base border-slate-300 focus:border-primary focus:ring-primary"
               />
             </div>
-            <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
+            <div className="space-y-1.5">
+                <Label htmlFor="role" className="text-sm font-medium text-slate-700">Rol</Label>
                 <Select onValueChange={setRole} value={role} required disabled={loading || showConfigError}>
-                    <SelectTrigger id="role">
-                        <SelectValue placeholder="Select your role" />
+                    <SelectTrigger id="role" className="h-11 text-base border-slate-300 focus:border-primary focus:ring-primary">
+                        <SelectValue placeholder="Selecciona tu rol" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="admin">Administrator</SelectItem>
-                        <SelectItem value="teacher">Teacher</SelectItem>
-                        <SelectItem value="student">Student</SelectItem>
-                        {/* Add other roles as needed */}
+                        <SelectItem value="admin">Administrador</SelectItem>
+                        <SelectItem value="teacher">Profesor</SelectItem>
+                        <SelectItem value="student">Estudiante</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="w-full" disabled={loading || showConfigError}>
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sign Up'}
+            {error && <p className="text-sm text-red-600 text-center">{error}</p>}
+            <Button type="submit" className="w-full h-12 text-base font-semibold bg-primary hover:bg-primary/90" disabled={loading || showConfigError}>
+              {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Registrarse'}
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="flex flex-col items-center text-sm text-muted-foreground">
-             <p>Already have an account?</p>
+        <CardFooter className="flex flex-col items-center text-sm text-slate-500 pb-8">
+             <p>¿Ya tienes una cuenta?</p>
              <Link href="/login" className={`text-primary hover:underline font-medium ${showConfigError ? 'pointer-events-none opacity-50' : ''}`}>
-                 Log in here
+                 Inicia sesión aquí
              </Link>
         </CardFooter>
       </Card>

@@ -8,7 +8,7 @@ body {
 
 @layer base {
   :root {
-    /* Light Theme (New Design - Slate & Blue) */
+    /* Light Theme (New Design - Slate & Blue from user prompt) */
     --background: 220 20% 97%; /* slate-50 (approx hsl(220, 20%, 97%)) */
     --foreground: 220 10% 25%; /* slate-800 (approx hsl(220, 10%, 25%)) */
     
@@ -102,9 +102,453 @@ body {
     --sidebar-ring: 222 83% 65%;
   }
 
-  /* Add other theme definitions below (blue, dark-purple, etc.) if they are still desired */
-  /* For now, focusing on the new Light and a corresponding Dark theme */
+  /* Blue Theme */
+  html.blue {
+    --background: 210 100% 98%; /* Very light, almost white-blue */
+    --foreground: 220 30% 20%; /* Dark grayish blue */
 
+    --card: 210 100% 96%; /* Light blue card */
+    --card-foreground: 220 30% 20%;
+
+    --popover: 210 100% 96%;
+    --popover-foreground: 220 30% 20%;
+
+    --primary: 220 80% 55%; /* Main blue */
+    --primary-foreground: 0 0% 100%; /* White */
+
+    --secondary: 210 60% 90%; /* Lighter blue */
+    --secondary-foreground: 220 50% 30%; /* Darker blue for text on secondary */
+
+    --muted: 210 50% 94%; /* Very light blue-gray */
+    --muted-foreground: 210 30% 45%; /* Medium blue-gray */
+
+    --accent: 190 75% 45%; /* Cyan/Teal accent */
+    --accent-foreground: 0 0% 100%; /* White */
+
+    --destructive: 0 80% 60%; /* Standard red */
+    --destructive-foreground: 0 0% 100%; /* White */
+
+    --border: 210 40% 85%; /* Light blue-gray border */
+    --input: 210 40% 85%;
+    --ring: 220 80% 60%; /* Primary blue for ring */
+
+    --chart-1: 220 70% 50%;
+    --chart-2: 190 60% 45%;
+    --chart-3: 230 80% 65%;
+    --chart-4: 210 75% 55%;
+    --chart-5: 200 65% 60%;
+
+    --sidebar-background: 210 100% 97%;
+    --sidebar-foreground: 220 30% 25%;
+    --sidebar-primary: 220 80% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 190 75% 45%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 210 40% 88%;
+    --sidebar-ring: 220 80% 60%;
+  }
+
+  /* Dark Purple Theme */
+  html.dark-purple {
+    --background: 270 30% 10%; /* Very dark purple */
+    --foreground: 270 20% 92%; /* Light grayish purple */
+
+    --card: 270 30% 12%; /* Darker purple card */
+    --card-foreground: 270 20% 92%;
+
+    --popover: 270 30% 12%;
+    --popover-foreground: 270 20% 92%;
+
+    --primary: 280 70% 65%; /* Vibrant purple */
+    --primary-foreground: 0 0% 100%; /* White */
+
+    --secondary: 270 20% 20%; /* Dark muted purple */
+    --secondary-foreground: 270 20% 80%; /* Lighter purple for text */
+
+    --muted: 270 15% 15%; /* Very dark, slightly less saturated purple */
+    --muted-foreground: 270 15% 60%; /* Medium grayish purple */
+
+    --accent: 300 60% 60%; /* Magenta/Pinkish accent */
+    --accent-foreground: 0 0% 100%; /* White */
+
+    --destructive: 0 60% 50%; /* Desaturated red for dark */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 270 20% 25%; /* Dark purple border */
+    --input: 270 20% 25%;
+    --ring: 280 70% 70%; /* Primary purple for ring, slightly lighter */
+
+    --chart-1: 280 65% 60%;
+    --chart-2: 300 55% 55%;
+    --chart-3: 260 70% 70%;
+    --chart-4: 290 60% 50%;
+    --chart-5: 270 50% 65%;
+
+    --sidebar-background: 270 30% 8%;
+    --sidebar-foreground: 270 20% 88%;
+    --sidebar-primary: 280 70% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 300 60% 60%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 270 20% 22%;
+    --sidebar-ring: 280 70% 70%;
+  }
+
+  /* Green Dark Theme */
+  html.green-dark {
+    --background: 120 10% 8%; /* Very dark desaturated green */
+    --foreground: 120 10% 92%; /* Light greenish gray */
+
+    --card: 120 10% 10%; /* Slightly lighter dark green card */
+    --card-foreground: 120 10% 92%;
+
+    --popover: 120 10% 10%;
+    --popover-foreground: 120 10% 92%;
+
+    --primary: 140 60% 45%; /* Main dark green */
+    --primary-foreground: 0 0% 100%; /* White */
+
+    --secondary: 120 10% 15%; /* Darker muted green */
+    --secondary-foreground: 120 10% 80%; /* Lighter green for text */
+
+    --muted: 120 8% 12%; /* Very dark, slightly less saturated green */
+    --muted-foreground: 120 10% 60%; /* Medium greenish gray */
+
+    --accent: 130 65% 55%; /* Brighter lime green accent */
+    --accent-foreground: 0 0% 0%; /* Black for good contrast on lime */
+
+    --destructive: 0 60% 50%; /* Desaturated red for dark */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 120 10% 20%; /* Dark green border */
+    --input: 120 10% 20%;
+    --ring: 140 60% 50%; /* Primary green for ring, slightly lighter */
+
+    --chart-1: 140 60% 50%;
+    --chart-2: 130 50% 45%;
+    --chart-3: 150 70% 60%;
+    --chart-4: 120 55% 50%;
+    --chart-5: 135 45% 55%;
+
+    --sidebar-background: 120 10% 6%;
+    --sidebar-foreground: 120 10% 88%;
+    --sidebar-primary: 140 60% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 130 65% 55%;
+    --sidebar-accent-foreground: 0 0% 0%;
+    --sidebar-border: 120 10% 18%;
+    --sidebar-ring: 140 60% 50%;
+  }
+
+  /* Amber Theme (Light) */
+  html.amber {
+    --background: 35 100% 97%; /* Very light amber/cream */
+    --foreground: 30 60% 25%; /* Dark rich brown */
+
+    --card: 35 100% 95%; /* Light amber card */
+    --card-foreground: 30 60% 25%;
+
+    --popover: 35 100% 95%;
+    --popover-foreground: 30 60% 25%;
+
+    --primary: 38 90% 55%; /* Main amber/orange */
+    --primary-foreground: 0 0% 100%; /* White */
+
+    --secondary: 40 80% 90%; /* Lighter amber */
+    --secondary-foreground: 35 50% 40%; /* Darker amber for text */
+
+    --muted: 40 70% 94%; /* Very light amber-gray */
+    --muted-foreground: 35 40% 55%; /* Medium amber-gray */
+
+    --accent: 45 100% 60%; /* Warm yellow/gold accent */
+    --accent-foreground: 30 70% 20%; /* Dark brown for good contrast on yellow */
+
+    --destructive: 0 80% 60%; /* Standard red */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 35 60% 85%; /* Light amber-gray border */
+    --input: 35 60% 85%;
+    --ring: 38 90% 60%; /* Primary amber for ring */
+
+    --chart-1: 38 85% 60%;
+    --chart-2: 45 75% 55%;
+    --chart-3: 30 90% 70%;
+    --chart-4: 42 80% 65%;
+    --chart-5: 35 70% 50%;
+
+    --sidebar-background: 35 100% 96%;
+    --sidebar-foreground: 30 60% 30%;
+    --sidebar-primary: 38 90% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 45 100% 60%;
+    --sidebar-accent-foreground: 30 70% 20%;
+    --sidebar-border: 35 60% 88%;
+    --sidebar-ring: 38 90% 60%;
+  }
+
+  /* Dark Red Theme */
+  html.dark-red {
+    --background: 0 40% 10%; /* Very dark maroon */
+    --foreground: 0 10% 92%; /* Light warm gray */
+    --card: 0 40% 12%; /* Darker maroon card */
+    --card-foreground: 0 10% 92%;
+    --popover: 0 40% 12%;
+    --popover-foreground: 0 10% 92%;
+
+    --primary: 0 70% 55%; /* Vibrant red */
+    --primary-foreground: 0 0% 98%; /* White */
+
+    --secondary: 0 30% 20%; /* Dark muted red */
+    --secondary-foreground: 0 20% 80%; /* Lighter red/gray for text */
+
+    --muted: 0 25% 15%; /* Very dark, almost black-red */
+    --muted-foreground: 0 15% 60%; /* Medium gray-red */
+
+    --accent: 30 80% 50%; /* Fiery orange accent */
+    --accent-foreground: 0 0% 10%; /* Black or very dark red */
+
+    --destructive: 0 84.2% 60.2%; /* Standard destructive red */
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 30% 25%; /* Dark red border */
+    --input: 0 30% 25%;
+    --ring: 0 70% 60%; /* Primary red for ring, slightly lighter */
+
+    --chart-1: 0 70% 60%;
+    --chart-2: 20 65% 55%;
+    --chart-3: 0 80% 70%;
+    --chart-4: 30 75% 50%;
+    --chart-5: 10 60% 65%;
+
+    --sidebar-background: 0 40% 8%;
+    --sidebar-foreground: 0 10% 88%;
+    --sidebar-primary: 0 70% 55%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 30 80% 50%;
+    --sidebar-accent-foreground: 0 0% 10%;
+    --sidebar-border: 0 30% 22%;
+    --sidebar-ring: 0 70% 60%;
+  }
+
+  /* Midnight Ocean Theme */
+  html.midnight-ocean {
+    --background: 220 50% 8%; /* Deep, dark blue, almost black */
+    --foreground: 190 30% 92%; /* Light cyan or very light gray-blue */
+    --card: 220 50% 10%; /* Slightly lighter dark blue card */
+    --card-foreground: 190 30% 92%;
+    --popover: 220 50% 10%;
+    --popover-foreground: 190 30% 92%;
+
+    --primary: 210 70% 50%; /* Medium, slightly desaturated blue */
+    --primary-foreground: 0 0% 100%; /* White */
+
+    --secondary: 200 30% 18%; /* Dark muted teal or gray-blue */
+    --secondary-foreground: 190 25% 80%; /* Lighter teal/gray-blue for text */
+
+    --muted: 220 40% 12%; /* Very dark blue, almost black */
+    --muted-foreground: 210 20% 60%; /* Medium gray-blue */
+
+    --accent: 180 70% 55%; /* Bright Teal/Cyan accent */
+    --accent-foreground: 220 50% 10%; /* Dark blue or black */
+    
+    --destructive: 0 60% 50%; /* Standard destructive red (can be adjusted for theme) */
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 210 40% 22%; /* Dark blue border */
+    --input: 210 40% 22%;
+    --ring: 210 70% 55%; /* Primary blue for ring, slightly lighter */
+
+    --chart-1: 210 65% 55%;
+    --chart-2: 190 60% 50%;
+    --chart-3: 230 75% 65%;
+    --chart-4: 180 70% 45%;
+    --chart-5: 200 55% 60%;
+
+    --sidebar-background: 220 50% 6%;
+    --sidebar-foreground: 190 30% 88%;
+    --sidebar-primary: 210 70% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 180 70% 55%;
+    --sidebar-accent-foreground: 220 50% 10%;
+    --sidebar-border: 210 40% 20%;
+    --sidebar-ring: 210 70% 55%;
+  }
+
+  /* Emerald Forest Theme */
+  html.emerald-forest {
+    --background: 140 20% 10%; /* Very dark desaturated green/brown */
+    --foreground: 40 30% 90%; /* Light, earthy tone */
+    --card: 140 20% 12%; /* Slightly lighter dark green card */
+    --card-foreground: 40 30% 90%;
+    --popover: 140 20% 12%;
+    --popover-foreground: 40 30% 90%;
+
+    --primary: 150 60% 35%; /* Rich, deep emerald green */
+    --primary-foreground: 0 0% 98%; /* White */
+
+    --secondary: 140 15% 25%; /* Muted forest green/brown */
+    --secondary-foreground: 40 25% 80%; /* Lighter earthy tone for text */
+
+    --muted: 140 10% 15%; /* Darker, desaturated green */
+    --muted-foreground: 40 20% 60%; /* Medium earthy tone */
+
+    --accent: 130 50% 55%; /* Lighter, natural green accent */
+    --accent-foreground: 0 0% 10%; /* Dark color for contrast on accent */
+    
+    --destructive: 0 50% 45%; /* Muted red for dark theme */
+    --destructive-foreground: 0 0% 95%;
+
+    --border: 140 15% 20%; /* Dark earthy green border */
+    --input: 140 15% 20%;
+    --ring: 150 60% 40%; /* Primary green for ring, slightly lighter */
+
+    --chart-1: 150 55% 40%;
+    --chart-2: 130 45% 50%;
+    --chart-3: 160 65% 30%;
+    --chart-4: 120 40% 45%;
+    --chart-5: 50 60% 50%; /* Earthy yellow/brown */
+
+    --sidebar-background: 140 20% 8%;
+    --sidebar-foreground: 40 30% 88%;
+    --sidebar-primary: 150 60% 35%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 130 50% 55%;
+    --sidebar-accent-foreground: 0 0% 10%;
+    --sidebar-border: 140 15% 18%;
+    --sidebar-ring: 150 60% 40%;
+  }
+
+  /* Cyber Neon Theme */
+  html.cyber-neon {
+    --background: 240 50% 5%; /* Very dark blue, almost black */
+    --foreground: 180 100% 95%; /* Very light cyan */
+    --card: 240 50% 7%; /* Slightly lighter dark background for card */
+    --card-foreground: 180 100% 95%;
+    --popover: 240 50% 7%;
+    --popover-foreground: 180 100% 95%;
+
+    --primary: 320 100% 55%; /* Neon Pink/Magenta */
+    --primary-foreground: 0 0% 100%; /* White, for pop on neon pink */
+
+    --secondary: 220 100% 60%; /* Electric Blue */
+    --secondary-foreground: 0 0% 100%; /* White */
+
+    --muted: 240 40% 10%; /* Darker, desaturated version of the background */
+    --muted-foreground: 180 80% 70%; /* Lighter neon tint */
+
+    --accent: 90 100% 50%; /* Neon Lime Green */
+    --accent-foreground: 0 0% 5%; /* Black, for high contrast on lime green */
+    
+    --destructive: 0 100% 50%; /* Bright, pure red for neon destructive */
+    --destructive-foreground: 0 0% 100%; /* White */
+
+    --border: 240 30% 20%; /* Dark, subtle neon-ish border or dark gray */
+    --input: 240 30% 20%;
+    --ring: 320 100% 60%; /* Primary color (Neon Pink) for ring */
+
+    --chart-1: 320 100% 60%; /* Neon Pink */
+    --chart-2: 220 100% 65%; /* Electric Blue */
+    --chart-3: 90 100% 55%;  /* Neon Lime Green */
+    --chart-4: 280 100% 60%; /* Neon Purple */
+    --chart-5: 180 100% 50%; /* Neon Cyan */
+
+    --sidebar-background: 240 50% 4%;
+    --sidebar-foreground: 180 100% 90%;
+    --sidebar-primary: 320 100% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 90 100% 50%;
+    --sidebar-accent-foreground: 0 0% 5%;
+    --sidebar-border: 240 30% 15%;
+    --sidebar-ring: 320 100% 60%;
+  }
+
+  /* Sunset Gold Theme */
+  html.sunset-gold {
+    --background: 25 80% 95%; /* Light warm cream */
+    --foreground: 25 60% 20%; /* Dark warm brown */
+    --card: 25 80% 92%; /* Warm cream card */
+    --card-foreground: 25 60% 20%;
+    --popover: 25 80% 92%;
+    --popover-foreground: 25 60% 20%;
+
+    --primary: 30 100% 50%; /* Rich Orange */
+    --primary-foreground: 0 0% 100%; /* White */
+
+    --secondary: 40 90% 85%; /* Light yellow-orange */
+    --secondary-foreground: 30 70% 30%; /* Darker orange for text */
+
+    --muted: 30 70% 90%; /* Light orange-cream */
+    --muted-foreground: 30 50% 50%; /* Medium brown-orange */
+
+    --accent: 15 90% 55%; /* Fiery Red-Orange accent */
+    --accent-foreground: 0 0% 100%; /* White */
+    
+    --destructive: 0 80% 60%; /* Standard red */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 30 60% 80%; /* Warm light brown border */
+    --input: 30 60% 80%;
+    --ring: 30 100% 55%; /* Primary orange for ring */
+
+    --chart-1: 30 95% 55%;
+    --chart-2: 15 85% 60%;
+    --chart-3: 45 100% 60%; /* Gold/Yellow */
+    --chart-4: 20 90% 50%;
+    --chart-5: 35 80% 65%;
+
+    --sidebar-background: 25 80% 94%;
+    --sidebar-foreground: 25 60% 25%;
+    --sidebar-primary: 30 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 15 90% 55%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 30 60% 85%;
+    --sidebar-ring: 30 100% 55%;
+  }
+
+  /* Arctic Frost Theme */
+  html.arctic-frost {
+    --background: 200 100% 98%; /* Very light, almost white-cyan */
+    --foreground: 210 40% 25%; /* Dark desaturated blue */
+    --card: 200 100% 96%; /* Light cyan card */
+    --card-foreground: 210 40% 25%;
+    --popover: 200 100% 96%;
+    --popover-foreground: 210 40% 25%;
+
+    --primary: 190 70% 45%; /* Cool, slightly muted Teal */
+    --primary-foreground: 0 0% 100%; /* White */
+
+    --secondary: 200 80% 90%; /* Very light blue/cyan */
+    --secondary-foreground: 190 50% 35%; /* Darker teal for text */
+
+    --muted: 200 60% 94%; /* Light blue-gray */
+    --muted-foreground: 200 30% 50%; /* Medium cool gray */
+
+    --accent: 220 80% 65%; /* Light, clear Blue accent */
+    --accent-foreground: 0 0% 100%; /* White */
+    
+    --destructive: 0 70% 60%; /* Standard red, maybe slightly desaturated */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 200 50% 88%; /* Light cool gray border */
+    --input: 200 50% 88%;
+    --ring: 190 70% 50%; /* Primary teal for ring */
+
+    --chart-1: 190 65% 50%;
+    --chart-2: 220 75% 70%;
+    --chart-3: 180 60% 40%; /* Deeper Teal */
+    --chart-4: 210 70% 60%;
+    --chart-5: 200 50% 55%;
+
+    --sidebar-background: 200 100% 97%;
+    --sidebar-foreground: 210 40% 30%;
+    --sidebar-primary: 190 70% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 80% 65%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 200 50% 90%;
+    --sidebar-ring: 190 70% 50%;
+  }
 }
 
 @layer base {

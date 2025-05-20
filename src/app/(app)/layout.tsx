@@ -10,9 +10,9 @@ import {
   Users,
   Package,
   Wrench,
-  BarChart, // Changed from BarChart3
-  FileText, // Changed from FileTextIcon
-  Settings, // Changed from SettingsIcon
+  BarChart,
+  FileText,
+  Settings,
   HelpCircle,
   Bell as BellIcon,
   Home,
@@ -20,6 +20,7 @@ import {
   LogOut,
   AlertTriangle,
   ChevronUp,
+  Palette,
 } from 'lucide-react';
 
 import { useAuth } from '@/contexts/auth-context';
@@ -33,6 +34,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 
 
@@ -49,7 +51,6 @@ interface NavModule {
   items: NavItem[];
 }
 
-// Updated navigation modules based on the new design
 const navigationModules: NavModule[] = [
   {
     category: "PANEL",
@@ -62,15 +63,15 @@ const navigationModules: NavModule[] = [
     items: [
       { icon: Truck, label: 'Activos', id: 'assets', href: '/assets/list', fields: 42 },
       { icon: Users, label: 'Clientes', id: 'clients', href: '/clients/directory', fields: 11 },
-      { icon: Package, label: 'Repuestos', id: 'inventory', href: '/inventory/stock', fields: 12 }, // Mapped Repuestos to Inventory
+      { icon: Package, label: 'Repuestos', id: 'inventory', href: '/inventory/stock', fields: 12 },
       { icon: Wrench, label: 'Servicios', id: 'services', href: '/services/catalog' },
     ],
   },
   {
     category: 'ANÁLISIS',
     items: [
-      { icon: BarChart, label: 'Gráficas', id: 'reports_custom', href: '/reports/custom' },
-      { icon: FileText, label: 'Reportes', id: 'reports_financial', href: '/reports/financial' },
+      { icon: BarChart, label: 'Gráficas', id: 'reports_custom', href: '/reports/custom' }, // Mapped Gráficas to Custom Reports
+      { icon: FileText, label: 'Reportes', id: 'reports_financial', href: '/reports/financial' }, // Pointing to Financial Reports
     ],
   },
   {
@@ -128,21 +129,21 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
               break;
             }
           }
-          if (currentModule !== 'dashboard' && currentModule !== 'support' ) break; // 'support' also maps to dashboard, keep searching if it's support
+          // Ensure 'support' which maps to '/dashboard' doesn't override a more specific match
+          if (currentModule !== 'dashboard' && currentModule !== 'support') break;
         }
     }
     
     if (pathname.startsWith('/settings/')) currentModule = 'settings';
-    if (pathname.startsWith('/profile')) currentModule = 'profile';
-
+    if (pathname.startsWith('/profile')) currentModule = 'profile'; // Keep profile separate from settings highlight
 
     setActiveModuleId(currentModule);
   }, [pathname]);
 
   if (!isFirebaseConfigured && !loading) {
     return (
-      <div className="flex h-screen items-center justify-center p-4 bg-slate-50 dark:bg-slate-900">
-        <Alert variant="destructive" className="max-w-lg bg-card">
+      <div className="flex h-screen items-center justify-center p-4 bg-background">
+        <Alert variant="destructive" className="max-w-lg bg-card text-card-foreground">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Error de Configuración</AlertTitle>
           <AlertDescription>
@@ -165,7 +166,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
 
   if (loading || (!user && isFirebaseConfigured)) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-900 text-foreground">
+      <div className="flex h-screen items-center justify-center bg-background text-foreground">
         Cargando Aplicación...
       </div>
     );
@@ -187,23 +188,23 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
 
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200">
+    <div className="flex min-h-screen w-full bg-background">
       {/* Sidebar */}
-      <div className="w-72 bg-white dark:bg-slate-800 border-r dark:border-slate-700 p-6 flex flex-col shrink-0">
+      <div className="w-72 bg-sidebar text-sidebar-foreground border-r border-sidebar-border p-6 flex flex-col shrink-0">
         <Link href="/dashboard" className="flex items-center mb-10">
           <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center text-primary-foreground mr-3 shrink-0">
             <Truck size={24} /> 
           </div>
           <div>
-            <div className="text-xl font-bold text-slate-800 dark:text-slate-100">Sistema</div>
-            <div className="text-sm text-slate-500 dark:text-slate-400">Gestión Integral</div>
+            <div className="text-xl font-bold text-foreground">Sistema</div>
+            <div className="text-sm text-muted-foreground">Gestión Integral</div>
           </div>
         </Link>
 
-        <nav className="flex-1 overflow-y-auto pr-2"> {/* Added pr-2 for scrollbar space */}
+        <nav className="flex-1 overflow-y-auto pr-0"> {/* Removed pr-2 to let content manage its padding */}
           {navigationModules.map((section, idx) => (
             <div key={idx} className="mb-6">
-              <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-3 px-3 uppercase">
+              <div className="text-xs font-semibold text-muted-foreground mb-3 px-3 uppercase">
                 {section.category}
               </div>
               {section.items.map((item) => (
@@ -214,14 +215,14 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                   className={`
                     flex items-center p-3 rounded-xl mb-1.5 cursor-pointer transition-colors
                     ${activeModuleId === item.id
-                      ? 'bg-blue-100 dark:bg-blue-700/30 text-primary dark:text-blue-300 font-medium'
-                      : 'hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'}
+                      ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                      : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}
                   `}
                 >
-                  <item.icon className={`mr-3 ${activeModuleId === item.id ? 'text-primary dark:text-blue-300' : 'text-slate-500 dark:text-slate-400'}`} size={20} />
+                  <item.icon className={`mr-3 ${activeModuleId === item.id ? 'text-sidebar-accent-foreground' : 'text-muted-foreground'}`} size={20} />
                   <span className="flex-1">{item.label}</span>
                   {item.fields && (
-                    <span className="text-xs bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-200 px-2 py-0.5 rounded-full">
+                    <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
                       {item.fields}
                     </span>
                   )}
@@ -230,44 +231,45 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
             </div>
           ))}
         </nav>
-         <div className="mt-auto pt-6 border-t border-slate-200 dark:border-slate-700">
+         <div className="mt-auto pt-6 border-t border-sidebar-border">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <div className="flex items-center p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer group">
+                <div className="flex items-center p-2 rounded-lg hover:bg-sidebar-accent/50 cursor-pointer group">
                     <Avatar className="h-10 w-10 mr-3">
                        <AvatarImage src={user?.photoURL || undefined} alt={displayName || user?.email || "User"} />
-                       <AvatarFallback className="bg-blue-100 dark:bg-blue-700/30 text-primary dark:text-blue-300 font-semibold">
+                       <AvatarFallback className="bg-primary/20 text-primary font-semibold">
                          {getInitials(displayName, user?.email)}
                        </AvatarFallback>
                      </Avatar>
                     <div className="flex-1">
-                        <div className="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white">
+                        <div className="text-sm font-medium text-foreground group-hover:text-accent-foreground">
                             {displayName || user?.email?.split('@')[0]}
                         </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300">
+                        <div className="text-xs text-muted-foreground group-hover:text-accent-foreground/80">
                             {role ? role.charAt(0).toUpperCase() + role.slice(1) : 'Usuario'}
                         </div>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-slate-500 dark:text-slate-400">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground">
                         <ChevronUp className="h-4 w-4" />
                     </Button>
                 </div>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" side="top" className="mb-2 w-56 bg-card border-border shadow-lg">
+              <DropdownMenuContent align="end" side="top" className="mb-2 w-56 bg-popover border-border shadow-lg text-popover-foreground">
                   <DropdownMenuItem asChild>
-                      <Link href="/profile" className="flex items-center gap-2 cursor-pointer hover:bg-accent dark:hover:bg-slate-700">
+                      <Link href="/profile" className="flex items-center gap-2 cursor-pointer hover:bg-accent dark:hover:bg-accent/80">
                           <UserCog size={16}/> Perfil
                       </Link>
                   </DropdownMenuItem>
                    <DropdownMenuItem asChild>
-                      <Link href="/settings/account" className="flex items-center gap-2 cursor-pointer hover:bg-accent dark:hover:bg-slate-700">
+                      <Link href="/settings/account" className="flex items-center gap-2 cursor-pointer hover:bg-accent dark:hover:bg-accent/80">
                           <Settings size={16}/> Ajustes
                       </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-border" />
+                  {/* ThemeToggle is rendered here */}
                   <ThemeToggle /> 
                   <DropdownMenuSeparator className="bg-border" />
-                  <DropdownMenuItem onClick={logout} className="text-red-600 focus:bg-red-50 focus:text-red-700 flex items-center gap-2 cursor-pointer hover:bg-destructive/10 dark:hover:bg-red-700/20">
+                  <DropdownMenuItem onClick={logout} className="text-destructive focus:bg-destructive/10 focus:text-destructive flex items-center gap-2 cursor-pointer hover:bg-destructive/10 dark:hover:bg-destructive/20">
                       <LogOut size={16}/> Cerrar Sesión
                   </DropdownMenuItem>
               </DropdownMenuContent>
@@ -275,29 +277,31 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
         </div>
       </div>
 
-      <main className="flex-1 flex flex-col min-h-0">
-        <div className="flex justify-between items-center p-6 sm:p-8 border-b dark:border-slate-700 shrink-0 bg-white dark:bg-slate-800/50">
+      {/* Main content area */}
+      <main className="flex flex-1 flex-col min-h-0"> {/* Ensure main can shrink */}
+        {/* Page Header Bar */}
+        <div className="flex justify-between items-center p-6 sm:p-8 border-b border-border shrink-0 bg-card">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100">{currentPageInfo.title}</h1>
-            <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400">{currentPageInfo.subtitle}</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{currentPageInfo.title}</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">{currentPageInfo.subtitle}</p>
           </div>
           <div className="flex items-center space-x-4 sm:space-x-6">
             <div className="relative cursor-pointer group">
-              <BellIcon className="text-slate-500 dark:text-slate-400 group-hover:text-primary dark:group-hover:text-blue-400 transition-colors" size={24} />
-              <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-semibold rounded-full w-4 h-4 flex items-center justify-center ring-2 ring-white dark:ring-slate-800">
+              <BellIcon className="text-muted-foreground group-hover:text-primary transition-colors" size={24} />
+              <span className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground text-[10px] font-semibold rounded-full w-4 h-4 flex items-center justify-center ring-2 ring-card">
                 3
               </span>
             </div>
           </div>
         </div>
-        <div className="flex-1 overflow-auto p-6 sm:p-8">
+        {/* Page Content */}
+        <div className="flex-1 min-h-0 p-6 sm:p-8 overflow-auto">
           {children}
         </div>
       </main>
     </div>
   );
 }
-
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return <AppLayoutContent>{children}</AppLayoutContent>;

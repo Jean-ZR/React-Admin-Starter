@@ -19,7 +19,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('');
-  const [displayName, setDisplayName] = useState(''); // Added display name state
+  const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { signup, user, loading: authLoading, isFirebaseConfigured } = useAuth();
@@ -99,23 +99,23 @@ export default function SignupPage() {
   };
 
    if (authLoading || (user && isFirebaseConfigured)) {
-     return <div className="flex h-screen items-center justify-center bg-slate-50">Cargando...</div>;
+     return <div className="flex h-screen items-center justify-center bg-background text-foreground">Cargando...</div>;
    }
 
   return (
-    <div className="flex flex-1 min-h-screen items-center justify-center bg-slate-100 p-4">
-      <Card className="w-full max-w-md bg-white border-slate-200 rounded-xl shadow-lg">
+    <div className="flex flex-1 min-h-screen items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md bg-card text-card-foreground border-border rounded-xl shadow-lg">
         <CardHeader className="text-center space-y-2 pt-8">
            <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-primary-foreground mb-3">
             <UserPlus size={32} />
           </div>
-          <CardTitle className="text-3xl font-bold text-slate-800">Crear Cuenta</CardTitle>
-          <CardDescription className="text-slate-500">Ingresa tus datos para registrarte.</CardDescription>
+          <CardTitle className="text-3xl font-bold text-foreground">Crear Cuenta</CardTitle>
+          <CardDescription className="text-muted-foreground">Ingresa tus datos para registrarte.</CardDescription>
         </CardHeader>
         <CardContent className="p-6 sm:p-8">
            {showConfigError && (
-              <Alert variant="destructive" className="mb-6">
-                <AlertTriangle className="h-4 w-4" />
+              <Alert variant="destructive" className="mb-6 bg-destructive/10 border-destructive/30 text-destructive">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
                 <AlertTitle>Error de Configuración</AlertTitle>
                 <AlertDescription>
                   El registro no está disponible debido a un problema de configuración. Contacta al soporte.
@@ -124,7 +124,7 @@ export default function SignupPage() {
             )}
           <form onSubmit={handleSignup} className="space-y-5">
             <div className="space-y-1.5">
-              <Label htmlFor="displayName" className="text-sm font-medium text-slate-700">Nombre Completo</Label>
+              <Label htmlFor="displayName" className="text-sm font-medium text-foreground">Nombre Completo</Label>
               <Input
                 id="displayName"
                 type="text"
@@ -133,11 +133,11 @@ export default function SignupPage() {
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 disabled={loading || showConfigError}
-                className="h-11 text-base border-slate-300 focus:border-primary focus:ring-primary"
+                className="h-11 text-base bg-background border-input text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary"
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-sm font-medium text-slate-700">Email</Label>
+              <Label htmlFor="email" className="text-sm font-medium text-foreground">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -146,11 +146,11 @@ export default function SignupPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading || showConfigError}
-                className="h-11 text-base border-slate-300 focus:border-primary focus:ring-primary"
+                className="h-11 text-base bg-background border-input text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary"
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-sm font-medium text-slate-700">Contraseña</Label>
+              <Label htmlFor="password" className="text-sm font-medium text-foreground">Contraseña</Label>
               <Input
                 id="password"
                 type="password"
@@ -159,14 +159,14 @@ export default function SignupPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading || showConfigError}
                 aria-describedby="password-hint"
-                className="h-11 text-base border-slate-300 focus:border-primary focus:ring-primary"
+                className="h-11 text-base bg-background border-input text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary"
               />
-               <p id="password-hint" className="text-xs text-slate-500">
+               <p id="password-hint" className="text-xs text-muted-foreground">
                  Mín. 8 caracteres, 1 mayúscula, 1 minúscula, 1 número.
                </p>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="confirmPassword" className="text-sm font-medium text-slate-700">Confirmar Contraseña</Label>
+              <Label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">Confirmar Contraseña</Label>
               <Input
                 id="confirmPassword"
                 type="password"
@@ -174,16 +174,16 @@ export default function SignupPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 disabled={loading || showConfigError}
-                className="h-11 text-base border-slate-300 focus:border-primary focus:ring-primary"
+                className="h-11 text-base bg-background border-input text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary"
               />
             </div>
             <div className="space-y-1.5">
-                <Label htmlFor="role" className="text-sm font-medium text-slate-700">Rol</Label>
+                <Label htmlFor="role" className="text-sm font-medium text-foreground">Rol</Label>
                 <Select onValueChange={setRole} value={role} required disabled={loading || showConfigError}>
-                    <SelectTrigger id="role" className="h-11 text-base border-slate-300 focus:border-primary focus:ring-primary">
+                    <SelectTrigger id="role" className="h-11 text-base bg-background border-input text-foreground focus:border-primary focus:ring-primary">
                         <SelectValue placeholder="Selecciona tu rol" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-popover text-popover-foreground">
                         <SelectItem value="admin">Administrador</SelectItem>
                         <SelectItem value="teacher">Profesor</SelectItem>
                         <SelectItem value="student">Estudiante</SelectItem>
@@ -191,13 +191,13 @@ export default function SignupPage() {
                 </Select>
             </div>
 
-            {error && <p className="text-sm text-red-600 text-center">{error}</p>}
-            <Button type="submit" className="w-full h-12 text-base font-semibold bg-primary hover:bg-primary/90" disabled={loading || showConfigError}>
+            {error && <p className="text-sm text-destructive text-center">{error}</p>}
+            <Button type="submit" className="w-full h-12 text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90" disabled={loading || showConfigError}>
               {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Registrarse'}
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="flex flex-col items-center text-sm text-slate-500 pb-8">
+        <CardFooter className="flex flex-col items-center text-sm text-muted-foreground pb-8">
              <p>¿Ya tienes una cuenta?</p>
              <Link href="/login" className={`text-primary hover:underline font-medium ${showConfigError ? 'pointer-events-none opacity-50' : ''}`}>
                  Inicia sesión aquí

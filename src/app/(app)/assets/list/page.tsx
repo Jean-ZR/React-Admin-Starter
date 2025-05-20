@@ -43,13 +43,14 @@ import {
   Timestamp,
   getDocs,
 } from 'firebase/firestore';
-import { exportToCSV, exportToPDF } from '@/lib/export'; // Assuming export functions are correctly set up
+import { exportToCSV, exportToPDF } from '@/lib/export'; 
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
 
 interface Asset extends AssetFormData {
   id: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
-  // Ensure cost, purchaseDate, warrantyEnd are compatible with Firestore Timestamps if stored as such
   cost?: number | null;
   purchaseDate?: Timestamp | Date | null;
   warrantyEnd?: Timestamp | Date | null;
@@ -140,22 +141,22 @@ export default function AssetListPage() {
       return () => unsubscribe();
     }, [fetchAssets]);
 
-    const handleAddAsset = () => {
+    const handleAddAsset = useCallback(() => {
         setEditingAsset(null);
         setIsModalOpen(true);
-    };
+    }, []);
 
-    const handleEditAsset = (asset: Asset) => {
+    const handleEditAsset = useCallback((asset: Asset) => {
         setEditingAsset(asset);
         setIsModalOpen(true);
-    };
+    }, []);
 
-    const handleDeleteClick = (asset: Asset) => {
+    const handleDeleteClick = useCallback((asset: Asset) => {
         setAssetToDelete(asset);
         setIsDeleteDialogOpen(true);
-    };
+    }, []);
 
-    const confirmDelete = async () => {
+    const confirmDelete = useCallback(async () => {
         if (assetToDelete) {
             try {
                 await deleteDoc(doc(db, 'assets', assetToDelete.id));
@@ -168,9 +169,9 @@ export default function AssetListPage() {
                 setAssetToDelete(null);
             }
         }
-    };
+    }, [assetToDelete, toast]);
 
-    const handleSaveAsset = async (formData: AssetFormData) => {
+    const handleSaveAsset = useCallback(async (formData: AssetFormData) => {
         try {
             const dataToSave = {
                 ...formData,
@@ -188,7 +189,8 @@ export default function AssetListPage() {
             } else {
                 await addDoc(collection(db, 'assets'), {
                    ...dataToSave,
-                   createdAt: serverTimestamp()
+                   createdAt: serverTimestamp(),
+                   updatedAt: serverTimestamp()
                 });
                 toast({ title: "Success", description: "Asset added successfully." });
             }
@@ -198,17 +200,17 @@ export default function AssetListPage() {
             console.error("Error saving asset:", error);
             toast({ title: "Error", description: "Could not save asset.", variant: "destructive" });
         }
-    };
+    }, [editingAsset, toast]);
 
-    const handleStatusFilterChange = (status: string) => {
+    const handleStatusFilterChange = useCallback((status: string) => {
         setStatusFilters(prevFilters =>
             prevFilters.includes(status)
                 ? prevFilters.filter(s => s !== status)
                 : [...prevFilters, status]
         );
-    };
+    }, []);
     
-    const handleExportCSV = () => {
+    const handleExportCSV = useCallback(() => {
         if (currentAssets.length === 0) {
             toast({ title: "No Data", description: "No assets to export.", variant: "default" });
             return;
@@ -218,9 +220,9 @@ export default function AssetListPage() {
             purchaseDate: rest.purchaseDate ? (rest.purchaseDate instanceof Date ? rest.purchaseDate.toLocaleDateString() : String(rest.purchaseDate)) : '',
             warrantyEnd: rest.warrantyEnd ? (rest.warrantyEnd instanceof Date ? rest.warrantyEnd.toLocaleDateString() : String(rest.warrantyEnd)) : '',
         })), 'asset_list');
-    };
+    }, [currentAssets, toast]);
 
-    const handleExportPDF = () => {
+    const handleExportPDF = useCallback(() => {
       if (currentAssets.length === 0) {
             toast({ title: "No Data", description: "No assets to export.", variant: "default" });
             return;
@@ -247,178 +249,181 @@ export default function AssetListPage() {
             title: 'Asset List',
             filename: 'asset_list.pdf',
         });
-    };
+    }, [currentAssets, toast]);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold leading-none tracking-tight">
-          Asset Inventory
-        </h1>
-        <div className="flex gap-2 items-center w-full sm:w-auto">
-           <div className="relative flex-1 sm:flex-initial">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search assets..."
-              className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px]"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 gap-1">
-                <ListFilter className="h-3.5 w-3.5" />
-                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                  Filter Status
-                </span>
+      {/* Filter and Action Buttons are now part of the CardHeader of the main Card */}
+      <Card className="shadow-sm">
+        <CardHeader className="border-b border-border">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <CardTitle>Asset Inventory</CardTitle>
+              <CardDescription>Manage and track all company assets.</CardDescription>
+            </div>
+            <div className="flex gap-2 items-center w-full sm:w-auto">
+              <div className="relative flex-1 sm:flex-initial">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search assets..."
+                  className="pl-8 sm:w-[200px] md:w-[200px] lg:w-[250px] bg-background"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 gap-1">
+                    <ListFilter className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                      Filter Status
+                    </span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-popover text-popover-foreground">
+                  <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {ALL_STATUSES.map(status => (
+                    <DropdownMenuCheckboxItem
+                      key={status}
+                      checked={statusFilters.includes(status)}
+                      onCheckedChange={() => handleStatusFilterChange(status)}
+                    >
+                      {status}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline" className="h-9 gap-1">
+                    <FileDown className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only">Export</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-popover text-popover-foreground">
+                  <DropdownMenuItem onClick={handleExportCSV}>Export as CSV</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportPDF}>Export as PDF</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button size="sm" className="h-9 gap-1" onClick={handleAddAsset}>
+                <PlusCircle className="h-3.5 w-3.5" />
+                <span className="sr-only sm:not-sr-only">Add Asset</span>
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {ALL_STATUSES.map(status => (
-                <DropdownMenuCheckboxItem
-                  key={status}
-                  checked={statusFilters.includes(status)}
-                  onCheckedChange={() => handleStatusFilterChange(status)}
-                >
-                  {status}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <DropdownMenu>
-             <DropdownMenuTrigger asChild>
-               <Button size="sm" variant="outline" className="h-9 gap-1">
-                 <FileDown className="h-3.5 w-3.5" />
-                 <span className="sr-only sm:not-sr-only">Export</span>
-               </Button>
-             </DropdownMenuTrigger>
-             <DropdownMenuContent align="end">
-               <DropdownMenuItem onClick={handleExportCSV}>Export as CSV</DropdownMenuItem>
-               <DropdownMenuItem onClick={handleExportPDF}>Export as PDF</DropdownMenuItem>
-             </DropdownMenuContent>
-           </DropdownMenu>
-          <Button size="sm" className="h-9 gap-1" onClick={handleAddAsset}>
-             <PlusCircle className="h-3.5 w-3.5" />
-             <span className="sr-only sm:not-sr-only">Add Asset</span>
-          </Button>
-        </div>
-      </div>
-
-      <div className="overflow-hidden rounded-lg border shadow-sm">
-        {isLoading ? (
-            <div className="flex justify-center items-center min-h-[200px]">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="ml-2">Loading assets...</p>
             </div>
-        ) : currentAssets.length === 0 && !searchTerm && statusFilters.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground">
-                No assets found. Click "Add Asset" to get started.
+          </div>
+        </CardHeader>
+        <CardContent className="p-0"> {/* Remove padding from CardContent if Table has its own */}
+            {isLoading ? (
+                <div className="flex justify-center items-center min-h-[300px]">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="ml-2 text-muted-foreground">Loading assets...</p>
+                </div>
+            ) : currentAssets.length === 0 && !searchTerm && statusFilters.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground">
+                    No assets found. Click "Add Asset" to get started.
+                </div>
+            ): currentAssets.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground">
+                    No assets found matching your criteria.
+                </div>
+            ) : (
+            <div className="overflow-x-auto">
+                <Table>
+                    <TableCaption className="py-4">A list of your company assets. {currentAssets.length} asset(s) found.</TableCaption>
+                    <TableHeader>
+                    <TableRow>
+                        <TableHead className="hidden w-[80px] sm:table-cell">
+                        <span className="sr-only">Image</span>
+                        </TableHead>
+                        <TableHead className="w-[100px]">Asset ID</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Assigned To</TableHead>
+                        <TableHead>Purchase Date</TableHead>
+                        <TableHead><span className="sr-only">Actions</span></TableHead>
+                    </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                    {currentAssets.map((asset) => (
+                        <TableRow key={asset.id} className="hover:bg-muted/50">
+                        <TableCell className="hidden sm:table-cell">
+                            <Image
+                                alt={asset.name || "Asset image"}
+                                className="aspect-square rounded-md object-cover"
+                                height="40"
+                                src={asset.image || `https://placehold.co/40x40.png`}
+                                width="40"
+                                data-ai-hint={asset.dataAiHint || 'asset'}
+                                onError={(e) => e.currentTarget.src = `https://placehold.co/40x40.png`}
+                            />
+                            </TableCell>
+                        <TableCell className="font-medium text-xs text-muted-foreground">{asset.id}</TableCell>
+                        <TableCell className="text-foreground">{asset.name}</TableCell>
+                        <TableCell className="text-muted-foreground">{asset.category}</TableCell>
+                        <TableCell>
+                            <Badge variant={asset.status === 'Active' ? 'default' : asset.status === 'In Repair' ? 'secondary' : 'outline'}
+                                className={
+                                    asset.status === 'Active' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                                    asset.status === 'In Repair' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                                    asset.status === 'Maintenance' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
+                                    'text-muted-foreground'
+                                }>
+                            {asset.status}
+                            </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{asset.location || 'N/A'}</TableCell>
+                        <TableCell className="text-muted-foreground">{asset.assignedTo || 'N/A'}</TableCell>
+                        <TableCell className="text-muted-foreground">{asset.purchaseDate ? (asset.purchaseDate instanceof Date ? asset.purchaseDate.toLocaleDateString() : String(asset.purchaseDate)) : 'N/A'}</TableCell>
+                        <TableCell>
+                            <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button aria-haspopup="true" size="icon" variant="ghost">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Toggle menu</span>
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="bg-popover text-popover-foreground">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => handleEditAsset(asset)}>Edit</DropdownMenuItem>
+                                <DropdownMenuItem>View Details</DropdownMenuItem>
+                                <DropdownMenuItem>Assign</DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                                onClick={() => handleDeleteClick(asset)}
+                                >
+                                    Delete
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                            </DropdownMenu>
+                        </TableCell>
+                        </TableRow>
+                    ))}
+                    </TableBody>
+                </Table>
             </div>
-        ): currentAssets.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground">
-                No assets found matching your criteria.
-            </div>
-        ) : (
-        <Table>
-            <TableCaption>A list of your company assets. {currentAssets.length} asset(s) found.</TableCaption>
-            <TableHeader>
-            <TableRow>
-                 <TableHead className="hidden w-[80px] sm:table-cell">
-                  <span className="sr-only">Image</span>
-                </TableHead>
-                <TableHead className="w-[100px]">Asset ID</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Assigned To</TableHead>
-                <TableHead>Purchase Date</TableHead>
-                <TableHead><span className="sr-only">Actions</span></TableHead>
-            </TableRow>
-            </TableHeader>
-            <TableBody>
-            {currentAssets.map((asset) => (
-                <TableRow key={asset.id}>
-                 <TableCell className="hidden sm:table-cell">
-                      <Image
-                        alt={asset.name || "Asset image"}
-                        className="aspect-square rounded-md object-cover"
-                        height="40"
-                        src={asset.image || `https://placehold.co/40x40.png`}
-                        width="40"
-                        data-ai-hint={asset.dataAiHint || 'asset'}
-                        onError={(e) => e.currentTarget.src = `https://placehold.co/40x40.png`}
-                      />
-                    </TableCell>
-                <TableCell className="font-medium text-xs">{asset.id}</TableCell>
-                <TableCell>{asset.name}</TableCell>
-                <TableCell>{asset.category}</TableCell>
-                <TableCell>
-                    <Badge variant={asset.status === 'Active' ? 'default' : asset.status === 'In Repair' ? 'secondary' : 'outline'}
-                        className={
-                            asset.status === 'Active' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
-                            asset.status === 'In Repair' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
-                            asset.status === 'Maintenance' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
-                            'text-muted-foreground'
-                        }>
-                    {asset.status}
-                    </Badge>
-                </TableCell>
-                <TableCell>{asset.location || 'N/A'}</TableCell>
-                <TableCell>{asset.assignedTo || 'N/A'}</TableCell>
-                <TableCell>{asset.purchaseDate ? (asset.purchaseDate instanceof Date ? asset.purchaseDate.toLocaleDateString() : String(asset.purchaseDate)) : 'N/A'}</TableCell>
-                 <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button aria-haspopup="true" size="icon" variant="ghost">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => handleEditAsset(asset)}>Edit</DropdownMenuItem>
-                        <DropdownMenuItem>View Details</DropdownMenuItem>
-                         <DropdownMenuItem>Assign</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                           className="text-destructive"
-                           onClick={() => handleDeleteClick(asset)}
-                        >
-                            Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-            ))}
-            </TableBody>
-        </Table>
-        )}
-      </div>
+            )}
+        </CardContent>
+      </Card>
 
-      <p className="text-sm text-muted-foreground">
-        Full inventory list with filtering, sorting, and search capabilities. Audit logs and role-based access are applied.
-      </p>
+      <AssetFormModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSubmit={handleSaveAsset}
+          assetData={editingAsset}
+          availableCategories={availableCategories}
+      />
 
-        <AssetFormModal
-            isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
-            onSubmit={handleSaveAsset}
-            assetData={editingAsset}
-            availableCategories={availableCategories}
-        />
-
-        <DeleteConfirmationDialog
-            isOpen={isDeleteDialogOpen}
-            onClose={() => setIsDeleteDialogOpen(false)}
-            onConfirm={confirmDelete}
-            itemName={assetToDelete?.name || 'this asset'}
-        />
+      <DeleteConfirmationDialog
+          isOpen={isDeleteDialogOpen}
+          onClose={() => setIsDeleteDialogOpen(false)}
+          onConfirm={confirmDelete}
+          itemName={assetToDelete?.name || 'this asset'}
+      />
     </div>
   );
 }

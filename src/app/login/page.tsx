@@ -70,23 +70,23 @@ export default function LoginPage() {
   };
 
    if (authLoading || (user && isFirebaseConfigured)) {
-       return <div className="flex h-screen items-center justify-center bg-slate-50">Cargando...</div>;
+       return <div className="flex h-screen items-center justify-center bg-background text-foreground">Cargando...</div>;
    }
 
   return (
-    <div className="flex flex-1 min-h-screen items-center justify-center bg-slate-100 p-4">
-      <Card className="w-full max-w-md bg-white border-slate-200 rounded-xl shadow-lg">
+    <div className="flex flex-1 min-h-screen items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md bg-card text-card-foreground border-border rounded-xl shadow-lg">
         <CardHeader className="text-center space-y-2 pt-8">
            <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-primary-foreground mb-3">
             <Truck size={32} />
           </div>
-          <CardTitle className="text-3xl font-bold text-slate-800">Bienvenido</CardTitle>
-          <CardDescription className="text-slate-500">Ingresa tus credenciales para acceder al sistema.</CardDescription>
+          <CardTitle className="text-3xl font-bold text-foreground">Bienvenido</CardTitle>
+          <CardDescription className="text-muted-foreground">Ingresa tus credenciales para acceder al sistema.</CardDescription>
         </CardHeader>
         <CardContent className="p-6 sm:p-8">
            {showConfigError && (
-              <Alert variant="destructive" className="mb-6">
-                <AlertTriangle className="h-4 w-4" />
+              <Alert variant="destructive" className="mb-6 bg-destructive/10 border-destructive/30 text-destructive">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
                 <AlertTitle>Error de Configuración</AlertTitle>
                 <AlertDescription>
                   El inicio de sesión no está disponible debido a un problema de configuración. Contacta al soporte.
@@ -95,7 +95,7 @@ export default function LoginPage() {
             )}
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-sm font-medium text-slate-700">Email</Label>
+              <Label htmlFor="email" className="text-sm font-medium text-foreground">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -104,12 +104,12 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading || showConfigError}
-                className="h-12 text-base border-slate-300 focus:border-primary focus:ring-primary"
+                className="h-12 text-base bg-background border-input text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary"
               />
             </div>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                 <Label htmlFor="password" className="text-sm font-medium text-slate-700">Contraseña</Label>
+                 <Label htmlFor="password" className="text-sm font-medium text-foreground">Contraseña</Label>
                  <Link href="/forgot-password" className={`text-sm text-primary hover:underline ${showConfigError ? 'pointer-events-none opacity-50' : ''}`}>
                     ¿Olvidaste tu contraseña?
                  </Link>
@@ -121,16 +121,16 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading || showConfigError}
-                className="h-12 text-base border-slate-300 focus:border-primary focus:ring-primary"
+                className="h-12 text-base bg-background border-input text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary"
               />
             </div>
-            {error && <p className="text-sm text-red-600 text-center">{error}</p>}
-            <Button type="submit" className="w-full h-12 text-base font-semibold bg-primary hover:bg-primary/90" disabled={loading || showConfigError}>
+            {error && <p className="text-sm text-destructive text-center">{error}</p>}
+            <Button type="submit" className="w-full h-12 text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90" disabled={loading || showConfigError}>
                {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Iniciar Sesión'}
             </Button>
           </form>
         </CardContent>
-         <CardFooter className="flex flex-col items-center text-sm text-slate-500 pb-8">
+         <CardFooter className="flex flex-col items-center text-sm text-muted-foreground pb-8">
             <p>¿No tienes una cuenta?</p>
             <Link href="/signup" className={`text-primary hover:underline font-medium ${showConfigError ? 'pointer-events-none opacity-50' : ''}`}>
                  Regístrate aquí

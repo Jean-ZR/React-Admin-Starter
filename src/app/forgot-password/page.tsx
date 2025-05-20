@@ -67,23 +67,23 @@ export default function ForgotPasswordPage() {
   };
 
    if (authLoading || (user && isFirebaseConfigured)) {
-     return <div className="flex h-screen items-center justify-center bg-slate-50">Cargando...</div>;
+     return <div className="flex h-screen items-center justify-center bg-background text-foreground">Cargando...</div>;
    }
 
   return (
-    <div className="flex min-h-screen flex-1 items-center justify-center bg-slate-100 p-4">
-      <Card className="w-full max-w-md bg-white border-slate-200 rounded-xl shadow-lg">
+    <div className="flex min-h-screen flex-1 items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md bg-card text-card-foreground border-border rounded-xl shadow-lg">
         <CardHeader className="text-center space-y-2 pt-8">
            <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-primary-foreground mb-3">
             <KeyRound size={32} />
           </div>
-          <CardTitle className="text-3xl font-bold text-slate-800">Recuperar Contraseña</CardTitle>
-          <CardDescription className="text-slate-500">Ingresa tu email para recibir instrucciones.</CardDescription>
+          <CardTitle className="text-3xl font-bold text-foreground">Recuperar Contraseña</CardTitle>
+          <CardDescription className="text-muted-foreground">Ingresa tu email para recibir instrucciones.</CardDescription>
         </CardHeader>
         <CardContent className="p-6 sm:p-8">
             {showConfigError && (
-              <Alert variant="destructive" className="mb-6">
-                <AlertTriangle className="h-4 w-4" />
+              <Alert variant="destructive" className="mb-6 bg-destructive/10 border-destructive/30 text-destructive">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
                 <AlertTitle>Error de Configuración</AlertTitle>
                 <AlertDescription>
                   La recuperación de contraseña no está disponible. Contacta al soporte.
@@ -92,7 +92,7 @@ export default function ForgotPasswordPage() {
             )}
           <form onSubmit={handleResetPassword} className="space-y-6">
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-sm font-medium text-slate-700">Email</Label>
+              <Label htmlFor="email" className="text-sm font-medium text-foreground">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -101,12 +101,12 @@ export default function ForgotPasswordPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading || showConfigError}
-                className="h-12 text-base border-slate-300 focus:border-primary focus:ring-primary"
+                className="h-12 text-base bg-background border-input text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary"
               />
             </div>
             {message && <p className="text-sm text-green-600 text-center">{message}</p>}
-            {error && <p className="text-sm text-red-600 text-center">{error}</p>}
-            <Button type="submit" className="w-full h-12 text-base font-semibold bg-primary hover:bg-primary/90" disabled={loading || showConfigError}>
+            {error && <p className="text-sm text-destructive text-center">{error}</p>}
+            <Button type="submit" className="w-full h-12 text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90" disabled={loading || showConfigError}>
                {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Enviar Email de Recuperación'}
             </Button>
           </form>

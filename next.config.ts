@@ -23,6 +23,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'http',
+        hostname: 'codeskulptor-demos.commondatastorage.googleapis.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
 };

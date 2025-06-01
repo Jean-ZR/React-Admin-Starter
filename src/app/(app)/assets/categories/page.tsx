@@ -31,17 +31,19 @@ import {
   orderBy,
   Timestamp,
   getCountFromServer,
-  where, // Added where import
+  where, 
 } from 'firebase/firestore';
+// Removed Tabs import as navigation is now in sidebar for Assets
 
 interface Category extends CategoryFormData {
   id: string;
-  assetCount?: number; // This will be fetched separately or managed via backend triggers
+  assetCount?: number; 
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }
 
 export default function AssetCategoriesPage() {
+  // Removed usePathname
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -50,7 +52,6 @@ export default function AssetCategoriesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  // Fetch asset count for a specific category (example, can be performance intensive on client)
   const fetchAssetCount = useCallback(async (categoryName: string): Promise<number> => {
     try {
       const assetsCollectionRef = collection(db, 'assets');
@@ -59,7 +60,7 @@ export default function AssetCategoriesPage() {
       return snapshot.data().count;
     } catch (error) {
       console.error(`Error fetching asset count for ${categoryName}:`, error);
-      return 0; // Return 0 on error
+      return 0; 
     }
   }, []);
 
@@ -73,12 +74,10 @@ export default function AssetCategoriesPage() {
       const categoriesDataPromises = snapshot.docs.map(async (docSnapshot) => {
         const data = docSnapshot.data();
         const categoryName = data.name;
-        // Fetch asset count for each category.
-        // For many categories, this could be slow. Consider denormalization or cloud functions.
         const assetCount = await fetchAssetCount(categoryName);
         return {
           id: docSnapshot.id,
-          assetCount, // Store the fetched count
+          assetCount, 
           ...data,
         } as Category;
       });
@@ -118,7 +117,6 @@ export default function AssetCategoriesPage() {
 
   const confirmDeleteCategory = async () => {
       if (categoryToDelete) {
-          // Check if category is in use (optional, based on requirements)
           const assetsInUse = await fetchAssetCount(categoryToDelete.name);
           if (assetsInUse > 0) {
               toast({
@@ -168,62 +166,63 @@ export default function AssetCategoriesPage() {
 
   return (
     <div className="space-y-6">
+       {/* Removed Tabs navigation */}
        <div className="flex items-center justify-between">
-         <h1 className="text-2xl font-semibold leading-none tracking-tight">
-           Asset Categories
+         <h1 className="text-2xl font-semibold leading-none tracking-tight text-foreground">
+           Categorías de Activos
          </h1>
-         <Button size="sm" onClick={handleAddCategory} className="gap-1">
-            <PlusCircle className="h-3.5 w-3.5"/> Add Category
+         <Button size="sm" onClick={handleAddCategory} className="gap-1 bg-primary text-primary-foreground hover:bg-primary/90">
+            <PlusCircle className="h-3.5 w-3.5"/> Añadir Categoría
         </Button>
        </div>
 
-      <Card>
+      <Card className="bg-card text-card-foreground border-border">
         <CardHeader>
-          <CardTitle>Manage Categories</CardTitle>
-          <CardDescription>Organize your assets into logical groups.</CardDescription>
+          <CardTitle className="text-foreground">Gestionar Categorías</CardTitle>
+          <CardDescription className="text-muted-foreground">Organiza tus activos en grupos lógicos.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
              <div className="flex justify-center items-center min-h-[150px]">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="ml-2">Loading categories...</p>
+                <p className="ml-2 text-muted-foreground">Cargando categorías...</p>
             </div>
           ) : currentCategories.length === 0 ? (
              <div className="text-center py-10 text-muted-foreground">
-                No asset categories found. Click "Add Category" to create one.
+                No se encontraron categorías de activos. Haz clic en "Añadir Categoría" para crear una.
               </div>
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Category Name</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="text-center">Asset Count</TableHead>
-                  <TableHead><span className="sr-only">Actions</span></TableHead>
+                <TableRow className="border-border">
+                  <TableHead className="text-muted-foreground">Nombre Categoría</TableHead>
+                  <TableHead className="text-muted-foreground">Descripción</TableHead>
+                  <TableHead className="text-center text-muted-foreground">Nº Activos</TableHead>
+                  <TableHead><span className="sr-only">Acciones</span></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {currentCategories.map((category) => (
-                  <TableRow key={category.id}>
-                    <TableCell className="font-medium">{category.name}</TableCell>
+                  <TableRow key={category.id} className="border-border hover:bg-muted/50">
+                    <TableCell className="font-medium text-foreground">{category.name}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{category.description || 'N/A'}</TableCell>
                     <TableCell className="text-center">
-                      <Badge variant="outline">{category.assetCount ?? 'N/A'}</Badge>
+                      <Badge variant="outline" className="border-border text-muted-foreground">{category.assetCount ?? 'N/A'}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button aria-haspopup="true" size="icon" variant="ghost">
+                          <Button aria-haspopup="true" size="icon" variant="ghost" className="text-muted-foreground hover:text-foreground hover:bg-accent">
                             <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
+                            <span className="sr-only">Alternar menú</span>
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => handleEditCategory(category)}>Edit</DropdownMenuItem>
-                          <DropdownMenuSeparator/>
-                          <DropdownMenuItem onClick={() => handleDeleteClick(category)} className="text-destructive">
-                            Delete
+                        <DropdownMenuContent align="end" className="bg-popover text-popover-foreground border-border">
+                          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => handleEditCategory(category)} className="hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">Editar</DropdownMenuItem>
+                          <DropdownMenuSeparator className="bg-border"/>
+                          <DropdownMenuItem onClick={() => handleDeleteClick(category)} className="text-destructive focus:bg-destructive/10 focus:text-destructive hover:!bg-destructive/10 hover:!text-destructive">
+                            Eliminar
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -236,13 +235,13 @@ export default function AssetCategoriesPage() {
         </CardContent>
          <CardFooter>
           <div className="text-xs text-muted-foreground">
-            Showing <strong>{currentCategories.length}</strong> categor{currentCategories.length === 1 ? 'y' : 'ies'}
+            Mostrando <strong>{currentCategories.length}</strong> categor{currentCategories.length === 1 ? 'ía' : 'ías'}
           </div>
         </CardFooter>
       </Card>
 
       <p className="text-sm text-muted-foreground">
-        Organize and manage asset classifications. Audit logs and role-based access are applied.
+        Organiza y gestiona las clasificaciones de activos. Se aplican registros de auditoría y acceso basado en roles.
       </p>
 
       <CategoryFormModal
@@ -255,8 +254,10 @@ export default function AssetCategoriesPage() {
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={confirmDeleteCategory}
-        itemName={categoryToDelete?.name || 'this category'}
+        itemName={categoryToDelete?.name || 'esta categoría'}
       />
     </div>
   );
 }
+
+    

@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ListFilter, Search, MoreHorizontal, PlusCircle, FileDown, Loader2, Eye } from "lucide-react"; // Added Eye
+import { ListFilter, Search, MoreHorizontal, PlusCircle, FileDown, Loader2, Eye } from "lucide-react"; 
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -26,7 +26,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import { AssetFormModal, type AssetFormData } from '@/components/assets/asset-form-modal';
-import { AssetDetailModal } from '@/components/assets/asset-detail-modal'; // Import new modal
+import { AssetDetailModal } from '@/components/assets/asset-detail-modal'; 
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
 import { useToast } from "@/hooks/use-toast";
 import { db } from '@/lib/firebase/config';
@@ -46,9 +46,7 @@ import {
 } from 'firebase/firestore';
 import { exportToCSV, exportToPDF } from '@/lib/export'; 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { usePathname } from 'next/navigation';
-import Link from 'next/link';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+// Removed Tabs import as navigation is now in sidebar for Assets
 
 
 interface Asset extends AssetFormData {
@@ -68,14 +66,14 @@ interface Category {
 const ALL_STATUSES = ["Active", "Inactive", "In Repair", "Disposed", "Maintenance"];
 
 export default function AssetListPage() {
-    const pathname = usePathname();
+    // Removed usePathname and Tabs-related logic
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
     
-    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false); // State for detail modal
-    const [assetForDetail, setAssetForDetail] = useState<Asset | null>(null); // State for asset to show in detail modal
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false); 
+    const [assetForDetail, setAssetForDetail] = useState<Asset | null>(null); 
 
     const [currentAssets, setCurrentAssets] = useState<Asset[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -89,7 +87,7 @@ export default function AssetListPage() {
         const categoriesCollectionRef = collection(db, 'assetCategories');
         const q = query(categoriesCollectionRef, orderBy('name'));
         const snapshot = await getDocs(q);
-        const categoriesData = snapshot.docs.map(docSnapshot => ({ // Corrected doc to docSnapshot
+        const categoriesData = snapshot.docs.map(docSnapshot => ({ 
           id: docSnapshot.id,
           name: docSnapshot.data().name,
         } as Category));
@@ -267,33 +265,21 @@ export default function AssetListPage() {
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue={pathname} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 bg-card border-b-0 mb-4 rounded-lg">
-          <TabsTrigger value="/assets/list" asChild className="data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-sm hover:bg-muted/50">
-            <Link href="/assets/list">Asset List</Link>
-          </TabsTrigger>
-          <TabsTrigger value="/assets/categories" asChild className="data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-sm hover:bg-muted/50">
-            <Link href="/assets/categories">Categories</Link>
-          </TabsTrigger>
-          <TabsTrigger value="/assets/reports" asChild className="data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-sm hover:bg-muted/50">
-            <Link href="/assets/reports">Reports</Link>
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      {/* Removed Tabs navigation for Assets */}
 
       <Card className="shadow-sm border border-border bg-card text-card-foreground">
         <CardHeader className="border-b border-border">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
-              <CardTitle className="text-foreground">Asset Inventory</CardTitle>
-              <CardDescription className="text-muted-foreground">Manage and track all company assets.</CardDescription>
+              <CardTitle className="text-foreground">Inventario de Activos</CardTitle>
+              <CardDescription className="text-muted-foreground">Gestiona y rastrea todos los activos de la empresa.</CardDescription>
             </div>
             <div className="flex gap-2 items-center w-full sm:w-auto">
               <div className="relative flex-1 sm:flex-initial">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="search"
-                  placeholder="Search assets..."
+                  placeholder="Buscar activos..."
                   className="pl-8 sm:w-[200px] md:w-[200px] lg:w-[250px] bg-background border-input text-foreground placeholder:text-muted-foreground"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -304,12 +290,12 @@ export default function AssetListPage() {
                   <Button variant="outline" size="sm" className="h-9 gap-1 text-muted-foreground hover:text-foreground border-input hover:bg-accent">
                     <ListFilter className="h-3.5 w-3.5" />
                     <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                      Filter Status
+                      Filtrar Estado
                     </span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-popover text-popover-foreground border-border">
-                  <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+                  <DropdownMenuLabel>Filtrar por Estado</DropdownMenuLabel>
                   <DropdownMenuSeparator className="bg-border"/>
                   {ALL_STATUSES.map(status => (
                     <DropdownMenuCheckboxItem
@@ -327,17 +313,17 @@ export default function AssetListPage() {
                 <DropdownMenuTrigger asChild>
                   <Button size="sm" variant="outline" className="h-9 gap-1 text-muted-foreground hover:text-foreground border-input hover:bg-accent">
                     <FileDown className="h-3.5 w-3.5" />
-                    <span className="sr-only sm:not-sr-only">Export</span>
+                    <span className="sr-only sm:not-sr-only">Exportar</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-popover text-popover-foreground border-border">
-                  <DropdownMenuItem onClick={handleExportCSV} className="hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">Export as CSV</DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleExportPDF} className="hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">Export as PDF</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportCSV} className="hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">Exportar como CSV</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportPDF} className="hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">Exportar como PDF</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               <Button size="sm" className="h-9 gap-1 bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleAddAsset}>
                 <PlusCircle className="h-3.5 w-3.5" />
-                <span className="sr-only sm:not-sr-only">Add Asset</span>
+                <span className="sr-only sm:not-sr-only">Añadir Activo</span>
               </Button>
             </div>
           </div>
@@ -346,33 +332,33 @@ export default function AssetListPage() {
             {isLoading ? (
                 <div className="flex justify-center items-center min-h-[300px]">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <p className="ml-2 text-muted-foreground">Loading assets...</p>
+                    <p className="ml-2 text-muted-foreground">Cargando activos...</p>
                 </div>
             ) : currentAssets.length === 0 && !searchTerm && statusFilters.length === 0 ? (
                 <div className="text-center py-10 text-muted-foreground">
-                    No assets found. Click "Add Asset" to get started.
+                    No se encontraron activos. Haz clic en "Añadir Activo" para empezar.
                 </div>
             ): currentAssets.length === 0 ? (
                 <div className="text-center py-10 text-muted-foreground">
-                    No assets found matching your criteria.
+                    No se encontraron activos que coincidan con tus criterios.
                 </div>
             ) : (
             <div className="overflow-x-auto">
                 <Table>
-                    <TableCaption className="py-4 text-muted-foreground">A list of your company assets. {currentAssets.length} asset(s) found.</TableCaption>
+                    <TableCaption className="py-4 text-muted-foreground">Una lista de los activos de tu empresa. {currentAssets.length} activo(s) encontrado(s).</TableCaption>
                     <TableHeader>
                     <TableRow className="border-border">
                         <TableHead className="hidden w-[80px] sm:table-cell">
-                        <span className="sr-only">Image</span>
+                        <span className="sr-only">Imagen</span>
                         </TableHead>
-                        <TableHead className="w-[130px] text-muted-foreground">Asset ID</TableHead>
-                        <TableHead className="text-muted-foreground">Name</TableHead>
-                        <TableHead className="text-muted-foreground">Category</TableHead>
-                        <TableHead className="text-muted-foreground">Status</TableHead>
-                        <TableHead className="text-muted-foreground">Location</TableHead>
-                        <TableHead className="text-muted-foreground">Assigned To</TableHead>
-                        <TableHead className="text-muted-foreground">Purchase Date</TableHead>
-                        <TableHead><span className="sr-only">Actions</span></TableHead>
+                        <TableHead className="w-[130px] text-muted-foreground">ID Activo</TableHead>
+                        <TableHead className="text-muted-foreground">Nombre</TableHead>
+                        <TableHead className="text-muted-foreground">Categoría</TableHead>
+                        <TableHead className="text-muted-foreground">Estado</TableHead>
+                        <TableHead className="text-muted-foreground">Ubicación</TableHead>
+                        <TableHead className="text-muted-foreground">Asignado A</TableHead>
+                        <TableHead className="text-muted-foreground">Fecha Compra</TableHead>
+                        <TableHead><span className="sr-only">Acciones</span></TableHead>
                     </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -412,22 +398,22 @@ export default function AssetListPage() {
                             <DropdownMenuTrigger asChild>
                                 <Button aria-haspopup="true" size="icon" variant="ghost" className="text-muted-foreground hover:text-foreground hover:bg-accent">
                                 <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Toggle menu</span>
+                                <span className="sr-only">Alternar menú</span>
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="bg-popover text-popover-foreground border-border">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                                 <DropdownMenuItem onClick={() => handleViewDetails(asset)} className="hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">
-                                  <Eye className="mr-2 h-4 w-4" /> View Details
+                                  <Eye className="mr-2 h-4 w-4" /> Ver Detalles
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleEditAsset(asset)} className="hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">Edit</DropdownMenuItem>
-                                <DropdownMenuItem className="hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">Assign</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEditAsset(asset)} className="hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">Editar</DropdownMenuItem>
+                                <DropdownMenuItem className="hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">Asignar</DropdownMenuItem>
                                 <DropdownMenuSeparator className="bg-border" />
                                 <DropdownMenuItem
                                 className="text-destructive focus:bg-destructive/10 focus:text-destructive hover:!bg-destructive/10 hover:!text-destructive"
                                 onClick={() => handleDeleteClick(asset)}
                                 >
-                                    Delete
+                                    Eliminar
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                             </DropdownMenu>
@@ -459,8 +445,10 @@ export default function AssetListPage() {
           isOpen={isDeleteDialogOpen}
           onClose={() => setIsDeleteDialogOpen(false)}
           onConfirm={confirmDelete}
-          itemName={assetToDelete?.name || 'this asset'}
+          itemName={assetToDelete?.name || 'este activo'}
       />
     </div>
   );
 }
+
+    

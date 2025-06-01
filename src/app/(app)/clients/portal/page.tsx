@@ -1,82 +1,104 @@
+
+'use client';
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Ticket, MessageSquare, FileText } from "lucide-react";
+import Link from 'next/link';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { usePathname } from 'next/navigation';
 
 export default function ClientPortalPage() {
+  const pathname = usePathname();
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold leading-none tracking-tight">
-        Client Portal
-      </h1>
-      <p className="text-muted-foreground">Interface for client interactions and service requests.</p>
+      <Tabs defaultValue={pathname} className="w-full">
+        <TabsList className="grid w-full grid-cols-3 bg-card border-b-0 mb-4 rounded-lg">
+          <TabsTrigger value="/clients/directory" asChild className="data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-sm hover:bg-muted/50">
+            <Link href="/clients/directory">Directorio</Link>
+          </TabsTrigger>
+          <TabsTrigger value="/clients/portal" asChild className="data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-sm hover:bg-muted/50">
+            <Link href="/clients/portal">Portal</Link>
+          </TabsTrigger>
+          <TabsTrigger value="/clients/history" asChild className="data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-sm hover:bg-muted/50">
+            <Link href="/clients/history">Historial</Link>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
-       <Card>
+      <h1 className="text-2xl font-semibold leading-none tracking-tight text-foreground">
+        Portal del Cliente
+      </h1>
+      <p className="text-muted-foreground">Interfaz para interacciones con el cliente y solicitudes de servicio.</p>
+
+       <Card className="bg-card text-card-foreground border-border">
          <CardHeader>
-           <CardTitle>Welcome, Client Name!</CardTitle> {/* Dynamically set */}
-           <CardDescription>Access your services and support requests here.</CardDescription>
+           <CardTitle className="text-foreground">¡Bienvenido, Nombre del Cliente!</CardTitle> {/* Dynamically set */}
+           <CardDescription className="text-muted-foreground">Accede a tus servicios y solicitudes de soporte aquí.</CardDescription>
          </CardHeader>
          <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="flex flex-col items-center justify-center p-6 text-center">
+            <Card className="flex flex-col items-center justify-center p-6 text-center bg-background border-border">
                 <Ticket className="h-12 w-12 mb-4 text-primary" />
-                <h3 className="text-lg font-semibold mb-2">Submit New Request</h3>
-                <p className="text-sm text-muted-foreground mb-4">Need assistance? Open a new service ticket.</p>
-                <Button size="sm">Create Ticket</Button>
+                <h3 className="text-lg font-semibold mb-2 text-foreground">Enviar Nueva Solicitud</h3>
+                <p className="text-sm text-muted-foreground mb-4">¿Necesitas ayuda? Abre un nuevo ticket de servicio.</p>
+                <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">Crear Ticket</Button>
             </Card>
-             <Card className="flex flex-col items-center justify-center p-6 text-center">
+             <Card className="flex flex-col items-center justify-center p-6 text-center bg-background border-border">
                 <MessageSquare className="h-12 w-12 mb-4 text-primary" />
-                <h3 className="text-lg font-semibold mb-2">View Open Tickets</h3>
-                <p className="text-sm text-muted-foreground mb-4">Check the status of your ongoing requests.</p>
-                 <Button size="sm" variant="outline">View Tickets</Button>
+                <h3 className="text-lg font-semibold mb-2 text-foreground">Ver Tickets Abiertos</h3>
+                <p className="text-sm text-muted-foreground mb-4">Consulta el estado de tus solicitudes en curso.</p>
+                 <Button size="sm" variant="outline" className="border-input hover:bg-accent hover:text-accent-foreground">Ver Tickets</Button>
              </Card>
-              <Card className="flex flex-col items-center justify-center p-6 text-center">
+              <Card className="flex flex-col items-center justify-center p-6 text-center bg-background border-border">
                 <FileText className="h-12 w-12 mb-4 text-primary" />
-                <h3 className="text-lg font-semibold mb-2">Knowledge Base</h3>
-                <p className="text-sm text-muted-foreground mb-4">Find answers and guides in our help center.</p>
-                <Button size="sm" variant="outline">Browse Articles</Button>
+                <h3 className="text-lg font-semibold mb-2 text-foreground">Base de Conocimiento</h3>
+                <p className="text-sm text-muted-foreground mb-4">Encuentra respuestas y guías en nuestro centro de ayuda.</p>
+                <Button size="sm" variant="outline" className="border-input hover:bg-accent hover:text-accent-foreground">Explorar Artículos</Button>
               </Card>
          </CardContent>
        </Card>
 
-      {/* Example: Simplified New Service Request Form */}
-      <Card>
+      <Card className="bg-card text-card-foreground border-border">
         <CardHeader>
-          <CardTitle>Submit a Service Request</CardTitle>
+          <CardTitle className="text-foreground">Enviar una Solicitud de Servicio</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
            <div className="grid gap-2">
-              <label htmlFor="request-type" className="text-sm font-medium">Request Type</label>
+              <label htmlFor="request-type" className="text-sm font-medium text-muted-foreground">Tipo de Solicitud</label>
              <Select>
-              <SelectTrigger id="request-type">
-                <SelectValue placeholder="Select service type" />
+              <SelectTrigger id="request-type" className="bg-background border-input text-foreground">
+                <SelectValue placeholder="Seleccionar tipo de servicio" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="support">Technical Support</SelectItem>
-                <SelectItem value="billing">Billing Inquiry</SelectItem>
-                <SelectItem value="maintenance">Maintenance Request</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
+              <SelectContent className="bg-popover text-popover-foreground border-border">
+                <SelectItem value="support">Soporte Técnico</SelectItem>
+                <SelectItem value="billing">Consulta de Facturación</SelectItem>
+                <SelectItem value="maintenance">Solicitud de Mantenimiento</SelectItem>
+                <SelectItem value="other">Otro</SelectItem>
               </SelectContent>
             </Select>
            </div>
            <div className="grid gap-2">
-             <label htmlFor="subject" className="text-sm font-medium">Subject</label>
-             <Input id="subject" placeholder="Briefly describe the issue" />
+             <label htmlFor="subject" className="text-sm font-medium text-muted-foreground">Asunto</label>
+             <Input id="subject" placeholder="Describe brevemente el problema" className="bg-background border-input text-foreground placeholder:text-muted-foreground"/>
            </div>
           <div className="grid gap-2">
-            <label htmlFor="description" className="text-sm font-medium">Description</label>
-            <Textarea id="description" placeholder="Provide details about your request" rows={5} />
+            <label htmlFor="description" className="text-sm font-medium text-muted-foreground">Descripción</label>
+            <Textarea id="description" placeholder="Proporciona detalles sobre tu solicitud" rows={5} className="bg-background border-input text-foreground placeholder:text-muted-foreground"/>
           </div>
           <div className="flex justify-end">
-             <Button>Submit Request</Button>
+             <Button className="bg-primary text-primary-foreground hover:bg-primary/90">Enviar Solicitud</Button>
           </div>
         </CardContent>
       </Card>
 
       <p className="text-sm text-muted-foreground">
-        This page simulates the client-facing portal. Role-based access ensures clients only see their own information. Audit logs track interactions.
+        Esta página simula el portal orientado al cliente. El acceso basado en roles asegura que los clientes solo vean su propia información. Los registros de auditoría rastrean las interacciones.
       </p>
     </div>
   );
 }
+
+    

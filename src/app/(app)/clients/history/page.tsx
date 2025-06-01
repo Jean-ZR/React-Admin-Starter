@@ -1,4 +1,5 @@
-'use client'; // Required for onClick handler
+
+'use client'; 
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,8 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Search, Calendar, MessageSquare, FileText, DollarSign, FileDown } from "lucide-react"; // Added FileDown, DollarSign
-// import { DatePickerWithRange } from "@/components/ui/date-picker-with-range"; // Assuming this component exists
+import { Search, Calendar, MessageSquare, FileText, DollarSign, FileDown } from "lucide-react"; 
+import Link from 'next/link';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { usePathname } from 'next/navigation';
+
 
 const history = [
   { id: 'HIST001', date: '2024-07-15', type: 'Service Request', description: 'Opened ticket #SRV1023 - Network issue', client: 'Alpha Corp', status: 'Closed' },
@@ -18,55 +22,67 @@ const history = [
 ];
 
 export default function ClientHistoryPage() {
+  const pathname = usePathname();
 
     const handleExport = () => {
-        console.log("Exporting client history..."); // Placeholder for export logic
-        // TODO: Implement actual CSV/PDF export based on current filters
+        console.log("Exporting client history..."); 
         alert("Export functionality not yet implemented.");
     };
 
      const handleApplyFilters = () => {
         console.log("Applying filters...");
-        // TODO: Implement filter logic and refetch data
         alert("Filter functionality not yet implemented.");
     };
 
   return (
     <div className="space-y-6">
+      <Tabs defaultValue={pathname} className="w-full">
+        <TabsList className="grid w-full grid-cols-3 bg-card border-b-0 mb-4 rounded-lg">
+          <TabsTrigger value="/clients/directory" asChild className="data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-sm hover:bg-muted/50">
+            <Link href="/clients/directory">Directorio</Link>
+          </TabsTrigger>
+          <TabsTrigger value="/clients/portal" asChild className="data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-sm hover:bg-muted/50">
+            <Link href="/clients/portal">Portal</Link>
+          </TabsTrigger>
+          <TabsTrigger value="/clients/history" asChild className="data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-sm hover:bg-muted/50">
+            <Link href="/clients/history">Historial</Link>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold leading-none tracking-tight">
-          Client History
+        <h1 className="text-2xl font-semibold leading-none tracking-tight text-foreground">
+          Historial del Cliente
         </h1>
         <div className="flex gap-2 items-center w-full sm:w-auto">
            <div className="relative flex-1 sm:flex-initial">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search history..."
-              className="pl-8 sm:w-[300px]"
+              placeholder="Buscar historial..."
+              className="pl-8 sm:w-[300px] bg-background border-input text-foreground placeholder:text-muted-foreground"
             />
           </div>
-          <Button size="sm" variant="outline" className="h-9 gap-1" onClick={handleExport}>
+          <Button size="sm" variant="outline" className="h-9 gap-1 text-muted-foreground hover:text-foreground border-input hover:bg-accent" onClick={handleExport}>
              <FileDown className="h-3.5 w-3.5" />
-             <span className="sr-only sm:not-sr-only">Export</span>
+             <span className="sr-only sm:not-sr-only">Exportar</span>
           </Button>
         </div>
       </div>
 
-      {/* Filters */}
-       <Card>
+       <Card className="bg-card text-card-foreground border-border">
          <CardHeader>
-            <CardTitle>Filter History</CardTitle>
+            <CardTitle className="text-foreground">Filtrar Historial</CardTitle>
          </CardHeader>
          <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
            <div>
-              <label htmlFor="client-filter" className="text-sm font-medium mb-1 block">Client</label>
+              <label htmlFor="client-filter" className="text-sm font-medium mb-1 block text-muted-foreground">Cliente</label>
               <Select>
-                <SelectTrigger id="client-filter">
-                  <SelectValue placeholder="All Clients" />
+                <SelectTrigger id="client-filter" className="bg-background border-input text-foreground">
+                  <SelectValue placeholder="Todos los Clientes" />
                 </SelectTrigger>
-                <SelectContent>
-                   <SelectItem value="all">All Clients</SelectItem>
+                <SelectContent className="bg-popover text-popover-foreground border-border">
+                   <SelectItem value="all">Todos los Clientes</SelectItem>
                    <SelectItem value="CLI001">Alpha Corp</SelectItem>
                    <SelectItem value="CLI002">Beta Industries</SelectItem>
                    <SelectItem value="CLI003">Gamma Solutions</SelectItem>
@@ -75,63 +91,58 @@ export default function ClientHistoryPage() {
               </Select>
            </div>
             <div>
-              <label htmlFor="type-filter" className="text-sm font-medium mb-1 block">Type</label>
+              <label htmlFor="type-filter" className="text-sm font-medium mb-1 block text-muted-foreground">Tipo</label>
               <Select>
-                <SelectTrigger id="type-filter">
-                  <SelectValue placeholder="All Types" />
+                <SelectTrigger id="type-filter" className="bg-background border-input text-foreground">
+                  <SelectValue placeholder="Todos los Tipos" />
                 </SelectTrigger>
-                <SelectContent>
-                   <SelectItem value="all">All Types</SelectItem>
-                   <SelectItem value="service">Service Request</SelectItem>
-                   <SelectItem value="comm">Communication</SelectItem>
-                   <SelectItem value="trans">Transaction</SelectItem>
+                <SelectContent className="bg-popover text-popover-foreground border-border">
+                   <SelectItem value="all">Todos los Tipos</SelectItem>
+                   <SelectItem value="service">Solicitud de Servicio</SelectItem>
+                   <SelectItem value="comm">Comunicación</SelectItem>
+                   <SelectItem value="trans">Transacción</SelectItem>
                 </SelectContent>
               </Select>
            </div>
-           {/* Date Picker Example (uncomment if component exists) */}
-           {/* <div className="space-y-2">
-              <label htmlFor="date-range-filter" className="text-sm font-medium">Date Range</label>
-             <DatePickerWithRange id="date-range-filter" className="w-full"/>
-           </div> */}
            <div className="flex items-end col-start-auto md:col-start-4">
-             <Button className="w-full lg:w-auto" onClick={handleApplyFilters}>Apply Filters</Button>
+             <Button className="w-full lg:w-auto bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleApplyFilters}>Aplicar Filtros</Button>
            </div>
          </CardContent>
        </Card>
 
-      <Card>
+      <Card className="bg-card text-card-foreground border-border">
          <CardHeader>
-          <CardTitle>Interaction Log</CardTitle>
-           <CardDescription>Track client-related transactions and communications.</CardDescription>
+          <CardTitle className="text-foreground">Registro de Interacciones</CardTitle>
+           <CardDescription className="text-muted-foreground">Seguimiento de transacciones y comunicaciones relacionadas con el cliente.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Client</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Status</TableHead>
+              <TableRow className="border-border">
+                <TableHead className="text-muted-foreground">Fecha</TableHead>
+                <TableHead className="text-muted-foreground">Cliente</TableHead>
+                <TableHead className="text-muted-foreground">Tipo</TableHead>
+                <TableHead className="text-muted-foreground">Descripción</TableHead>
+                <TableHead className="text-muted-foreground">Estado</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {history.map((item) => (
-                <TableRow key={item.id}>
+                <TableRow key={item.id} className="border-border hover:bg-muted/50">
                   <TableCell className="text-muted-foreground">{item.date}</TableCell>
-                  <TableCell className="font-medium">{item.client}</TableCell>
+                  <TableCell className="font-medium text-foreground">{item.client}</TableCell>
                   <TableCell>
-                     <Badge variant="secondary" className="gap-1 items-center">
+                     <Badge variant="secondary" className="gap-1 items-center bg-secondary text-secondary-foreground">
                         {item.type === 'Service Request' && <MessageSquare className="h-3 w-3"/>}
                         {item.type === 'Communication' && <FileText className="h-3 w-3"/>}
                          {item.type === 'Transaction' && <DollarSign className="h-3 w-3"/>}
                          {item.type}
                      </Badge>
                   </TableCell>
-                  <TableCell>{item.description}</TableCell>
+                  <TableCell className="text-foreground">{item.description}</TableCell>
                   <TableCell>
                      <Badge variant={item.status === 'Closed' || item.status === 'Completed' ? 'default' : 'outline'}
-                            className={item.status === 'Closed' || item.status === 'Completed' ? 'bg-accent text-accent-foreground' : ''}>
+                            className={item.status === 'Closed' || item.status === 'Completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-300 dark:border-green-700' : 'text-muted-foreground border-border'}>
                        {item.status}
                      </Badge>
                   </TableCell>
@@ -144,8 +155,10 @@ export default function ClientHistoryPage() {
 
 
       <p className="text-sm text-muted-foreground">
-        Track client-related transactions and communications with search and filtering. Audit logs and role-based access are applied.
+        Realiza un seguimiento de las transacciones y comunicaciones relacionadas con el cliente con búsqueda y filtrado. Se aplican registros de auditoría y acceso basado en roles.
       </p>
     </div>
   );
 }
+
+    

@@ -36,6 +36,9 @@ import {
   type Timestamp,
   orderBy,
 } from 'firebase/firestore';
+import Link from 'next/link';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { usePathname } from 'next/navigation';
 
 interface Client extends ClientFormData {
   id: string;
@@ -46,6 +49,7 @@ interface Client extends ClientFormData {
 const ALL_STATUSES = ["Active", "Inactive", "Prospect"];
 
 export default function ClientDirectoryPage() {
+    const pathname = usePathname();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingClient, setEditingClient] = useState<Client | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -59,7 +63,7 @@ export default function ClientDirectoryPage() {
     const fetchClients = useCallback(() => {
       setIsLoading(true);
       const clientsCollectionRef = collection(db, 'clients');
-      let qConstraints = [orderBy('name', 'asc')]; // Base query with ordering
+      let qConstraints = [orderBy('name', 'asc')]; 
 
       if (statusFilters.length > 0) {
         qConstraints.push(where('status', 'in', statusFilters));
@@ -193,41 +197,56 @@ export default function ClientDirectoryPage() {
 
   return (
     <div className="space-y-6">
-      <Card className="shadow-sm">
+      <Tabs defaultValue={pathname} className="w-full">
+        <TabsList className="grid w-full grid-cols-3 bg-card border-b-0 mb-4 rounded-lg">
+          <TabsTrigger value="/clients/directory" asChild className="data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-sm hover:bg-muted/50">
+            <Link href="/clients/directory">Directorio</Link>
+          </TabsTrigger>
+          <TabsTrigger value="/clients/portal" asChild className="data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-sm hover:bg-muted/50">
+            <Link href="/clients/portal">Portal</Link>
+          </TabsTrigger>
+          <TabsTrigger value="/clients/history" asChild className="data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-sm hover:bg-muted/50">
+            <Link href="/clients/history">Historial</Link>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      <Card className="shadow-sm border border-border bg-card text-card-foreground">
         <CardHeader className="border-b border-border">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
-              <CardTitle>Client Directory</CardTitle>
-              <CardDescription>Maintain client database with contact information.</CardDescription>
+              <CardTitle className="text-foreground">Directorio de Clientes</CardTitle>
+              <CardDescription className="text-muted-foreground">Mantén tu base de datos de clientes.</CardDescription>
             </div>
             <div className="flex gap-2 items-center w-full sm:w-auto">
               <div className="relative flex-1 sm:flex-initial">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="search"
-                  placeholder="Search clients..."
-                  className="pl-8 sm:w-[200px] md:w-[200px] lg:w-[250px] bg-background"
+                  placeholder="Buscar clientes..."
+                  className="pl-8 sm:w-[200px] md:w-[200px] lg:w-[250px] bg-background border-input text-foreground placeholder:text-muted-foreground"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9 gap-1">
+                  <Button variant="outline" size="sm" className="h-9 gap-1 text-muted-foreground hover:text-foreground border-input hover:bg-accent">
                     <ListFilter className="h-3.5 w-3.5" />
                     <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                      Filter Status
+                      Filtrar Estado
                     </span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-popover text-popover-foreground">
-                  <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
+                <DropdownMenuContent align="end" className="bg-popover text-popover-foreground border-border">
+                  <DropdownMenuLabel>Filtrar por Estado</DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-border"/>
                   {ALL_STATUSES.map(status => (
                     <DropdownMenuCheckboxItem
                       key={status}
                       checked={statusFilters.includes(status)}
                       onCheckedChange={() => handleStatusFilterChange(status)}
+                      className="hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground"
                     >
                       {status}
                     </DropdownMenuCheckboxItem>
@@ -236,19 +255,19 @@ export default function ClientDirectoryPage() {
               </DropdownMenu>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size="sm" variant="outline" className="h-9 gap-1">
+                  <Button size="sm" variant="outline" className="h-9 gap-1 text-muted-foreground hover:text-foreground border-input hover:bg-accent">
                     <FileDown className="h-3.5 w-3.5" />
-                    <span className="sr-only sm:not-sr-only">Export</span>
+                    <span className="sr-only sm:not-sr-only">Exportar</span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-popover text-popover-foreground">
-                  <DropdownMenuItem onClick={handleExportCSV}>Export as CSV</DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleExportPDF}>Export as PDF</DropdownMenuItem>
+                <DropdownMenuContent align="end" className="bg-popover text-popover-foreground border-border">
+                  <DropdownMenuItem onClick={handleExportCSV} className="hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">Exportar como CSV</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportPDF} className="hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">Exportar como PDF</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button size="sm" className="h-9 gap-1" onClick={handleAddClient}>
+              <Button size="sm" className="h-9 gap-1 bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleAddClient}>
                 <PlusCircle className="h-3.5 w-3.5" />
-                <span className="sr-only sm:not-sr-only">Add Client</span>
+                <span className="sr-only sm:not-sr-only">Añadir Cliente</span>
               </Button>
             </div>
           </div>
@@ -257,32 +276,36 @@ export default function ClientDirectoryPage() {
           {isLoading ? (
             <div className="flex justify-center items-center min-h-[300px]">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="ml-2 text-muted-foreground">Loading clients...</p>
+              <p className="ml-2 text-muted-foreground">Cargando clientes...</p>
             </div>
+          ) : currentClients.length === 0 && !searchTerm && statusFilters.length === 0 ? (
+             <div className="text-center py-10 text-muted-foreground">
+                No se encontraron clientes. Haz clic en "Añadir Cliente" para empezar.
+              </div>
           ) : currentClients.length === 0 ? (
              <div className="text-center py-10 text-muted-foreground">
-                No clients found matching your criteria.
+                No se encontraron clientes que coincidan con tus criterios.
               </div>
           ) : (
             <div className="overflow-x-auto">
                 <Table>
-                <TableCaption className="py-4">A list of your clients. {currentClients.length} client(s) found.</TableCaption>
+                <TableCaption className="py-4 text-muted-foreground">Lista de tus clientes. {currentClients.length} cliente(s) encontrado(s).</TableCaption>
                 <TableHeader>
-                    <TableRow>
+                    <TableRow className="border-border">
                     <TableHead className="hidden w-[64px] sm:table-cell">
                         <span className="sr-only">Avatar</span>
                     </TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Contact Person</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead><span className="sr-only">Actions</span></TableHead>
+                    <TableHead className="text-muted-foreground">Nombre</TableHead>
+                    <TableHead className="text-muted-foreground">Persona de Contacto</TableHead>
+                    <TableHead className="text-muted-foreground">Email</TableHead>
+                    <TableHead className="text-muted-foreground">Teléfono</TableHead>
+                    <TableHead className="text-muted-foreground">Estado</TableHead>
+                    <TableHead><span className="sr-only">Acciones</span></TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {currentClients.map((client) => (
-                    <TableRow key={client.id} className="hover:bg-muted/50">
+                    <TableRow key={client.id} className="hover:bg-muted/50 border-border">
                     <TableCell className="hidden sm:table-cell">
                         <Avatar className="h-9 w-9">
                             <AvatarImage src={`https://placehold.co/40x40.png`} alt={client.name} data-ai-hint={client.dataAiHint || 'person company'} />
@@ -295,23 +318,26 @@ export default function ClientDirectoryPage() {
                         <TableCell className="text-muted-foreground">{client.phone}</TableCell>
                         <TableCell>
                             <Badge variant={client.status === 'Active' ? 'default' : 'outline'}
-                            className={client.status === 'Active' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'text-muted-foreground'}>
+                            className={
+                                client.status === 'Active' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-300 dark:border-green-700' :
+                                'text-muted-foreground border-border'
+                            }>
                             {client.status}
                         </Badge>
                         </TableCell>
                         <TableCell>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <Button aria-haspopup="true" size="icon" variant="ghost" className="text-muted-foreground hover:text-foreground hover:bg-accent">
                                 <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Toggle menu</span>
+                                <span className="sr-only">Alternar menú</span>
                             </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-popover text-popover-foreground">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => handleEditClient(client)}>Edit</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDeleteClick(client)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                                Delete
+                            <DropdownMenuContent align="end" className="bg-popover text-popover-foreground border-border">
+                            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => handleEditClient(client)} className="hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">Editar</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDeleteClick(client)} className="text-destructive focus:bg-destructive/10 focus:text-destructive hover:!bg-destructive/10 hover:!text-destructive">
+                                Eliminar
                             </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -336,8 +362,10 @@ export default function ClientDirectoryPage() {
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={confirmDelete}
-        itemName={clientToDelete?.name || 'this client'}
+        itemName={clientToDelete?.name || 'este cliente'}
       />
     </div>
   );
 }
+
+    

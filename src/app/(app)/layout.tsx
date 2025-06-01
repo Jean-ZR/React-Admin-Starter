@@ -10,7 +10,7 @@ import {
   Users,
   Package,
   Wrench,
-  BarChart,
+  BarChart3,
   FileText,
   Settings,
   HelpCircle,
@@ -20,30 +20,35 @@ import {
   LogOut,
   AlertTriangle,
   ChevronUp,
+  ChevronDown,
   Palette,
 } from 'lucide-react';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 
 import { useAuth } from '@/contexts/auth-context';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuLabel,
-} from "@/components/ui/dropdown-menu";
 
 
+interface NavSubItem {
+  label: string;
+  href: string;
+  id: string; // for unique key and potentially active check
+}
 interface NavItem {
   icon: React.ElementType;
   label: string;
   id: string;
   href: string;
   fields?: number;
+  subItems?: NavSubItem[];
 }
 
 interface NavModule {
@@ -61,8 +66,15 @@ const navigationModules: NavModule[] = [
   {
     category: 'GESTIÓN',
     items: [
-      { icon: Truck, label: 'Activos', id: 'assets', href: '/assets/list', fields: 42 },
-      { icon: Users, label: 'Clientes', id: 'clients', href: '/clients/directory', fields: 11 },
+      {
+        icon: Truck, label: 'Activos', id: 'assets', href: '/assets/list',
+        subItems: [
+          { label: 'Lista', href: '/assets/list', id: 'assets-list'},
+          { label: 'Categorías', href: '/assets/categories', id: 'assets-categories'},
+          { label: 'Reportes', href: '/assets/reports', id: 'assets-reports'},
+        ]
+      },
+      { icon: Users, label: 'Clientes', id: 'clients', href: '/clients/directory' }, // Reverted: No subItems for now
       { icon: Package, label: 'Repuestos', id: 'inventory', href: '/inventory/stock', fields: 12 },
       { icon: Wrench, label: 'Servicios', id: 'services', href: '/services/catalog' },
     ],
@@ -70,15 +82,15 @@ const navigationModules: NavModule[] = [
   {
     category: 'ANÁLISIS',
     items: [
-      { icon: BarChart, label: 'Gráficas', id: 'reports_custom', href: '/reports/custom' }, // Mapped Gráficas to Custom Reports
-      { icon: FileText, label: 'Reportes', id: 'reports_financial', href: '/reports/financial' }, // Pointing to Financial Reports
+      { icon: BarChart3, label: 'Gráficas', id: 'reports_custom', href: '/reports/custom' },
+      { icon: FileText, label: 'Reportes', id: 'reports_financial', href: '/reports/financial' },
     ],
   },
   {
     category: 'CONFIGURACIÓN',
     items: [
       { icon: Settings, label: 'Ajustes', id: 'settings', href: '/settings/general' },
-      { icon: HelpCircle, label: 'Soporte', id: 'support', href: '/dashboard' }, // Placeholder for Soporte
+      { icon: HelpCircle, label: 'Soporte', id: 'support', href: '/dashboard' },
     ],
   },
 ];
@@ -116,29 +128,44 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   const [activeModuleId, setActiveModuleId] = useState('dashboard');
+  const [openAccordionModules, setOpenAccordionModules] = useState<string[]>([]);
+
 
   useEffect(() => {
     let currentModule = 'dashboard';
-    if (pathname === '/dashboard') {
-        currentModule = 'dashboard';
-    } else {
-        for (const modGroup of navigationModules) {
-          for (const item of modGroup.items) {
-            if (item.id !== 'dashboard' && pathname.startsWith(item.href)) {
-              currentModule = item.id;
+    let parentModuleOfActiveSubItem: string | null = null;
+
+    for (const modGroup of navigationModules) {
+      for (const item of modGroup.items) {
+        if (pathname === item.href) {
+          currentModule = item.id;
+          break;
+        }
+        if (item.subItems) {
+          for (const subItem of item.subItems) {
+            if (pathname === subItem.href) {
+              currentModule = subItem.id; // Highlight sub-item
+              parentModuleOfActiveSubItem = item.id; // Keep parent module highlighted too
               break;
             }
           }
-          // Ensure 'support' which maps to '/dashboard' doesn't override a more specific match
-          if (currentModule !== 'dashboard' && currentModule !== 'support') break;
         }
+        if (currentModule !== 'dashboard') break;
+      }
+      if (currentModule !== 'dashboard') break;
     }
     
     if (pathname.startsWith('/settings/')) currentModule = 'settings';
-    if (pathname.startsWith('/profile')) currentModule = 'profile'; // Keep profile separate from settings highlight
+    if (pathname.startsWith('/profile')) currentModule = 'profile';
 
     setActiveModuleId(currentModule);
-  }, [pathname]);
+
+    // Auto-open accordion if a sub-item is active
+    if (parentModuleOfActiveSubItem && !openAccordionModules.includes(parentModuleOfActiveSubItem)) {
+      setOpenAccordionModules(prev => [...prev, parentModuleOfActiveSubItem!]);
+    }
+
+  }, [pathname, openAccordionModules]);
 
   if (!isFirebaseConfigured && !loading) {
     return (
@@ -192,7 +219,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
       {/* Sidebar */}
       <div className="w-72 bg-sidebar text-sidebar-foreground border-r border-sidebar-border p-6 flex flex-col shrink-0">
         <Link href="/dashboard" className="flex items-center mb-10">
-          <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center text-primary-foreground mr-3 shrink-0">
+          <div className="w-12 h-12 bg-sidebar-primary rounded-xl flex items-center justify-center text-sidebar-primary-foreground mr-3 shrink-0">
             <Truck size={24} /> 
           </div>
           <div>
@@ -201,43 +228,95 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
           </div>
         </Link>
 
-        <nav className="flex-1 overflow-y-auto pr-0"> {/* Removed pr-2 to let content manage its padding */}
-          {navigationModules.map((section, idx) => (
-            <div key={idx} className="mb-6">
-              <div className="text-xs font-semibold text-muted-foreground mb-3 px-3 uppercase">
-                {section.category}
+        <nav className="flex-1 overflow-y-auto pr-0">
+         <Accordion 
+            type="multiple" 
+            value={openAccordionModules}
+            onValueChange={setOpenAccordionModules}
+            className="w-full"
+          >
+            {navigationModules.map((section, idx) => (
+              <div key={idx} className="mb-2"> {/* Reduced mb between sections */}
+                <div className="text-xs font-semibold text-muted-foreground mb-2 px-3 uppercase tracking-wider">
+                  {section.category}
+                </div>
+                {section.items.map((item) => (
+                  item.subItems ? (
+                    <AccordionItem value={item.id} key={item.id} className="border-none">
+                      <AccordionTrigger
+                        className={`
+                          flex items-center w-full p-3 rounded-xl mb-1 cursor-pointer transition-colors group
+                          ${openAccordionModules.includes(item.id) || activeModuleId.startsWith(item.id + "-") ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}
+                        `}
+                        onClick={(e) => {
+                          // Allow AccordionTrigger to handle its open/close state
+                          // We still set activeModuleId to the parent if no subItem is explicitly active
+                          if (!activeModuleId.startsWith(item.id + "-")) {
+                            setActiveModuleId(item.id);
+                          }
+                        }}
+                      >
+                        <div className="flex items-center flex-1">
+                          <item.icon className={`mr-3 ${openAccordionModules.includes(item.id) || activeModuleId.startsWith(item.id + "-") ? 'text-sidebar-accent-foreground' : 'text-muted-foreground group-hover:text-sidebar-foreground'}`} size={20} />
+                          <span className="flex-1">{item.label}</span>
+                        </div>
+                        {/* Chevron is part of AccordionTrigger now */}
+                      </AccordionTrigger>
+                      <AccordionContent className="pl-5 pt-1 pb-1 border-l-2 border-sidebar-accent/50 ml-3"> {/* Indent sub-items */}
+                        {item.subItems.map(subItem => (
+                          <Link
+                            href={subItem.href}
+                            key={subItem.id}
+                            onClick={() => setActiveModuleId(subItem.id)}
+                            className={`
+                              flex items-center py-2 px-3 rounded-md text-sm transition-colors
+                              ${activeModuleId === subItem.id
+                                ? 'text-sidebar-primary font-medium' 
+                                : 'text-sidebar-foreground hover:text-sidebar-primary hover:bg-sidebar-accent/30'}
+                            `}
+                          >
+                            {subItem.label}
+                          </Link>
+                        ))}
+                      </AccordionContent>
+                    </AccordionItem>
+                  ) : (
+                    <Link
+                      href={item.href}
+                      key={item.id}
+                      onClick={() => {
+                        setActiveModuleId(item.id);
+                        // Close accordions if a non-accordion item is clicked
+                        // setOpenAccordionModules([]); 
+                      }}
+                      className={`
+                        flex items-center p-3 rounded-xl mb-1.5 cursor-pointer transition-colors group
+                        ${activeModuleId === item.id
+                          ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                          : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}
+                      `}
+                    >
+                      <item.icon className={`mr-3 ${activeModuleId === item.id ? 'text-sidebar-accent-foreground' : 'text-muted-foreground group-hover:text-sidebar-foreground'}`} size={20} />
+                      <span className="flex-1">{item.label}</span>
+                      {item.fields && (
+                        <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                          {item.fields}
+                        </span>
+                      )}
+                    </Link>
+                  )
+                ))}
               </div>
-              {section.items.map((item) => (
-                <Link
-                  href={item.href}
-                  key={item.id}
-                  onClick={() => setActiveModuleId(item.id)}
-                  className={`
-                    flex items-center p-3 rounded-xl mb-1.5 cursor-pointer transition-colors
-                    ${activeModuleId === item.id
-                      ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-                      : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}
-                  `}
-                >
-                  <item.icon className={`mr-3 ${activeModuleId === item.id ? 'text-sidebar-accent-foreground' : 'text-muted-foreground'}`} size={20} />
-                  <span className="flex-1">{item.label}</span>
-                  {item.fields && (
-                    <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
-                      {item.fields}
-                    </span>
-                  )}
-                </Link>
-              ))}
-            </div>
-          ))}
+            ))}
+          </Accordion>
         </nav>
          <div className="mt-auto pt-6 border-t border-sidebar-border">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <div className="flex items-center p-2 rounded-lg hover:bg-sidebar-accent/50 cursor-pointer group">
                     <Avatar className="h-10 w-10 mr-3">
-                       <AvatarImage src={user?.photoURL || undefined} alt={displayName || user?.email || "User"} />
-                       <AvatarFallback className="bg-primary/20 text-primary font-semibold">
+                       <AvatarImage src={user?.photoURL || undefined} alt={displayName || user?.email || "User"} data-ai-hint="person face"/>
+                       <AvatarFallback className="bg-sidebar-primary/20 text-sidebar-primary font-semibold">
                          {getInitials(displayName, user?.email)}
                        </AvatarFallback>
                      </Avatar>
@@ -256,20 +335,19 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" side="top" className="mb-2 w-56 bg-popover border-border shadow-lg text-popover-foreground">
                   <DropdownMenuItem asChild>
-                      <Link href="/profile" className="flex items-center gap-2 cursor-pointer hover:bg-accent dark:hover:bg-accent/80">
+                      <Link href="/profile" className="flex items-center gap-2 cursor-pointer hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">
                           <UserCog size={16}/> Perfil
                       </Link>
                   </DropdownMenuItem>
                    <DropdownMenuItem asChild>
-                      <Link href="/settings/account" className="flex items-center gap-2 cursor-pointer hover:bg-accent dark:hover:bg-accent/80">
+                      <Link href="/settings/account" className="flex items-center gap-2 cursor-pointer hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">
                           <Settings size={16}/> Ajustes
                       </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-border" />
-                  {/* ThemeToggle is rendered here */}
                   <ThemeToggle /> 
                   <DropdownMenuSeparator className="bg-border" />
-                  <DropdownMenuItem onClick={logout} className="text-destructive focus:bg-destructive/10 focus:text-destructive flex items-center gap-2 cursor-pointer hover:bg-destructive/10 dark:hover:bg-destructive/20">
+                  <DropdownMenuItem onClick={logout} className="text-destructive focus:bg-destructive/10 focus:text-destructive flex items-center gap-2 cursor-pointer hover:!bg-destructive/10 hover:!text-destructive dark:hover:!bg-destructive/20 dark:focus:!bg-destructive/20">
                       <LogOut size={16}/> Cerrar Sesión
                   </DropdownMenuItem>
               </DropdownMenuContent>
@@ -278,8 +356,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
       </div>
 
       {/* Main content area */}
-      <main className="flex flex-1 flex-col min-h-0"> {/* Ensure main can shrink */}
-        {/* Page Header Bar */}
+      <main className="flex flex-1 flex-col min-h-0">
         <div className="flex justify-between items-center p-6 sm:p-8 border-b border-border shrink-0 bg-card">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{currentPageInfo.title}</h1>
@@ -294,7 +371,6 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
             </div>
           </div>
         </div>
-        {/* Page Content */}
         <div className="flex-1 min-h-0 p-6 sm:p-8 overflow-auto">
           {children}
         </div>
@@ -306,3 +382,5 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
 export default function AppLayout({ children }: { children: ReactNode }) {
   return <AppLayoutContent>{children}</AppLayoutContent>;
 }
+
+    

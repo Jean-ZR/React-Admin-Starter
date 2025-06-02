@@ -22,6 +22,7 @@ import {
   ChevronUp,
   ChevronDown,
   Palette,
+  BarChart, // Added for new "Gráficas" icon
 } from 'lucide-react';
 import {
   Accordion,
@@ -82,7 +83,14 @@ const navigationModules: NavModule[] = [
           { label: 'Reportes', href: '/assets/reports', id: 'assets-reports'},
         ]
       },
-      { icon: Users, label: 'Clientes', id: 'clients', href: '/clients/directory' },
+      { 
+        icon: Users, label: 'Clientes', id: 'clients', href: '/clients/directory',
+        subItems: [
+          { label: 'Directorio', href: '/clients/directory', id: 'clients-directory'},
+          { label: 'Portal', href: '/clients/portal', id: 'clients-portal'},
+          { label: 'Historial', href: '/clients/history', id: 'clients-history'},
+        ]
+      },
       { icon: Package, label: 'Repuestos', id: 'inventory', href: '/inventory/stock', fields: 12 },
       { icon: Wrench, label: 'Servicios', id: 'services', href: '/services/catalog' },
     ],
@@ -90,7 +98,7 @@ const navigationModules: NavModule[] = [
   {
     category: 'ANÁLISIS',
     items: [
-      { icon: BarChart3, label: 'Gráficas', id: 'reports_custom', href: '/reports/custom' },
+      { icon: BarChart, label: 'Gráficas', id: 'reports_custom', href: '/reports/custom' }, // Changed icon to BarChart for "Gráficas"
       { icon: FileText, label: 'Reportes', id: 'reports_financial', href: '/reports/financial' },
     ],
   },
@@ -135,82 +143,60 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
+  const [activeSubItemId, setActiveSubItemId] = useState<string | null>(null);
   const [openAccordionModules, setOpenAccordionModules] = useState<string[]>([]);
 
 
   useEffect(() => {
-    let currentModuleId: string | null = null;
-    let parentModuleOfActiveSubItem: string | null = null;
+    let currentModuleIdForAccordion: string | null = null;
+    let currentActiveSubId: string | null = null;
 
     for (const modGroup of navigationModules) {
       for (const item of modGroup.items) {
-        if (pathname === item.href && !item.subItems) { // Exact match for items without sub-items
-          currentModuleId = item.id;
-          break;
-        }
         if (item.subItems) {
-          if (pathname === item.href || pathname.startsWith(item.href + "/")) { // If current path is the parent or starts with parent path
-             // parentModuleOfActiveSubItem = item.id; // Parent module should be considered active
-          }
           for (const subItem of item.subItems) {
             if (pathname === subItem.href || pathname.startsWith(subItem.href + "/")) {
-              currentModuleId = subItem.id; // Highlight sub-item
-              parentModuleOfActiveSubItem = item.id; // Keep parent module highlighted too
+              currentActiveSubId = subItem.id;
+              currentModuleIdForAccordion = item.id; // Parent module ID
               break;
             }
           }
+        } else if (pathname === item.href || pathname.startsWith(item.href + "/")) {
+          currentActiveSubId = item.id; // If no sub-items, the item itself is the "sub-item" for highlighting
+          // No accordion to open for items without sub-items
+          break;
         }
-        if (currentModuleId) break;
+        if (currentActiveSubId) break;
       }
-      if (currentModuleId) break;
+      if (currentActiveSubId) break;
     }
     
-    if (!currentModuleId) { // Fallback or special cases
-        if (pathname.startsWith('/settings/')) currentModuleId = 'settings';
-        else if (pathname.startsWith('/profile')) currentModuleId = 'profile';
-        else if (pathname.startsWith('/dashboard')) currentModuleId = 'dashboard';
-        else { // Try to find the closest parent module based on path segments
-            const pathSegments = pathname.split('/');
-            if (pathSegments.length > 1) {
-                const potentialParentPath = "/" + pathSegments[1];
-                 for (const modGroup of navigationModules) {
-                    for (const item of modGroup.items) {
-                        if(item.href.startsWith(potentialParentPath)) {
-                            parentModuleOfActiveSubItem = item.id;
-                            // If no specific sub-item is matched, the parent's href is the best guess
-                            if (pathname === item.href && item.subItems) {
-                                currentModuleId = item.id; // Highlight parent if on its direct page
-                            }
-                            break;
-                        }
-                    }
-                    if(parentModuleOfActiveSubItem) break;
-                 }
-            }
-        }
+    // Fallback for settings and profile if not directly matched
+    if (!currentActiveSubId) {
+        if (pathname.startsWith('/settings/')) currentActiveSubId = 'settings';
+        else if (pathname.startsWith('/profile')) currentActiveSubId = 'profile'; // Assuming 'profile' is an ID for a direct link
+        else if (pathname.startsWith('/dashboard')) currentActiveSubId = 'dashboard';
     }
 
+    setActiveSubItemId(currentActiveSubId);
 
-    setActiveModuleId(currentModuleId);
-
-    if (parentModuleOfActiveSubItem && !openAccordionModules.includes(parentModuleOfActiveSubItem)) {
-      setOpenAccordionModules(prev => {
-        // Ensure only one accordion is open at a time for better UX, unless multiple are desired
-        // If only one at a time: return [parentModuleOfActiveSubItem!]
-        // If multiple allowed:
-        if (!prev.includes(parentModuleOfActiveSubItem!)) {
-            return [...prev, parentModuleOfActiveSubItem!];
-        }
-        return prev;
-      });
-    } else if (!parentModuleOfActiveSubItem && currentModuleId && !navigationModules.some(mg => mg.items.some(i => i.id === currentModuleId && i.subItems))) {
-        // If a top-level item without sub-items is active, close open accordions (optional behavior)
-        // setOpenAccordionModules([]); 
+    if (currentModuleIdForAccordion && !openAccordionModules.includes(currentModuleIdForAccordion)) {
+        // Logic to open the accordion for the current path's parent module
+        // For a single-open accordion behavior, you might want to clear other open accordions:
+        // setOpenAccordionModules([currentModuleIdForAccordion]);
+        // For multiple open accordions:
+        setOpenAccordionModules(prev => {
+           if (!prev.includes(currentModuleIdForAccordion!)) {
+               return [currentModuleIdForAccordion!]; // Only open the current one, close others
+           }
+           return prev;
+        });
     }
+    // If no parent module with sub-items is active, you might want to close all accordions,
+    // or maintain their last state. Current behavior maintains last state unless a new parent is active.
 
+  }, [pathname]);
 
-  }, [pathname]); // Removed openAccordionModules from dependencies to prevent re-triggering on its own change
 
   if (!isFirebaseConfigured && !loading) {
     return (
@@ -276,7 +262,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
           </div>
         </Link>
 
-        <nav className="flex-1 overflow-y-auto pr-0"> {/* Removed custom scrollbar style to use default */}
+        <nav className="flex-1 overflow-y-auto pr-0">
          <Accordion 
             type="multiple" 
             value={openAccordionModules}
@@ -294,22 +280,19 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                       <AccordionTrigger
                         className={`
                           flex items-center w-full p-3 rounded-xl mb-1 cursor-pointer transition-colors group
-                          ${(openAccordionModules.includes(item.id) || activeModuleId?.startsWith(item.id + "-") || activeModuleId === item.id) ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}
+                          ${(openAccordionModules.includes(item.id) || activeSubItemId?.startsWith(item.id + "-")) ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}
                         `}
-                        onClick={(e) => {
-                           // Toggle accordion state
-                            setOpenAccordionModules(prev => 
-                                prev.includes(item.id) ? prev.filter(id => id !== item.id) : [...prev, item.id]
-                            );
-                          // If clicking the parent of an active sub-item, or the parent itself, don't navigate, just toggle.
-                          // If it's not active and has a main href, navigate to its main page.
-                          if (item.href && !(activeModuleId?.startsWith(item.id + "-") || activeModuleId === item.id) && pathname !== item.href) {
-                            // router.push(item.href); // Navigate if parent has its own page
-                          }
-                        }}
+                        // onClick={(e) => {
+                        //     // This onClick might interfere with Accordion's internal toggle if also trying to navigate.
+                        //     // Consider if navigation should happen on parent click or only on sub-items.
+                        //     // If parent has its own page and isn't just a header for sub-items:
+                        //     if (item.href && pathname !== item.href && !activeSubItemId?.startsWith(item.id + "-")) {
+                        //        router.push(item.href);
+                        //     }
+                        // }}
                       >
                         <div className="flex items-center flex-1">
-                          <item.icon className={`mr-3 ${openAccordionModules.includes(item.id) || activeModuleId?.startsWith(item.id + "-") || activeModuleId === item.id ? 'text-sidebar-accent-foreground' : 'text-muted-foreground group-hover:text-sidebar-foreground'}`} size={20} />
+                          <item.icon className={`mr-3 ${openAccordionModules.includes(item.id) || activeSubItemId?.startsWith(item.id + "-") ? 'text-sidebar-accent-foreground' : 'text-muted-foreground group-hover:text-sidebar-foreground'}`} size={20} />
                           <span className="flex-1">{item.label}</span>
                         </div>
                       </AccordionTrigger>
@@ -318,10 +301,9 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                           <Link
                             href={subItem.href}
                             key={subItem.id}
-                            onClick={() => { /* setActiveModuleId is handled by useEffect */ }}
                             className={`
                               flex items-center py-2 px-3 rounded-md text-sm transition-colors
-                              ${activeModuleId === subItem.id
+                              ${activeSubItemId === subItem.id
                                 ? 'text-sidebar-primary font-medium bg-sidebar-accent/60' 
                                 : 'text-sidebar-foreground hover:text-sidebar-primary hover:bg-sidebar-accent/30'}
                             `}
@@ -335,15 +317,14 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                     <Link
                       href={item.href}
                       key={item.id}
-                      onClick={() => { /* setActiveModuleId is handled by useEffect */ }}
                       className={`
                         flex items-center p-3 rounded-xl mb-1.5 cursor-pointer transition-colors group
-                        ${activeModuleId === item.id
+                        ${activeSubItemId === item.id
                           ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
                           : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}
                       `}
                     >
-                      <item.icon className={`mr-3 ${activeModuleId === item.id ? 'text-sidebar-accent-foreground' : 'text-muted-foreground group-hover:text-sidebar-foreground'}`} size={20} />
+                      <item.icon className={`mr-3 ${activeSubItemId === item.id ? 'text-sidebar-accent-foreground' : 'text-muted-foreground group-hover:text-sidebar-foreground'}`} size={20} />
                       <span className="flex-1">{item.label}</span>
                       {item.fields && (
                         <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
@@ -429,5 +410,3 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
 export default function AppLayout({ children }: { children: ReactNode }) {
   return <AppLayoutContent>{children}</AppLayoutContent>;
 }
-
-    

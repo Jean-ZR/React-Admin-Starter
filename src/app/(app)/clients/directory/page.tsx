@@ -36,9 +36,7 @@ import {
   type Timestamp,
   orderBy,
 } from 'firebase/firestore';
-import Link from 'next/link';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { usePathname } from 'next/navigation';
+// Removed Link, Tabs, TabsList, TabsTrigger, usePathname
 
 interface Client extends ClientFormData {
   id: string;
@@ -49,7 +47,7 @@ interface Client extends ClientFormData {
 const ALL_STATUSES = ["Active", "Inactive", "Prospect"];
 
 export default function ClientDirectoryPage() {
-    const pathname = usePathname();
+    // Removed usePathname
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingClient, setEditingClient] = useState<Client | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -197,19 +195,7 @@ export default function ClientDirectoryPage() {
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue={pathname} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 bg-card border-b-0 mb-4 rounded-lg">
-          <TabsTrigger value="/clients/directory" asChild className="data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-sm hover:bg-muted/50">
-            <Link href="/clients/directory">Directorio</Link>
-          </TabsTrigger>
-          <TabsTrigger value="/clients/portal" asChild className="data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-sm hover:bg-muted/50">
-            <Link href="/clients/portal">Portal</Link>
-          </TabsTrigger>
-          <TabsTrigger value="/clients/history" asChild className="data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-sm hover:bg-muted/50">
-            <Link href="/clients/history">Historial</Link>
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      {/* Removed Tabs navigation */}
 
       <Card className="shadow-sm border border-border bg-card text-card-foreground">
         <CardHeader className="border-b border-border">
@@ -367,5 +353,3 @@ export default function ClientDirectoryPage() {
     </div>
   );
 }
-
-    

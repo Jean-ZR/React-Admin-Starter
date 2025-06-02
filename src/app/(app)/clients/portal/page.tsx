@@ -7,27 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Ticket, MessageSquare, FileText } from "lucide-react";
-import Link from 'next/link';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { usePathname } from 'next/navigation';
+// Removed Link, Tabs, TabsList, TabsTrigger, usePathname
 
 export default function ClientPortalPage() {
-  const pathname = usePathname();
+  // Removed usePathname
   return (
     <div className="space-y-6">
-      <Tabs defaultValue={pathname} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 bg-card border-b-0 mb-4 rounded-lg">
-          <TabsTrigger value="/clients/directory" asChild className="data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-sm hover:bg-muted/50">
-            <Link href="/clients/directory">Directorio</Link>
-          </TabsTrigger>
-          <TabsTrigger value="/clients/portal" asChild className="data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-sm hover:bg-muted/50">
-            <Link href="/clients/portal">Portal</Link>
-          </TabsTrigger>
-          <TabsTrigger value="/clients/history" asChild className="data-[state=active]:bg-sidebar-accent data-[state=active]:text-sidebar-accent-foreground data-[state=active]:shadow-sm hover:bg-muted/50">
-            <Link href="/clients/history">Historial</Link>
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      {/* Removed Tabs navigation */}
 
       <h1 className="text-2xl font-semibold leading-none tracking-tight text-foreground">
         Portal del Cliente
@@ -100,5 +86,3 @@ export default function ClientPortalPage() {
     </div>
   );
 }
-
-    

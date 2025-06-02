@@ -114,7 +114,7 @@ const getNavigationModules = (lang: string | null | undefined): NavModule[] => [
             { labelKey: 'settings_logs', href: '/settings/logs', id: 'settings-logs' },
         ]
       },
-      { icon: HelpCircle, labelKey: 'support', id: 'support', href: '/dashboard' }, // Example direct link
+      { icon: HelpCircle, labelKey: 'support', id: 'support', href: '/dashboard' }, 
     ],
   },
 ];
@@ -128,12 +128,11 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
   const [activeSubItemId, setActiveSubItemId] = useState<string | null>(null);
   const [activeAccordionValue, setActiveAccordionValue] = useState<string | undefined>(undefined);
   
-  // Ensure navigationModules is memoized and only changes when languagePreference changes.
   const navigationModules = useMemo(() => getNavigationModules(languagePreference), [languagePreference]);
 
   useEffect(() => {
     let newActiveSubId: string | null = null;
-    let newActiveAccordionId: string | undefined = undefined;
+    let determinedAccordionId: string | undefined = undefined;
     let itemFound = false;
 
     for (const modGroup of navigationModules) {
@@ -143,19 +142,19 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
           const matchingSubItem = item.subItems.find(sub => pathname === sub.href || pathname.startsWith(sub.href + "/"));
           if (matchingSubItem) {
             newActiveSubId = matchingSubItem.id;
-            newActiveAccordionId = item.id;
+            determinedAccordionId = item.id;
             itemFound = true;
             break; 
           } else if (pathname === item.href || pathname.startsWith(item.href + "/")) {
             newActiveSubId = item.subItems[0].id; 
-            newActiveAccordionId = item.id;
+            determinedAccordionId = item.id;
             itemFound = true;
             break; 
           }
         } else {
           if (pathname === item.href || pathname.startsWith(item.href + "/")) {
             newActiveSubId = item.id;
-            newActiveAccordionId = undefined; 
+            determinedAccordionId = undefined; 
             itemFound = true;
             break;
           }
@@ -165,17 +164,19 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
 
     if (!itemFound && (pathname === '/dashboard' || pathname === '/')) {
         newActiveSubId = 'dashboard'; 
-        newActiveAccordionId = undefined;
+        determinedAccordionId = undefined;
     }
     
     setActiveSubItemId(newActiveSubId);
-    // Only update accordion if the path implies a different one should be open
-    // This prevents overriding manual accordion clicks if the path hasn't changed.
-    if (activeAccordionValue !== newActiveAccordionId) {
-        setActiveAccordionValue(newActiveAccordionId);
+
+    // This effect synchronizes the accordion state with the URL.
+    // It runs when the pathname or navigationModules change.
+    // User clicks on accordion triggers are handled by onValueChange, which calls setActiveAccordionValue directly.
+    if (activeAccordionValue !== determinedAccordionId) {
+      setActiveAccordionValue(determinedAccordionId);
     }
 
-  }, [pathname, navigationModules, activeAccordionValue]); // Added activeAccordionValue to dependencies to refine the logic
+  }, [pathname, navigationModules]); // Removed activeAccordionValue from dependencies
 
   if (!isFirebaseConfigured && !loading) {
     return (
@@ -244,7 +245,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
             type="single"
             collapsible
             value={activeAccordionValue}
-            onValueChange={setActiveAccordionValue} // This directly updates the state on click
+            onValueChange={setActiveAccordionValue} 
             className="w-full"
           >
             {navigationModules.map((section, idx) => (
@@ -294,7 +295,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                           : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}
                       `}
                       onClick={() => {
-                        if (activeAccordionValue !== undefined) setActiveAccordionValue(undefined); // Close accordion if a direct link is clicked
+                        if (activeAccordionValue !== undefined) setActiveAccordionValue(undefined); 
                         setActiveSubItemId(item.id);
                       }}
                     >
@@ -383,3 +384,4 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
 export default function AppLayout({ children }: { children: ReactNode }) {
   return <AppLayoutContent>{children}</AppLayoutContent>;
 }
+

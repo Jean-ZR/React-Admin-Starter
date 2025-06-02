@@ -16,13 +16,13 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase/config';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { Loader2, Save, Send, Search, UserPlus } from 'lucide-react';
+import { QuickClientFormModal, type QuickClientFormData } from '@/components/invoicing/quick-client-form-modal';
 
 interface ClientForSelect {
   id: string;
   name: string;
 }
 
-// Read the API token from environment variables
 const APIPERU_TOKEN = process.env.NEXT_PUBLIC_APIPERU_TOKEN;
 
 const invoiceSchema = z.object({
@@ -72,6 +72,9 @@ export default function CreateInvoicePage() {
   const [isSearchingRuc, setIsSearchingRuc] = useState(false);
   const [isSearchingDni, setIsSearchingDni] = useState(false);
   const [apiTokenMissing, setApiTokenMissing] = useState(false);
+  const [isQuickClientModalOpen, setIsQuickClientModalOpen] = useState(false);
+  const [quickClientPrefill, setQuickClientPrefill] = useState<Partial<QuickClientFormData> | undefined>(undefined);
+
 
   const form = useForm<InvoiceFormData>({
     resolver: zodResolver(invoiceSchema),
@@ -99,10 +102,10 @@ export default function CreateInvoicePage() {
         title: "Configuración Requerida",
         description: "El token para APIPeru no está configurado en las variables de entorno. La búsqueda de RUC/DNI está deshabilitada.",
         variant: "destructive",
-        duration: 7000,
+        duration: 10000, // Increased duration for visibility
       });
     }
-  }, []);
+  }, [toast]);
 
   const fetchClients = useCallback(async () => {
     setIsLoadingClients(true);
@@ -158,6 +161,7 @@ export default function CreateInvoicePage() {
 
     if (type === 'ruc') setIsSearchingRuc(true);
     if (type === 'dni') setIsSearchingDni(true);
+    setQuickClientPrefill(undefined); // Reset prefill
 
     try {
         const response = await fetch(`https://apiperu.dev/api/${type}/${value}`, {
@@ -171,26 +175,26 @@ export default function CreateInvoicePage() {
         if (result.success) {
             const data = result.data;
             let nameFromApi = '';
-            let addressFromApi = '';
-
+            
             if (type === 'ruc') {
                 nameFromApi = data.nombre_o_razon_social || 'No encontrado';
-                addressFromApi = data.direccion_completa || '';
-                toast({ title: "RUC Encontrado", description: `Nombre: ${nameFromApi}. Dirección: ${addressFromApi || 'N/A'}` });
+                setQuickClientPrefill({ name: nameFromApi, documentType: 'ruc', documentNumber: value });
+                toast({ title: "RUC Encontrado", description: `Nombre: ${nameFromApi}. Dirección: ${data.direccion_completa || 'N/A'}` });
             } else { // dni
                 nameFromApi = `${data.nombres || ''} ${data.apellido_paterno || ''} ${data.apellido_materno || ''}`.trim();
                 nameFromApi = nameFromApi || 'No encontrado';
+                setQuickClientPrefill({ name: nameFromApi, documentType: 'dni', documentNumber: value });
                 toast({ title: "DNI Encontrado", description: `Nombre: ${nameFromApi}.` });
             }
-            console.log(`API ${type.toUpperCase()} Data:`, data);
-
-            // Attempt to auto-select client if name matches and no client is selected
+            
             const currentClientId = form.getValues('clientId');
             if (!currentClientId && nameFromApi !== 'No encontrado') {
                 const existingClient = clients.find(c => c.name.toLowerCase() === nameFromApi.toLowerCase());
                 if (existingClient) {
                     form.setValue('clientId', existingClient.id);
                     toast({ title: "Cliente Encontrado", description: `Cliente '${nameFromApi}' seleccionado automáticamente.`, variant: "default" });
+                } else {
+                    toast({ title: "Cliente No Encontrado", description: `Cliente '${nameFromApi}' no está en tu lista. Puedes añadirlo con el botón [+].`, variant: "default" });
                 }
             }
 
@@ -207,8 +211,22 @@ export default function CreateInvoicePage() {
   };
   
   const handleAddClientClick = () => {
-    // TODO: Implement modal for quick client creation
-    toast({ title: "Próximamente", description: "Funcionalidad para añadir cliente rápido estará disponible pronto." });
+    setIsQuickClientModalOpen(true);
+  };
+
+  const handleClientCreated = (clientId: string, clientName: string) => {
+    const newClient = { id: clientId, name: clientName };
+    setClients(prevClients => [...prevClients, newClient].sort((a, b) => a.name.localeCompare(b.name)));
+    form.setValue('clientId', clientId);
+    if (documentType && quickClientPrefill?.documentNumber) {
+        if (documentType === 'factura' && quickClientPrefill.documentType === 'ruc') {
+            form.setValue('ruc', quickClientPrefill.documentNumber);
+        } else if (documentType === 'boleta' && quickClientPrefill.documentType === 'dni') {
+            form.setValue('dni', quickClientPrefill.documentNumber);
+        }
+    }
+    setIsQuickClientModalOpen(false);
+    setQuickClientPrefill(undefined);
   };
 
 
@@ -245,7 +263,7 @@ export default function CreateInvoicePage() {
                               ))}
                             </SelectContent>
                           </Select>
-                          <Button type="button" variant="outline" size="icon" onClick={handleAddClientClick} className="shrink-0">
+                          <Button type="button" variant="outline" size="icon" onClick={handleAddClientClick} className="shrink-0 border-input hover:bg-accent hover:text-accent-foreground" disabled={apiTokenMissing}>
                             <UserPlus className="h-4 w-4" />
                             <span className="sr-only">Añadir Nuevo Cliente</span>
                           </Button>
@@ -288,7 +306,7 @@ export default function CreateInvoicePage() {
                         <FormControl>
                           <Input placeholder="Ingrese RUC del cliente" {...field} value={field.value || ''} className="bg-background border-input flex-1" maxLength={11} />
                         </FormControl>
-                        <Button type="button" variant="outline" size="icon" onClick={() => handleSearchApi('ruc', rucValue)} disabled={isSearchingRuc || !rucValue || rucValue.length !== 11 || apiTokenMissing}>
+                        <Button type="button" variant="outline" size="icon" onClick={() => handleSearchApi('ruc', rucValue)} disabled={isSearchingRuc || !rucValue || rucValue.length !== 11 || apiTokenMissing} className="border-input hover:bg-accent hover:text-accent-foreground">
                           {isSearchingRuc ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                            <span className="sr-only">Buscar RUC</span>
                         </Button>
@@ -310,7 +328,7 @@ export default function CreateInvoicePage() {
                           <FormControl>
                             <Input placeholder="Ingrese DNI del cliente" {...field} value={field.value || ''} className="bg-background border-input flex-1" maxLength={8} />
                           </FormControl>
-                          <Button type="button" variant="outline" size="icon" onClick={() => handleSearchApi('dni', dniValue)} disabled={isSearchingDni || !dniValue || dniValue.length !== 8 || apiTokenMissing}>
+                          <Button type="button" variant="outline" size="icon" onClick={() => handleSearchApi('dni', dniValue)} disabled={isSearchingDni || !dniValue || dniValue.length !== 8 || apiTokenMissing} className="border-input hover:bg-accent hover:text-accent-foreground">
                             {isSearchingDni ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                              <span className="sr-only">Buscar DNI</span>
                           </Button>
@@ -408,7 +426,7 @@ export default function CreateInvoicePage() {
               )}
             </CardContent>
             <CardFooter className="flex justify-end gap-2 border-t border-border pt-6">
-              <Button type="button" variant="outline" onClick={() => form.reset()} disabled={isSubmitting || isSearchingRuc || isSearchingDni}>
+              <Button type="button" variant="outline" onClick={() => form.reset()} disabled={isSubmitting || isSearchingRuc || isSearchingDni || apiTokenMissing} className="border-input hover:bg-accent hover:text-accent-foreground">
                 Limpiar Formulario
               </Button>
               <Button type="submit" variant="secondary" disabled={isSubmitting || isSearchingRuc || isSearchingDni || apiTokenMissing}>
@@ -423,6 +441,12 @@ export default function CreateInvoicePage() {
           </Card>
         </form>
       </Form>
+      <QuickClientFormModal
+        isOpen={isQuickClientModalOpen}
+        onClose={() => setIsQuickClientModalOpen(false)}
+        onClientCreated={handleClientCreated}
+        prefillData={quickClientPrefill}
+      />
     </div>
   );
 }

@@ -2,7 +2,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react'; // Ensured useMemo is imported
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -40,27 +40,8 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { getTranslation, getPageTitleInfo } from '@/lib/translations';
+import { getTranslation, getPageTitleInfo, type TranslationSet, type NavModule, type NavSubItem } from '@/lib/translations';
 
-
-interface NavSubItem {
-  labelKey: keyof import('@/lib/translations').TranslationSet;
-  href: string;
-  id: string;
-}
-interface NavItem {
-  icon: React.ElementType;
-  labelKey: keyof import('@/lib/translations').TranslationSet;
-  id: string;
-  href: string;
-  fields?: number;
-  subItems?: NavSubItem[];
-}
-
-interface NavModule {
-  categoryKey: keyof import('@/lib/translations').TranslationSet;
-  items: NavItem[];
-}
 
 const getNavigationModules = (lang: string | null | undefined): NavModule[] => [
   {
@@ -133,7 +114,7 @@ const getNavigationModules = (lang: string | null | undefined): NavModule[] => [
             { labelKey: 'settings_logs', href: '/settings/logs', id: 'settings-logs' },
         ]
       },
-      { icon: HelpCircle, labelKey: 'support', id: 'support', href: '/dashboard' },
+      { icon: HelpCircle, labelKey: 'support', id: 'support', href: '/dashboard' }, // Example direct link
     ],
   },
 ];
@@ -147,61 +128,54 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
   const [activeSubItemId, setActiveSubItemId] = useState<string | null>(null);
   const [activeAccordionValue, setActiveAccordionValue] = useState<string | undefined>(undefined);
   
-  const navigationModules = getNavigationModules(languagePreference);
+  // Ensure navigationModules is memoized and only changes when languagePreference changes.
+  const navigationModules = useMemo(() => getNavigationModules(languagePreference), [languagePreference]);
 
   useEffect(() => {
     let newActiveSubId: string | null = null;
-    let newActiveAccordionValue: string | undefined = undefined;
+    let newActiveAccordionId: string | undefined = undefined;
     let itemFound = false;
 
     for (const modGroup of navigationModules) {
       if (itemFound) break;
       for (const item of modGroup.items) {
         if (item.subItems && item.subItems.length > 0) {
-          // This is an accordion item
           const matchingSubItem = item.subItems.find(sub => pathname === sub.href || pathname.startsWith(sub.href + "/"));
           if (matchingSubItem) {
             newActiveSubId = matchingSubItem.id;
-            newActiveAccordionValue = item.id;
+            newActiveAccordionId = item.id;
             itemFound = true;
-            break; // Found active sub-item, break from inner loop
+            break; 
           } else if (pathname === item.href || pathname.startsWith(item.href + "/")) {
-            // Path matches the main accordion item's href (which is typically the first sub-item's href)
-            // or a base path for this accordion section.
-            newActiveSubId = item.subItems[0].id; // Default to first sub-item
-            newActiveAccordionValue = item.id;
+            newActiveSubId = item.subItems[0].id; 
+            newActiveAccordionId = item.id;
             itemFound = true;
-            break; // Found active accordion by its main link, break from inner loop
+            break; 
           }
         } else {
-          // This is a direct link item (no subItems)
           if (pathname === item.href || pathname.startsWith(item.href + "/")) {
             newActiveSubId = item.id;
-            newActiveAccordionValue = undefined; // No accordion is open for direct links
+            newActiveAccordionId = undefined; 
             itemFound = true;
-            break; // Found active direct link, break from inner loop
+            break;
           }
         }
       }
     }
 
-    // If no specific item was found through the main logic (e.g., path is / or some other non-nav path)
     if (!itemFound && (pathname === '/dashboard' || pathname === '/')) {
-        newActiveSubId = 'dashboard'; // Default to dashboard
-        newActiveAccordionValue = undefined;
-        itemFound = true; // Consider dashboard as found
+        newActiveSubId = 'dashboard'; 
+        newActiveAccordionId = undefined;
     }
     
-    // If still not found, it implies a path not in the main navigation (e.g., /profile).
-    // In this case, newActiveSubId will remain null and newActiveAccordionValue undefined,
-    // which means no sidebar item will be highlighted and no accordion will be forced open,
-    // allowing the previously user-opened accordion (if any and if collapsible is true) to remain or close.
-
     setActiveSubItemId(newActiveSubId);
-    setActiveAccordionValue(newActiveAccordionValue);
+    // Only update accordion if the path implies a different one should be open
+    // This prevents overriding manual accordion clicks if the path hasn't changed.
+    if (activeAccordionValue !== newActiveAccordionId) {
+        setActiveAccordionValue(newActiveAccordionId);
+    }
 
-  }, [pathname, navigationModules]);
-
+  }, [pathname, navigationModules, activeAccordionValue]); // Added activeAccordionValue to dependencies to refine the logic
 
   if (!isFirebaseConfigured && !loading) {
     return (
@@ -252,7 +226,6 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
 
   const currentPageInfo = getPageTitleInfo(languagePreference, pathname);
 
-
   return (
     <div className="flex min-h-screen w-full bg-background">
       <div className="w-72 bg-sidebar text-sidebar-foreground border-r border-sidebar-border p-6 flex flex-col shrink-0">
@@ -271,7 +244,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
             type="single"
             collapsible
             value={activeAccordionValue}
-            onValueChange={setActiveAccordionValue}
+            onValueChange={setActiveAccordionValue} // This directly updates the state on click
             className="w-full"
           >
             {navigationModules.map((section, idx) => (
@@ -321,7 +294,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                           : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}
                       `}
                       onClick={() => {
-                        if (activeAccordionValue !== undefined) setActiveAccordionValue(undefined);
+                        if (activeAccordionValue !== undefined) setActiveAccordionValue(undefined); // Close accordion if a direct link is clicked
                         setActiveSubItemId(item.id);
                       }}
                     >

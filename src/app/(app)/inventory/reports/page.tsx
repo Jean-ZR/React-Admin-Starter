@@ -1,54 +1,65 @@
-'use client'; // Required for state and onClick handlers
+
+'use client'; 
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"; // Added CardFooter import
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"; 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-// import { DatePickerWithRange } from "@/components/ui/date-picker-with-range"; // Assuming this component exists
-import { BarChart, LineChart, PieChart, FileDown } from "lucide-react"; // Example icons, added FileDown
+import { BarChart, LineChart, PieChart, FileDown, Loader2 } from "lucide-react"; 
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+// Removed Tabs, TabsList, TabsTrigger, Link, usePathname as navigation is now in sidebar
 
 export default function InventoryReportsPage() {
+    // Removed usePathname
     const [reportGenerated, setReportGenerated] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const { toast } = useToast();
+
 
     const handleGenerateReport = () => {
+        setIsGenerating(true);
         console.log("Generating inventory report...");
-        // TODO: Add actual report generation logic here
-        setReportGenerated(true);
-        alert("Report generation functionality not yet implemented. Results area updated conceptually.");
+        // Simulate report generation
+        setTimeout(() => {
+            setReportGenerated(true);
+            setIsGenerating(false);
+            toast({ title: "Report Generated", description: "Inventory report results are now available (conceptual)." });
+        }, 1500);
     };
 
     const handleExportResults = () => {
+        if (!reportGenerated) {
+             toast({ title: "No Data", description: "Please generate a report first.", variant: "default" });
+            return;
+        }
         console.log("Exporting inventory report results...");
-        // TODO: Implement actual CSV/PDF export logic for the generated report data
-        alert("Export functionality not yet implemented.");
+        toast({ title: "Export Action", description: "Export functionality placeholder for inventory report." });
     };
 
     const handleResetFilters = () => {
         console.log("Resetting inventory report filters...");
-        // TODO: Reset all select/date picker inputs to default values
         setReportGenerated(false);
-        alert("Filter reset functionality not yet implemented.");
+        // TODO: Reset actual filter states here
+        toast({ title: "Filters Reset", description: "Inventory report filters have been cleared." });
     };
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold leading-none tracking-tight">
-        Inventory Reports
-      </h1>
+       {/* Title is now handled by layout.tsx */}
 
-      <Card>
+      <Card className="bg-card text-card-foreground border-border">
         <CardHeader>
-          <CardTitle>Generate Inventory Report</CardTitle>
-          <CardDescription>Analytics and forecasting tools for inventory management.</CardDescription>
+          <CardTitle className="text-foreground">Generate Inventory Report</CardTitle>
+          <CardDescription className="text-muted-foreground">Analytics and forecasting tools for inventory management.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <div className="space-y-2">
-            <label htmlFor="reportTypeInv" className="text-sm font-medium">Report Type</label>
+            <label htmlFor="reportTypeInv" className="text-sm font-medium text-muted-foreground">Report Type</label>
             <Select>
-              <SelectTrigger id="reportTypeInv">
+              <SelectTrigger id="reportTypeInv" className="bg-background border-input text-foreground">
                 <SelectValue placeholder="Select report type" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-popover text-popover-foreground border-border">
                 <SelectItem value="stockLevel">Current Stock Levels</SelectItem>
                 <SelectItem value="valuation">Inventory Valuation</SelectItem>
                 <SelectItem value="turnover">Stock Turnover Rate</SelectItem>
@@ -59,12 +70,12 @@ export default function InventoryReportsPage() {
             </Select>
           </div>
            <div className="space-y-2">
-            <label htmlFor="categoryInv" className="text-sm font-medium">Category (Optional)</label>
+            <label htmlFor="categoryInv" className="text-sm font-medium text-muted-foreground">Category (Optional)</label>
             <Select>
-              <SelectTrigger id="categoryInv">
+              <SelectTrigger id="categoryInv" className="bg-background border-input text-foreground">
                 <SelectValue placeholder="All Categories" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-popover text-popover-foreground border-border">
                  <SelectItem value="all">All Categories</SelectItem>
                 <SelectItem value="peripherals">Peripherals</SelectItem>
                 <SelectItem value="displays">Displays</SelectItem>
@@ -73,12 +84,12 @@ export default function InventoryReportsPage() {
             </Select>
           </div>
             <div className="space-y-2">
-            <label htmlFor="locationInv" className="text-sm font-medium">Location (Optional)</label>
+            <label htmlFor="locationInv" className="text-sm font-medium text-muted-foreground">Location (Optional)</label>
             <Select>
-              <SelectTrigger id="locationInv">
+              <SelectTrigger id="locationInv" className="bg-background border-input text-foreground">
                 <SelectValue placeholder="All Locations" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-popover text-popover-foreground border-border">
                  <SelectItem value="all">All Locations</SelectItem>
                 <SelectItem value="shelfA1">Shelf A1</SelectItem>
                 <SelectItem value="shelfA2">Shelf A2</SelectItem>
@@ -87,40 +98,37 @@ export default function InventoryReportsPage() {
               </SelectContent>
             </Select>
           </div>
-           {/* Assuming DatePicker component exists */}
-           {/* <div className="space-y-2">
-             <label htmlFor="startDateInv" className="text-sm font-medium">Start Date (Optional)</label>
-             <DatePicker id="startDateInv" />
-           </div>
-           <div className="space-y-2">
-             <label htmlFor="endDateInv" className="text-sm font-medium">End Date (Optional)</label>
-             <DatePicker id="endDateInv" />
-           </div> */}
            <div className="lg:col-span-3 flex justify-end gap-2 mt-4">
-             <Button variant="outline" onClick={handleResetFilters}>Reset</Button>
-             <Button onClick={handleGenerateReport}>Generate Report</Button>
+             <Button variant="outline" onClick={handleResetFilters} disabled={isGenerating} className="border-input hover:bg-accent hover:text-accent-foreground">Reset</Button>
+             <Button onClick={handleGenerateReport} disabled={isGenerating} className="bg-primary text-primary-foreground hover:bg-primary/90">
+                {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isGenerating ? "Generating..." : "Generate Report"}
+            </Button>
            </div>
         </CardContent>
       </Card>
 
-      {/* Placeholder for Report Results */}
-      <Card>
+      <Card className="bg-card text-card-foreground border-border">
         <CardHeader>
-            <CardTitle>Report Results</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-foreground">Report Results</CardTitle>
+            <CardDescription className="text-muted-foreground">
                  {reportGenerated
                     ? "Inventory report generated."
                     : "Generated inventory report will appear here (e.g., tables, charts)."}
             </CardDescription>
         </CardHeader>
         <CardContent className="min-h-[200px] flex items-center justify-center">
-            {reportGenerated ? (
-                <p className="text-sm">Inventory report data/charts would be displayed here.</p>
-                 // TODO: Render actual report data/table/chart here
+            {isGenerating ? (
+                <div className="flex justify-center items-center h-full">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="ml-2 text-muted-foreground">Generating report data...</p>
+                </div>
+            ) : reportGenerated ? (
+                <p className="text-sm text-muted-foreground">Inventory report data/charts would be displayed here.</p>
             ) : (
                 <div className="text-center text-muted-foreground italic space-y-4">
                 <p>No report generated yet. Select parameters above and click "Generate Report".</p>
-                    <div className="flex gap-8 justify-center text-gray-400">
+                    <div className="flex gap-8 justify-center text-muted-foreground/50">
                         <BarChart className="h-16 w-16" />
                         <LineChart className="h-16 w-16" />
                         <PieChart className="h-16 w-16" />
@@ -128,13 +136,13 @@ export default function InventoryReportsPage() {
                 </div>
             )}
         </CardContent>
-         <CardFooter className="flex justify-end">
+         <CardFooter className="flex justify-end border-t border-border pt-4">
            <Button
               variant="outline"
               size="sm"
-              disabled={!reportGenerated}
+              disabled={!reportGenerated || isGenerating}
               onClick={handleExportResults}
-              className="gap-1"
+              className="gap-1 border-input hover:bg-accent hover:text-accent-foreground"
             >
                 <FileDown className="h-3.5 w-3.5" />
                  Export Results
@@ -148,3 +156,4 @@ export default function InventoryReportsPage() {
     </div>
   );
 }
+    

@@ -33,11 +33,13 @@ import {
   orderBy,
   Timestamp,
   getDocs,
+  getDoc, // Added getDoc for fetching single item if needed
   where,
   type DocumentData,
 } from 'firebase/firestore';
-import { format } from 'date-fns'; // For date formatting
+import { format } from 'date-fns'; 
 import { useAuth } from '@/contexts/auth-context';
+// Removed Tabs, TabsList, TabsTrigger, Link, usePathname as navigation is now in sidebar
 
 interface InventoryItemBasic {
   id: string;
@@ -49,9 +51,9 @@ interface MovementLogEntry extends MovementFormData {
   id: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
-  user?: string; // User who recorded the movement
-  itemName?: string; // Denormalized for display
-  itemSku?: string; // Denormalized for display
+  user?: string; 
+  itemName?: string; 
+  itemSku?: string; 
 }
 
 
@@ -65,11 +67,10 @@ export default function StockMovementsPage() {
   const [inventoryItems, setInventoryItems] = useState<InventoryItemBasic[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<string>(''); // For filtering by movement type
+  const [filterType, setFilterType] = useState<string>(''); 
   const { toast } = useToast();
   const { user: authUser } = useAuth();
 
-  // Fetch inventory items for the modal dropdown
   const fetchInventoryItems = useCallback(async () => {
     try {
       const itemsCollectionRef = collection(db, 'inventoryItems');
@@ -91,13 +92,11 @@ export default function StockMovementsPage() {
     fetchInventoryItems();
   }, [fetchInventoryItems]);
 
-  // Fetch movement logs
   const fetchMovementLogs = useCallback(() => {
     setIsLoading(true);
     const movementsCollectionRef = collection(db, 'inventoryMovements');
     let q = query(movementsCollectionRef, orderBy('createdAt', 'desc'));
 
-    // Apply type filter if selected
     if (filterType && filterType !== 'all') {
         q = query(q, where('type', '==', filterType));
     }
@@ -108,8 +107,6 @@ export default function StockMovementsPage() {
         let itemName = data.itemName || 'N/A';
         let itemSku = data.itemSku || 'N/A';
 
-        // If itemName/itemSku are not denormalized, fetch them
-        // This is less efficient for lists; consider denormalization for production.
         if ((!itemName || !itemSku) && data.itemId) {
           try {
             const itemDocRef = doc(db, 'inventoryItems', data.itemId);
@@ -135,7 +132,6 @@ export default function StockMovementsPage() {
 
       let logsData = await Promise.all(logsDataPromises);
 
-      // Client-side search
       if (searchTerm) {
         logsData = logsData.filter(log =>
           log.itemName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -194,17 +190,16 @@ export default function StockMovementsPage() {
   };
 
   const handleSaveMovement = async (formData: MovementFormData) => {
-    // Find selected item details for denormalization
     const selectedItem = inventoryItems.find(item => item.id === formData.itemId);
 
     const dataToSave = {
       ...formData,
-      quantity: formData.type === 'Outbound' || (formData.type === 'Adjustment' && formData.quantity < 0) // Store as negative if outbound/decreasing adjustment
+      quantity: formData.type === 'Outbound' || (formData.type === 'Adjustment' && formData.quantity < 0) 
                   ? -Math.abs(formData.quantity)
                   : Math.abs(formData.quantity),
       itemName: selectedItem?.name || 'Unknown Item',
       itemSku: selectedItem?.sku || 'N/A',
-      user: authUser?.displayName || authUser?.email || 'System', // Use authenticated user
+      user: authUser?.displayName || authUser?.email || 'System', 
     };
 
     try {
@@ -232,8 +227,6 @@ export default function StockMovementsPage() {
         toast({ title: "No Data", description: "No movement logs to export.", variant: "default" });
         return;
     }
-    // Implement CSV/PDF export using movementLogs data
-    // For brevity, using console.log as placeholder from original
     console.log("Exporting movement log...", movementLogs);
     alert("Export functionality to be implemented with a library like jsPDF or papaparse.");
   };
@@ -242,25 +235,24 @@ export default function StockMovementsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold leading-none tracking-tight">
-          Stock Movements
-        </h1>
+         {/* Title is now handled by layout.tsx */}
+        <div className="flex-1"></div> {/* Spacer */}
         <div className="flex gap-2 items-center w-full sm:w-auto">
           <div className="relative flex-1 sm:flex-initial">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Search movements..."
-              className="pl-8 sm:w-[200px] lg:w-[300px]"
+              className="pl-8 sm:w-[200px] lg:w-[300px] bg-background border-input text-foreground placeholder:text-muted-foreground"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="h-9 sm:w-[150px]">
+            <SelectTrigger className="h-9 sm:w-[150px] bg-background border-input text-foreground">
               <SelectValue placeholder="Filter by Type" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-popover text-popover-foreground border-border">
               <SelectItem value="all">All Types</SelectItem>
               <SelectItem value="Inbound">Inbound</SelectItem>
               <SelectItem value="Outbound">Outbound</SelectItem>
@@ -268,106 +260,108 @@ export default function StockMovementsPage() {
               <SelectItem value="Transfer">Transfer</SelectItem>
             </SelectContent>
           </Select>
-          <Button size="sm" variant="outline" className="h-9 gap-1" onClick={handleExport}>
+          <Button size="sm" variant="outline" className="h-9 gap-1 text-muted-foreground hover:text-foreground border-input hover:bg-accent" onClick={handleExport}>
             <FileDown className="h-3.5 w-3.5" />
             <span className="sr-only sm:not-sr-only">Export Log</span>
           </Button>
-          <Button size="sm" className="h-9 gap-1" onClick={handleRecordMovementClick}>
+          <Button size="sm" className="h-9 gap-1 bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleRecordMovementClick}>
             <PlusCircle className="h-3.5 w-3.5" />
             <span className="sr-only sm:not-sr-only">Record Movement</span>
           </Button>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Movement Log</CardTitle>
-          <CardDescription>Monitor incoming and outgoing inventory changes.</CardDescription>
+      <Card className="shadow-sm border border-border bg-card text-card-foreground">
+        <CardHeader className="border-b border-border">
+          <CardTitle className="text-foreground">Movement Log</CardTitle>
+          <CardDescription className="text-muted-foreground">Monitor incoming and outgoing inventory changes.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {isLoading ? (
             <div className="flex justify-center items-center min-h-[200px]">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="ml-2">Loading movement logs...</p>
+              <p className="ml-2 text-muted-foreground">Loading movement logs...</p>
             </div>
           ) : movementLogs.length === 0 ? (
             <div className="text-center py-10 text-muted-foreground">
               No movement logs found. Click "Record Movement" to add one.
             </div>
           ) : (
-            <Table>
-              <TableCaption>Detailed log of all inventory movements. {movementLogs.length} record(s) found.</TableCaption>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Item (SKU)</TableHead>
-                  <TableHead className="text-right">Quantity</TableHead>
-                  <TableHead>Source / Dest.</TableHead>
-                  <TableHead>User</TableHead>
-                  <TableHead>Notes</TableHead>
-                  <TableHead><span className="sr-only">Actions</span></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {movementLogs.map((log) => (
-                  <TableRow key={log.id}>
-                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                      {log.createdAt ? format(log.createdAt.toDate(), 'yyyy-MM-dd HH:mm') : 'N/A'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="gap-1 items-center">
-                        {log.type === 'Inbound' && <ArrowDownCircle className="h-3 w-3 text-green-600" />}
-                        {log.type === 'Outbound' && <ArrowUpCircle className="h-3 w-3 text-red-600" />}
-                        {log.type === 'Transfer' && <ArrowRightLeft className="h-3 w-3 text-blue-600" />}
-                        {log.type === 'Adjustment' && <Settings2 className="h-3 w-3 text-orange-600" />}
-                        {log.type}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-medium flex items-center gap-1">
-                        <Package className="h-3 w-3 text-muted-foreground hidden sm:inline-block" />
-                        <div>
-                            {log.itemName || 'N/A'}
-                            <span className="text-xs text-muted-foreground block sm:inline sm:ml-1">({log.itemSku || 'N/A'})</span>
-                        </div>
-                    </TableCell>
-                    <TableCell className={`text-right font-medium ${Number(log.quantity) > 0 ? 'text-green-600' : Number(log.quantity) < 0 ? 'text-red-600' : ''}`}>
-                      {Number(log.quantity) > 0 ? '+' : ''}{log.quantity}
-                    </TableCell>
-                    <TableCell>{log.sourceOrDestination || 'N/A'}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground flex items-center gap-1">
-                        <User className="h-3 w-3 text-muted-foreground hidden sm:inline-block" />
-                        {log.user || 'N/A'}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground truncate max-w-[150px]" title={log.notes}>{log.notes || 'N/A'}</TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button aria-haspopup="true" size="icon" variant="ghost">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => handleEditMovementClick(log)}>Edit</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => handleDeleteMovementClick(log)}
-                          >
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto">
+                <Table>
+                <TableCaption className="py-4 text-muted-foreground">Detailed log of all inventory movements. {movementLogs.length} record(s) found.</TableCaption>
+                <TableHeader>
+                    <TableRow className="border-border">
+                    <TableHead className="text-muted-foreground">Date</TableHead>
+                    <TableHead className="text-muted-foreground">Type</TableHead>
+                    <TableHead className="text-muted-foreground">Item (SKU)</TableHead>
+                    <TableHead className="text-right text-muted-foreground">Quantity</TableHead>
+                    <TableHead className="text-muted-foreground">Source / Dest.</TableHead>
+                    <TableHead className="text-muted-foreground">User</TableHead>
+                    <TableHead className="text-muted-foreground">Notes</TableHead>
+                    <TableHead><span className="sr-only">Actions</span></TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {movementLogs.map((log) => (
+                    <TableRow key={log.id} className="border-border hover:bg-muted/50">
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap py-2 px-3">
+                        {log.createdAt ? format(log.createdAt.toDate(), 'yyyy-MM-dd HH:mm') : 'N/A'}
+                        </TableCell>
+                        <TableCell className="py-2 px-3">
+                        <Badge variant="outline" className="gap-1 items-center border-border text-muted-foreground">
+                            {log.type === 'Inbound' && <ArrowDownCircle className="h-3 w-3 text-green-600 dark:text-green-400" />}
+                            {log.type === 'Outbound' && <ArrowUpCircle className="h-3 w-3 text-red-600 dark:text-red-400" />}
+                            {log.type === 'Transfer' && <ArrowRightLeft className="h-3 w-3 text-blue-600 dark:text-blue-400" />}
+                            {log.type === 'Adjustment' && <Settings2 className="h-3 w-3 text-orange-600 dark:text-orange-400" />}
+                            {log.type}
+                        </Badge>
+                        </TableCell>
+                        <TableCell className="font-medium flex items-center gap-1 text-foreground py-2 px-3">
+                            <Package className="h-3 w-3 text-muted-foreground hidden sm:inline-block" />
+                            <div>
+                                {log.itemName || 'N/A'}
+                                <span className="text-xs text-muted-foreground block sm:inline sm:ml-1">({log.itemSku || 'N/A'})</span>
+                            </div>
+                        </TableCell>
+                        <TableCell className={`text-right font-medium py-2 px-3 ${Number(log.quantity) > 0 ? 'text-green-600 dark:text-green-400' : Number(log.quantity) < 0 ? 'text-red-600 dark:text-red-400' : 'text-foreground'}`}>
+                        {Number(log.quantity) > 0 ? '+' : ''}{log.quantity}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground py-2 px-3">{log.sourceOrDestination || 'N/A'}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground flex items-center gap-1 py-2 px-3">
+                            <User className="h-3 w-3 text-muted-foreground hidden sm:inline-block" />
+                            {log.user || 'N/A'}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground truncate max-w-[150px] py-2 px-3" title={log.notes}>{log.notes || 'N/A'}</TableCell>
+                        <TableCell className="py-2 px-3">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                            <Button aria-haspopup="true" size="icon" variant="ghost" className="text-muted-foreground hover:text-foreground hover:bg-accent">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Toggle menu</span>
+                            </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="bg-popover text-popover-foreground border-border">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => handleEditMovementClick(log)} className="hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">Edit</DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-border"/>
+                            <DropdownMenuItem
+                                className="text-destructive focus:bg-destructive/10 focus:text-destructive hover:!bg-destructive/10 hover:!text-destructive"
+                                onClick={() => handleDeleteMovementClick(log)}
+                            >
+                                Delete
+                            </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        </TableCell>
+                    </TableRow>
+                    ))}
+                </TableBody>
+                </Table>
+            </div>
           )}
         </CardContent>
-        <CardFooter>
+        <CardFooter className="border-t border-border pt-4">
           <div className="text-xs text-muted-foreground">
             Showing <strong>{movementLogs.length}</strong> movement log(s).
           </div>

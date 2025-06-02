@@ -37,6 +37,7 @@ import {
   type DocumentData,
 } from 'firebase/firestore';
 import { exportToCSV, exportToPDF } from '@/lib/export';
+// Removed Tabs, TabsList, TabsTrigger, Link, usePathname as navigation is now in sidebar
 
 export interface StockItem extends ItemFormData {
   id: string;
@@ -52,8 +53,8 @@ export default function StockManagementPage() {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [itemToDelete, setItemToDelete] = useState<StockItem | null>(null);
     
-    const [allStockItems, setAllStockItems] = useState<StockItem[]>([]); // Raw data from Firestore
-    const [displayedStockItems, setDisplayedStockItems] = useState<StockItem[]>([]); // Data after all filters
+    const [allStockItems, setAllStockItems] = useState<StockItem[]>([]); 
+    const [displayedStockItems, setDisplayedStockItems] = useState<StockItem[]>([]); 
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilters, setStatusFilters] = useState<string[]>([]);
@@ -61,7 +62,6 @@ export default function StockManagementPage() {
     const [availableCategories, setAvailableCategories] = useState<string[]>([]);
     const { toast } = useToast();
 
-    // Fetch initial stock items from Firestore
     useEffect(() => {
       setIsLoading(true);
       const itemsCollectionRef = collection(db, 'inventoryItems');
@@ -77,7 +77,6 @@ export default function StockManagementPage() {
         });
         setAllStockItems(itemsData);
         
-        // Extract unique categories for filtering
         const uniqueCategories = Array.from(new Set(itemsData.map(item => item.category).filter(Boolean)));
         setAvailableCategories(uniqueCategories.sort());
 
@@ -91,16 +90,13 @@ export default function StockManagementPage() {
       return () => unsubscribe();
     }, [toast]);
 
-    // Apply filters and search whenever dependencies change
     useEffect(() => {
       let filtered = [...allStockItems];
 
-      // Category filtering
       if (categoryFilters.length > 0) {
         filtered = filtered.filter(item => categoryFilters.includes(item.category));
       }
 
-      // Search term filtering
       if (searchTerm) {
         const lowerSearchTerm = searchTerm.toLowerCase();
         filtered = filtered.filter(item =>
@@ -111,7 +107,6 @@ export default function StockManagementPage() {
         );
       }
 
-      // Status filtering (client-side due to complexity of reorderLevel comparison)
       if (statusFilters.length > 0) {
         filtered = filtered.filter(item => {
           if (statusFilters.includes("Out of Stock") && item.quantity === 0) return true;
@@ -206,7 +201,6 @@ export default function StockManagementPage() {
         }
         exportToCSV(displayedStockItems.map(({ id, createdAt, updatedAt, ...rest }) => ({
             ...rest,
-            // Any specific formatting for CSV if needed
         })), 'stock_items_list');
     };
 
@@ -240,37 +234,37 @@ export default function StockManagementPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold leading-none tracking-tight">
-          Stock Management
-        </h1>
+        {/* Title is now handled by layout.tsx */}
+        <div className="flex-1"></div> {/* Spacer */}
         <div className="flex gap-2 items-center w-full sm:w-auto">
            <div className="relative flex-1 sm:flex-initial">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Search stock items..."
-              className="pl-8 sm:w-[200px] lg:w-[300px]"
+              className="pl-8 sm:w-[200px] lg:w-[300px] bg-background border-input text-foreground placeholder:text-muted-foreground"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
            <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 gap-1">
+              <Button variant="outline" size="sm" className="h-9 gap-1 text-muted-foreground hover:text-foreground border-input hover:bg-accent">
                 <ListFilter className="h-3.5 w-3.5" />
                 <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                   Filter Status
                 </span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="bg-popover text-popover-foreground border-border">
               <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
-              <DropdownMenuSeparator />
+              <DropdownMenuSeparator className="bg-border"/>
               {ALL_STATUS_OPTIONS.map(status => (
                 <DropdownMenuCheckboxItem
                   key={status}
                   checked={statusFilters.includes(status)}
                   onCheckedChange={() => handleStatusFilterChange(status)}
+                  className="hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground"
                 >
                   {status}
                 </DropdownMenuCheckboxItem>
@@ -279,146 +273,149 @@ export default function StockManagementPage() {
           </DropdownMenu>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 gap-1">
+              <Button variant="outline" size="sm" className="h-9 gap-1 text-muted-foreground hover:text-foreground border-input hover:bg-accent">
                 <ListFilter className="h-3.5 w-3.5" />
                 <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                   Filter Category
                 </span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="bg-popover text-popover-foreground border-border">
               <DropdownMenuLabel>Filter by Category</DropdownMenuLabel>
-              <DropdownMenuSeparator />
+              <DropdownMenuSeparator className="bg-border"/>
               {availableCategories.length > 0 ? availableCategories.map(cat => (
                 <DropdownMenuCheckboxItem
                   key={cat}
                   checked={categoryFilters.includes(cat)}
                   onCheckedChange={() => handleCategoryFilterChange(cat)}
+                  className="hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground"
                 >
                   {cat}
                 </DropdownMenuCheckboxItem>
-              )) : <DropdownMenuItem disabled>No categories found</DropdownMenuItem>}
+              )) : <DropdownMenuItem disabled className="hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">No categories found</DropdownMenuItem>}
             </DropdownMenuContent>
           </DropdownMenu>
            <DropdownMenu>
              <DropdownMenuTrigger asChild>
-               <Button size="sm" variant="outline" className="h-9 gap-1">
+               <Button size="sm" variant="outline" className="h-9 gap-1 text-muted-foreground hover:text-foreground border-input hover:bg-accent">
                  <FileDown className="h-3.5 w-3.5" />
                  <span className="sr-only sm:not-sr-only">Export</span>
                </Button>
              </DropdownMenuTrigger>
-             <DropdownMenuContent align="end">
-               <DropdownMenuItem onClick={handleExportCSV}>Export as CSV</DropdownMenuItem>
-               <DropdownMenuItem onClick={handleExportPDF}>Export as PDF</DropdownMenuItem>
+             <DropdownMenuContent align="end" className="bg-popover text-popover-foreground border-border">
+               <DropdownMenuItem onClick={handleExportCSV} className="hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">Exportar como CSV</DropdownMenuItem>
+               <DropdownMenuItem onClick={handleExportPDF} className="hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">Exportar como PDF</DropdownMenuItem>
              </DropdownMenuContent>
            </DropdownMenu>
-          <Button size="sm" className="h-9 gap-1" onClick={handleAddItem}>
+          <Button size="sm" className="h-9 gap-1 bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleAddItem}>
             <PlusCircle className="h-3.5 w-3.5" />
             <span className="sr-only sm:not-sr-only">Add Item</span>
           </Button>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Inventory Levels</CardTitle>
-           <CardDescription>Real-time tracking of inventory items.</CardDescription>
+      <Card className="shadow-sm border border-border bg-card text-card-foreground">
+        <CardHeader className="border-b border-border">
+          <CardTitle className="text-foreground">Inventory Levels</CardTitle>
+           <CardDescription className="text-muted-foreground">Real-time tracking of inventory items.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {isLoading ? (
             <div className="flex justify-center items-center min-h-[200px]">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="ml-2">Loading inventory items...</p>
+                <p className="ml-2 text-muted-foreground">Loading inventory items...</p>
             </div>
           ) : displayedStockItems.length === 0 ? (
              <div className="text-center py-10 text-muted-foreground">
                 No items found matching your criteria.
               </div>
           ) : (
-            <Table>
-              <TableCaption>List of current inventory items. {displayedStockItems.length} item(s) found.</TableCaption>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="hidden w-[64px] sm:table-cell">
-                    <span className="sr-only">Image</span>
-                  </TableHead>
-                  <TableHead>Name (SKU)</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Quantity</TableHead>
-                  <TableHead className="text-right">Cost</TableHead>
-                  <TableHead><span className="sr-only">Actions</span></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {displayedStockItems.map((item) => {
-                  let statusLabel = 'In Stock';
-                  let statusClass = '';
-                  if (item.quantity === 0) {
-                    statusLabel = 'Out of Stock';
-                    statusClass = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
-                  } else if (item.quantity <= item.reorderLevel) {
-                    statusLabel = 'Low Stock';
-                    statusClass = 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300';
-                  } else {
-                     statusClass = 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
-                  }
-
-                  return (
-                    <TableRow key={item.id}>
-                      <TableCell className="hidden sm:table-cell">
-                          <Image
-                            alt={item.name || "Item image"}
-                            className="aspect-square rounded-md object-cover"
-                            height="40"
-                            src={item.image || `https://placehold.co/40x40.png`}
-                            width="40"
-                            data-ai-hint={item.dataAiHint || 'inventory item'}
-                            onError={(e) => e.currentTarget.src = `https://placehold.co/40x40.png`}
-                          />
-                        </TableCell>
-                      <TableCell className="font-medium">{item.name} <span className="text-xs text-muted-foreground">({item.sku})</span></TableCell>
-                      <TableCell>{item.category}</TableCell>
-                      <TableCell>{item.location || 'N/A'}</TableCell>
-                      <TableCell>
-                          <Badge variant={item.quantity === 0 ? "destructive" : item.quantity <= item.reorderLevel ? "secondary" : "outline"}
-                                 className={statusClass}>
-                            {statusLabel}
-                          </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">{item.quantity}</TableCell>
-                      <TableCell className="text-right">{item.cost ? `$${item.cost.toFixed(2)}` : 'N/A'}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button aria-haspopup="true" size="icon" variant="ghost">
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Toggle menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => handleEditItem(item)}>Edit</DropdownMenuItem>
-                            <DropdownMenuItem>View History (Not Impl.)</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={() => handleDeleteClick(item)}
-                            >
-                                Delete Item
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+            <div className="overflow-x-auto">
+                <Table>
+                <TableCaption className="py-4 text-muted-foreground">List of current inventory items. {displayedStockItems.length} item(s) found.</TableCaption>
+                <TableHeader>
+                    <TableRow className="border-border">
+                    <TableHead className="hidden w-[64px] sm:table-cell">
+                        <span className="sr-only">Image</span>
+                    </TableHead>
+                    <TableHead className="text-muted-foreground">Name (SKU)</TableHead>
+                    <TableHead className="text-muted-foreground">Category</TableHead>
+                    <TableHead className="text-muted-foreground">Location</TableHead>
+                    <TableHead className="text-muted-foreground">Status</TableHead>
+                    <TableHead className="text-right text-muted-foreground">Quantity</TableHead>
+                    <TableHead className="text-right text-muted-foreground">Cost</TableHead>
+                    <TableHead><span className="sr-only">Actions</span></TableHead>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                    {displayedStockItems.map((item) => {
+                    let statusLabel = 'In Stock';
+                    let statusClass = '';
+                    if (item.quantity === 0) {
+                        statusLabel = 'Out of Stock';
+                        statusClass = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border-red-300 dark:border-red-700';
+                    } else if (item.quantity <= item.reorderLevel) {
+                        statusLabel = 'Low Stock';
+                        statusClass = 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 border-orange-300 dark:border-orange-700';
+                    } else {
+                        statusClass = 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-300 dark:border-green-700';
+                    }
+
+                    return (
+                        <TableRow key={item.id} className="hover:bg-muted/50 border-border">
+                        <TableCell className="hidden sm:table-cell p-2">
+                            <Image
+                                alt={item.name || "Item image"}
+                                className="aspect-square rounded-md object-cover border border-border"
+                                height="40"
+                                src={item.image || `https://placehold.co/40x40.png`}
+                                width="40"
+                                data-ai-hint={item.dataAiHint || 'inventory item'}
+                                onError={(e) => e.currentTarget.src = `https://placehold.co/40x40.png`}
+                            />
+                            </TableCell>
+                        <TableCell className="font-medium text-foreground py-2 px-3">{item.name} <span className="text-xs text-muted-foreground">({item.sku})</span></TableCell>
+                        <TableCell className="text-muted-foreground py-2 px-3">{item.category}</TableCell>
+                        <TableCell className="text-muted-foreground py-2 px-3">{item.location || 'N/A'}</TableCell>
+                        <TableCell className="py-2 px-3">
+                            <Badge variant={item.quantity === 0 ? "destructive" : item.quantity <= item.reorderLevel ? "secondary" : "outline"}
+                                    className={statusClass}>
+                                {statusLabel}
+                            </Badge>
+                        </TableCell>
+                        <TableCell className="text-right text-foreground py-2 px-3">{item.quantity}</TableCell>
+                        <TableCell className="text-right text-foreground py-2 px-3">{item.cost ? `$${item.cost.toFixed(2)}` : 'N/A'}</TableCell>
+                        <TableCell className="py-2 px-3">
+                            <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button aria-haspopup="true" size="icon" variant="ghost" className="text-muted-foreground hover:text-foreground hover:bg-accent">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Toggle menu</span>
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="bg-popover text-popover-foreground border-border">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => handleEditItem(item)} className="hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">Edit</DropdownMenuItem>
+                                <DropdownMenuItem className="hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">View History (Not Impl.)</DropdownMenuItem>
+                                <DropdownMenuSeparator className="bg-border"/>
+                                <DropdownMenuItem
+                                    className="text-destructive focus:bg-destructive/10 focus:text-destructive hover:!bg-destructive/10 hover:!text-destructive"
+                                    onClick={() => handleDeleteClick(item)}
+                                >
+                                    Delete Item
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                            </DropdownMenu>
+                        </TableCell>
+                        </TableRow>
+                    );
+                    })}
+                </TableBody>
+                </Table>
+            </div>
           )}
         </CardContent>
-         <CardFooter>
+         <CardFooter className="border-t border-border pt-4">
           <div className="text-xs text-muted-foreground">
             Showing <strong>{displayedStockItems.length}</strong> of <strong>{allStockItems.length}</strong> items
           </div>
@@ -445,3 +442,4 @@ export default function StockManagementPage() {
     </div>
   );
 }
+

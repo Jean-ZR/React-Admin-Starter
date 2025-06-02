@@ -10,8 +10,7 @@ import {
   Users,
   Package,
   Wrench,
-  BarChart3, // Changed for Reports main icon
-  FileText,
+  BarChart3,
   Settings,
   HelpCircle,
   Bell as BellIcon,
@@ -20,9 +19,6 @@ import {
   LogOut,
   AlertTriangle,
   ChevronUp,
-  ChevronDown,
-  Palette,
-  // BarChart, // Replaced by BarChart3 for main 'Reports'
 } from 'lucide-react';
 import {
   Accordion,
@@ -44,16 +40,17 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { getTranslation, getPageTitleInfo } from '@/lib/translations'; // Import translation helpers
 
 
 interface NavSubItem {
-  label: string;
+  labelKey: keyof import('@/lib/translations').TranslationSet; // Use keyof to ensure valid keys
   href: string;
   id: string;
 }
 interface NavItem {
   icon: React.ElementType;
-  label: string;
+  labelKey: keyof import('@/lib/translations').TranslationSet;
   id: string;
   href: string;
   fields?: number;
@@ -61,121 +58,97 @@ interface NavItem {
 }
 
 interface NavModule {
-  category: string;
+  categoryKey: keyof import('@/lib/translations').TranslationSet;
   items: NavItem[];
 }
 
-const navigationModules: NavModule[] = [
+// Navigation structure using translation keys
+const getNavigationModules = (lang: string | null | undefined): NavModule[] => [
   {
-    category: "PANEL",
+    categoryKey: "dashboard", // Assuming 'dashboard' can serve as a category label too or use a new key e.g., 'panel_category'
     items: [
-        { icon: Home, label: 'Dashboard', id: 'dashboard', href: '/dashboard' },
+        { icon: Home, labelKey: 'dashboard', id: 'dashboard', href: '/dashboard' },
     ]
   },
   {
-    category: 'GESTIÓN',
+    categoryKey: 'assets', // Assuming 'assets' can serve as 'GESTIÓN' category label or use 'management_category'
     items: [
       {
-        icon: Truck, label: 'Activos', id: 'assets', href: '/assets/list',
+        icon: Truck, labelKey: 'assets', id: 'assets', href: '/assets/list',
         subItems: [
-          { label: 'Lista', href: '/assets/list', id: 'assets-list'},
-          { label: 'Categorías', href: '/assets/categories', id: 'assets-categories'},
-          { label: 'Reportes', href: '/assets/reports', id: 'assets-reports'},
+          { labelKey: 'assets_list', href: '/assets/list', id: 'assets-list'},
+          { labelKey: 'assets_categories', href: '/assets/categories', id: 'assets-categories'},
+          { labelKey: 'assets_reports', href: '/assets/reports', id: 'assets-reports'},
         ]
       },
       {
-        icon: Users, label: 'Clientes', id: 'clients', href: '/clients/directory',
+        icon: Users, labelKey: 'clients', id: 'clients', href: '/clients/directory',
         subItems: [
-          { label: 'Directorio', href: '/clients/directory', id: 'clients-directory'},
-          { label: 'Portal', href: '/clients/portal', id: 'clients-portal'},
-          { label: 'Historial', href: '/clients/history', id: 'clients-history'},
+          { labelKey: 'clients_directory', href: '/clients/directory', id: 'clients-directory'},
+          { labelKey: 'clients_portal', href: '/clients/portal', id: 'clients-portal'},
+          { labelKey: 'clients_history', href: '/clients/history', id: 'clients-history'},
         ]
       },
       {
-        icon: Package, label: 'Inventario', id: 'inventory', href: '/inventory/stock',
+        icon: Package, labelKey: 'inventory', id: 'inventory', href: '/inventory/stock',
         subItems: [
-            { label: 'Stock', href: '/inventory/stock', id: 'inventory-stock'},
-            { label: 'Movimientos', href: '/inventory/movements', id: 'inventory-movements'},
-            { label: 'Alertas', href: '/inventory/alerts', id: 'inventory-alerts'},
-            { label: 'Reportes', href: '/inventory/reports', id: 'inventory-reports'},
+            { labelKey: 'inventory_stock', href: '/inventory/stock', id: 'inventory-stock'},
+            { labelKey: 'inventory_movements', href: '/inventory/movements', id: 'inventory-movements'},
+            { labelKey: 'inventory_alerts', href: '/inventory/alerts', id: 'inventory-alerts'},
+            { labelKey: 'inventory_reports', href: '/inventory/reports', id: 'inventory-reports'},
         ]
       },
       {
-        icon: Wrench, label: 'Servicios', id: 'services', href: '/services/catalog',
+        icon: Wrench, labelKey: 'services', id: 'services', href: '/services/catalog',
         subItems: [
-          { label: 'Catálogo', href: '/services/catalog', id: 'services-catalog'},
-          { label: 'Programación', href: '/services/scheduling', id: 'services-scheduling'},
-          { label: 'Historial', href: '/services/history', id: 'services-history'},
+          { labelKey: 'services_catalog', href: '/services/catalog', id: 'services-catalog'},
+          { labelKey: 'services_scheduling', href: '/services/scheduling', id: 'services-scheduling'},
+          { labelKey: 'services_history', href: '/services/history', id: 'services-history'},
         ]
       },
     ],
   },
   {
-    category: 'ANÁLISIS',
+    categoryKey: 'reports_category',
     items: [
       {
-        icon: BarChart3, label: 'Reportes', id: 'analysis_reports', href: '/reports/financial',
+        icon: BarChart3, labelKey: 'reports_category', id: 'analysis_reports', href: '/reports/financial',
         subItems: [
-          { label: 'Financieros', href: '/reports/financial', id: 'reports-financial' },
-          { label: 'Operacionales', href: '/reports/operational', id: 'reports-operational' },
-          { label: 'Personalizados', href: '/reports/custom', id: 'reports-custom' },
+          { labelKey: 'reports_financial', href: '/reports/financial', id: 'reports-financial' },
+          { labelKey: 'reports_operational', href: '/reports/operational', id: 'reports-operational' },
+          { labelKey: 'reports_custom', href: '/reports/custom', id: 'reports-custom' },
         ]
       },
     ],
   },
   {
-    category: 'CONFIGURACIÓN',
+    categoryKey: 'settings_category',
     items: [
       {
-        icon: Settings, label: 'Ajustes', id: 'settings', href: '/settings/general',
+        icon: Settings, labelKey: 'settings_category', id: 'settings', href: '/settings/general',
         subItems: [
-            { label: 'General', href: '/settings/general', id: 'settings-general' },
-            { label: 'Cuenta', href: '/settings/account', id: 'settings-account' },
-            { label: 'Usuarios', href: '/settings/users', id: 'settings-users' },
-            { label: 'Notificaciones', href: '/settings/notifications', id: 'settings-notifications' },
-            { label: 'Logs del Sistema', href: '/settings/logs', id: 'settings-logs' },
+            { labelKey: 'settings_general', href: '/settings/general', id: 'settings-general' },
+            { labelKey: 'settings_account', href: '/settings/account', id: 'settings-account' },
+            { labelKey: 'settings_users', href: '/settings/users', id: 'settings-users' },
+            { labelKey: 'settings_notifications', href: '/settings/notifications', id: 'settings-notifications' },
+            { labelKey: 'settings_logs', href: '/settings/logs', id: 'settings-logs' },
         ]
       },
-      { icon: HelpCircle, label: 'Soporte', id: 'support', href: '/dashboard' },
+      { icon: HelpCircle, labelKey: 'support', id: 'support', href: '/dashboard' }, // Assuming /dashboard is a placeholder for support
     ],
   },
 ];
 
-const pageTitles: { [key: string]: { title: string; subtitle: string } } = {
-  '/dashboard': { title: 'Panel de Control', subtitle: 'Resumen de gestión' },
-  '/assets/list': { title: 'Lista de Activos', subtitle: 'Gestión de inventario de activos' },
-  '/assets/categories': { title: 'Categorías de Activos', subtitle: 'Organiza tus activos' },
-  '/assets/reports': { title: 'Reportes de Activos', subtitle: 'Análisis de datos de activos' },
-  '/clients/directory': { title: 'Directorio de Clientes', subtitle: 'Administra tus clientes' },
-  '/clients/portal': { title: 'Portal del Cliente', subtitle: 'Interacciones y servicios' },
-  '/clients/history': { title: 'Historial del Cliente', subtitle: 'Registro de transacciones' },
-  '/inventory/stock': { title: 'Gestión de Stock', subtitle: 'Seguimiento de inventario' },
-  '/inventory/movements': { title: 'Movimientos de Stock', subtitle: 'Registro de entradas y salidas' },
-  '/inventory/alerts': { title: 'Alertas de Stock Bajo', subtitle: 'Notificaciones de inventario' },
-  '/inventory/reports': { title: 'Reportes de Inventario', subtitle: 'Análisis de stock' },
-  '/services/catalog': { title: 'Catálogo de Servicios', subtitle: 'Servicios ofrecidos' },
-  '/services/scheduling': { title: 'Programación de Servicios', subtitle: 'Calendario y citas' },
-  '/services/history': { title: 'Historial de Servicios', subtitle: 'Registro de trabajos' },
-  '/reports/financial': { title: 'Reportes Financieros', subtitle: 'Análisis de ingresos y gastos' },
-  '/reports/operational': { title: 'Reportes Operacionales', subtitle: 'Métricas de rendimiento' },
-  '/reports/custom': { title: 'Reportes Personalizados', subtitle: 'Crea tus propios reportes y gráficas' },
-  '/settings/general': { title: 'Configuración General', subtitle: 'Parámetros del sistema' },
-  '/settings/account': { title: 'Configuración de Cuenta', subtitle: 'Preferencias personales' },
-  '/settings/users': { title: 'Gestión de Usuarios', subtitle: 'Control de acceso y roles' },
-  '/settings/notifications': { title: 'Configuración de Notificaciones', subtitle: 'Alertas y avisos' },
-  '/settings/logs': { title: 'Registros del Sistema', subtitle: 'Actividad y eventos' },
-  '/profile': { title: 'Perfil de Usuario', subtitle: 'Gestiona tu información personal' },
-};
-
 
 function AppLayoutContent({ children }: { children: ReactNode }) {
-  const { user, loading, logout, role, displayName, isFirebaseConfigured } = useAuth();
+  const { user, loading, logout, role, displayName, isFirebaseConfigured, languagePreference } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   const [activeSubItemId, setActiveSubItemId] = useState<string | null>(null);
   const [activeAccordionValue, setActiveAccordionValue] = useState<string | undefined>(undefined);
-
+  
+  const navigationModules = getNavigationModules(languagePreference); // Get translated navigation structure
 
   useEffect(() => {
     let currentActiveSubId: string | null = null;
@@ -188,32 +161,29 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
 
           if (isParentActiveOrSubItemActive) {
             currentModuleIdForAccordion = item.id;
-            // Find the specific active sub-item
             const activeSub = item.subItems.find(subItem => pathname === subItem.href || pathname.startsWith(subItem.href + "/"));
             if (activeSub) {
               currentActiveSubId = activeSub.id;
             } else if (pathname === item.href || pathname.startsWith(item.href + "/")) {
-              // If parent is active but no specific sub-item, default to first sub-item or parent ID
               currentActiveSubId = item.subItems[0]?.id || item.id;
             }
             break; 
           }
         } else if (pathname === item.href || pathname.startsWith(item.href + "/")) {
           currentActiveSubId = item.id;
-          currentModuleIdForAccordion = undefined; // Not an accordion item
+          currentModuleIdForAccordion = undefined; 
           break;
         }
       }
       if (currentActiveSubId) break; 
     }
 
-    // Fallbacks for non-module specific pages if no specific active sub-item was found from modules
     if (!currentActiveSubId) {
-        if (pathname.startsWith('/settings/')) { // Special handling for settings if no specific sub-item matched directly
-            currentActiveSubId = 'settings-general'; // Default or derive from path
+        if (pathname.startsWith('/settings/')) { 
+            currentActiveSubId = 'settings-general'; 
             currentModuleIdForAccordion = 'settings';
         } else if (pathname.startsWith('/reports/')) {
-             currentActiveSubId = 'reports-financial'; // Default or derive
+             currentActiveSubId = 'reports-financial'; 
              currentModuleIdForAccordion = 'analysis_reports';
         } else if (pathname.startsWith('/profile')) {
             currentActiveSubId = 'profile'; 
@@ -225,7 +195,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
     setActiveSubItemId(currentActiveSubId);
     setActiveAccordionValue(currentModuleIdForAccordion);
 
-  }, [pathname]);
+  }, [pathname, navigationModules]);
 
 
   if (!isFirebaseConfigured && !loading) {
@@ -275,7 +245,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
     return 'UP';
   };
 
-  const currentPageInfo = pageTitles[pathname] || { title: 'Admin', subtitle: 'Bienvenido' };
+  const currentPageInfo = getPageTitleInfo(languagePreference, pathname);
 
 
   return (
@@ -300,9 +270,9 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
             className="w-full"
           >
             {navigationModules.map((section, idx) => (
-              <div key={section.category + idx} className="mb-2">
+              <div key={section.categoryKey + idx} className="mb-2">
                 <div className="text-xs font-semibold text-muted-foreground mb-2 px-3 uppercase tracking-wider">
-                  {section.category}
+                  {getTranslation(languagePreference, section.categoryKey)}
                 </div>
                 {section.items.map((item) => (
                   item.subItems ? (
@@ -315,7 +285,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                       >
                         <div className="flex items-center flex-1">
                           <item.icon className={`mr-3 ${(activeAccordionValue === item.id) ? 'text-sidebar-accent-foreground' : 'text-muted-foreground group-hover:text-sidebar-foreground'}`} size={20} />
-                          <span className="flex-1">{item.label}</span>
+                          <span className="flex-1">{getTranslation(languagePreference, item.labelKey)}</span>
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="pl-5 pt-1 pb-1 border-l-2 border-sidebar-accent/50 ml-3">
@@ -330,7 +300,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                                 : 'text-sidebar-foreground hover:text-sidebar-primary hover:bg-sidebar-accent/30'}
                             `}
                           >
-                            {subItem.label}
+                            {getTranslation(languagePreference, subItem.labelKey)}
                           </Link>
                         ))}
                       </AccordionContent>
@@ -346,13 +316,12 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                           : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}
                       `}
                       onClick={() => {
-                        // If it's not an accordion item, ensure no accordion is active
                         if (activeAccordionValue !== undefined) setActiveAccordionValue(undefined);
                         setActiveSubItemId(item.id);
                       }}
                     >
                       <item.icon className={`mr-3 ${activeSubItemId === item.id ? 'text-sidebar-accent-foreground' : 'text-muted-foreground group-hover:text-sidebar-foreground'}`} size={20} />
-                      <span className="flex-1">{item.label}</span>
+                      <span className="flex-1">{getTranslation(languagePreference, item.labelKey)}</span>
                       {item.fields && (
                         <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
                           {item.fields}
@@ -436,3 +405,5 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
 export default function AppLayout({ children }: { children: ReactNode }) {
   return <AppLayoutContent>{children}</AppLayoutContent>;
 }
+
+    

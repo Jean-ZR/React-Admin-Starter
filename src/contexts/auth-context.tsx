@@ -55,7 +55,7 @@ interface AuthContextType {
   role: string | null;
   displayName: string | null;
   notificationPreferences: NotificationPreferences | null;
-  languagePreference: string | null;
+  languagePreference: string | null; // This will be the effective language
   loading: boolean;
   isFirebaseConfigured: boolean; 
   login: (email: string, pass: string) => Promise<void>;
@@ -75,8 +75,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [role, setRole] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences | null>(defaultNotificationPreferences);
-  const [languagePreference, setLanguagePreference] = useState<string | null>('en');
+  const [languagePreference, setLanguagePreference] = useState<string | null>('en'); // User's specific preference
+  const [systemDefaultLanguage, setSystemDefaultLanguage] = useState<string>('en'); // System-wide default
   const [loading, setLoading] = useState(true); 
+
+  // Effect to load system default language
+  useEffect(() => {
+    if (isFirebaseConfigurationValid && configuredDb) {
+      const fetchSystemDefaultLanguage = async () => {
+        try {
+          const configDocRef = doc(configuredDb, 'settings', 'generalConfiguration');
+          const docSnap = await getDoc(configDocRef);
+          if (docSnap.exists() && docSnap.data().defaultLanguage) {
+            setSystemDefaultLanguage(docSnap.data().defaultLanguage);
+          }
+        } catch (e) {
+          console.error('[AUTH_CONTEXT] Error fetching system default language:', e);
+        }
+      };
+      fetchSystemDefaultLanguage();
+    }
+  }, []);
+
 
   useEffect(() => {
     if (!isFirebaseConfigurationValid || !configuredAuth) {
@@ -86,7 +106,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setRole(null);
       setDisplayName(null);
       setNotificationPreferences(defaultNotificationPreferences);
-      setLanguagePreference('en');
+      setLanguagePreference(systemDefaultLanguage); // Fallback to system default
       return;
     }
 
@@ -104,38 +124,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     if (userData.displayName) {
                       setDisplayName(userData.displayName);
                     }
-                    // Ensure notificationPreferences and languagePreference are updated from Firestore or defaults
                     setNotificationPreferences(userData.notificationPreferences || defaultNotificationPreferences);
-                    setLanguagePreference(userData.languagePreference || 'en');
+                    // Set language preference: user's preference OR system default
+                    setLanguagePreference(userData.languagePreference || systemDefaultLanguage);
                 } else {
                     console.warn(`[AUTH_CONTEXT] User document not found for UID: ${currentUser.uid}. Using default role and preferences.`);
                     setRole(null); 
                     setNotificationPreferences(defaultNotificationPreferences);
-                    setLanguagePreference('en');
+                    setLanguagePreference(systemDefaultLanguage); // Fallback to system default
                 }
             } catch (e) {
                 console.error('[AUTH_CONTEXT] Error fetching user data from Firestore:', e);
                 setRole(null);
                 setNotificationPreferences(defaultNotificationPreferences);
-                setLanguagePreference('en');
+                setLanguagePreference(systemDefaultLanguage); // Fallback to system default
             }
         } else {
             console.warn("[AUTH_CONTEXT] Firestore (db) is not configured. Cannot fetch user role/preferences.");
             setRole(null); 
             setNotificationPreferences(defaultNotificationPreferences);
-            setLanguagePreference('en');
+            setLanguagePreference(systemDefaultLanguage); // Fallback to system default
         }
       } else {
         setRole(null);
         setDisplayName(null);
         setNotificationPreferences(defaultNotificationPreferences);
-        setLanguagePreference('en');
+        setLanguagePreference(systemDefaultLanguage); // Fallback to system default for logged-out users
       }
       setLoading(false);
     });
 
     return unsubscribe;
-  }, []); 
+  }, [systemDefaultLanguage]); // Add systemDefaultLanguage as dependency
 
   const ensureServicesAvailable = (): boolean => {
     if (!isFirebaseConfigurationValid || !configuredAuth || !configuredDb) {
@@ -150,6 +170,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLoading(true);
     try {
       await signInWithEmailAndPassword(configuredAuth, email, pass);
+      // User data (including languagePreference) will be fetched by onAuthStateChanged
     } catch (e) {
       console.error('[AUTH_CONTEXT] Login error:', e);
       setLoading(false); 
@@ -172,14 +193,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         role: userRole,
         displayName: finalDisplayName,
         notificationPreferences: defaultNotificationPreferences,
-        languagePreference: 'en',
-        createdAt: new Date(), // Using client-side date, consider serverTimestamp
+        languagePreference: systemDefaultLanguage, // Set new user's preference to system default
+        createdAt: new Date(), 
       });
       setUser(newUser); 
       setRole(userRole);
       setDisplayName(finalDisplayName);
       setNotificationPreferences(defaultNotificationPreferences);
-      setLanguagePreference('en');
+      setLanguagePreference(systemDefaultLanguage);
     } catch (e) {
       console.error('[AUTH_CONTEXT] Signup error:', e);
       setLoading(false);
@@ -193,7 +214,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setRole(null);
       setDisplayName(null);
       setNotificationPreferences(defaultNotificationPreferences);
-      setLanguagePreference('en');
+      setLanguagePreference(systemDefaultLanguage);
       setLoading(false); 
       console.warn("[AUTH_CONTEXT] Firebase not configured, performing local logout.");
       return;
@@ -207,7 +228,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setRole(null);
       setDisplayName(null);
       setNotificationPreferences(defaultNotificationPreferences);
-      setLanguagePreference('en');
+      setLanguagePreference(systemDefaultLanguage);
       setLoading(false); 
       throw e;
     }
@@ -257,7 +278,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
     const userDocRef = doc(configuredDb, 'users', user.uid);
     await updateDoc(userDocRef, { languagePreference: language });
-    setLanguagePreference(language); 
+    setLanguagePreference(language); // Update context state immediately
   };
 
   return (
@@ -267,7 +288,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         role,
         displayName,
         notificationPreferences,
-        languagePreference,
+        languagePreference, // This is the effective language for the UI
         loading,
         isFirebaseConfigured: isFirebaseConfigurationValid, 
         login,
@@ -290,3 +311,5 @@ export const useAuth = (): AuthContextType => {
   if (!ctx) throw new Error('useAuth must be used within an AuthProvider');
   return ctx;
 };
+
+    

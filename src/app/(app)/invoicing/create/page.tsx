@@ -17,13 +17,22 @@ import { db } from '@/lib/firebase/config';
 import { collection, getDocs, query, orderBy, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { Loader2, Save, Send, Search, UserPlus } from 'lucide-react';
 import { QuickClientFormModal, type QuickClientFormData } from '@/components/invoicing/quick-client-form-modal';
+import { GeneratedInvoiceModal } from '@/components/invoicing/generated-invoice-modal'; // New Import
 import { useAuth } from '@/contexts/auth-context';
+import { useRouter } from 'next/navigation'; // New Import
 
 interface ClientForSelect {
   id: string;
   name: string;
   documentType?: "ruc" | "dni" | "none";
   documentNumber?: string;
+}
+
+interface GeneratedInvoiceData {
+  invoiceNumber: string;
+  clientName: string;
+  totalAmount: number | null;
+  documentType: 'factura' | 'boleta';
 }
 
 const APIPERU_TOKEN = process.env.NEXT_PUBLIC_APIPERU_TOKEN;
@@ -70,6 +79,7 @@ type InvoiceFormData = z.infer<typeof invoiceSchema>;
 export default function CreateInvoicePage() {
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
+  const router = useRouter();
   const [clients, setClients] = useState<ClientForSelect[]>([]);
   const [isLoadingClients, setIsLoadingClients] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,6 +88,9 @@ export default function CreateInvoicePage() {
   const [apiTokenMissing, setApiTokenMissing] = useState(false);
   const [isQuickClientModalOpen, setIsQuickClientModalOpen] = useState(false);
   const [quickClientPrefill, setQuickClientPrefill] = useState<Partial<QuickClientFormData> | undefined>(undefined);
+
+  const [isGeneratedModalOpen, setIsGeneratedModalOpen] = useState(false);
+  const [generatedInvoiceData, setGeneratedInvoiceData] = useState<GeneratedInvoiceData | null>(null);
 
 
   const form = useForm<InvoiceFormData>({
@@ -147,7 +160,6 @@ export default function CreateInvoicePage() {
       return;
     }
 
-    // Simple invoice number generation (not sequential for F001-X format yet)
     const prefix = data.documentType === 'factura' ? 'F' : 'B';
     const timestampSuffix = Date.now().toString().slice(-6);
     const invoiceNumber = `${prefix}001-${timestampSuffix}`;
@@ -164,7 +176,6 @@ export default function CreateInvoicePage() {
       itemsDescription: data.itemsDescription,
       notes: data.notes || '',
       totalAmount: data.totalAmount,
-      // TODO: Add subTotal, igvAmount, currency later
       status: submitter.includes("Enviar") ? 'Enviada' : 'Borrador',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -172,14 +183,19 @@ export default function CreateInvoicePage() {
     };
 
     try {
-      await addDoc(collection(db, 'invoices'), invoiceData);
+      const docRef = await addDoc(collection(db, 'invoices'), invoiceData);
       toast({
         title: `Comprobante ${invoiceData.status === 'Enviada' ? 'Generado y Enviado' : 'Guardado como Borrador'}`,
         description: `${invoiceData.documentType.charAt(0).toUpperCase() + invoiceData.documentType.slice(1)} Nro: ${invoiceNumber} para ${selectedClient.name}.`,
       });
-      form.reset(); 
-      // Here we would typically open the "Comprobante Generado" modal
-      // For now, we just reset and show a toast.
+      setGeneratedInvoiceData({
+        invoiceNumber: invoiceNumber,
+        clientName: selectedClient.name,
+        totalAmount: data.totalAmount,
+        documentType: data.documentType
+      });
+      setIsGeneratedModalOpen(true);
+      // Form reset is now handled by the modal's "Create New" action
     } catch (error) {
       console.error("Error saving invoice:", error);
       toast({ title: "Error", description: "No se pudo guardar el comprobante.", variant: "destructive" });
@@ -200,7 +216,7 @@ export default function CreateInvoicePage() {
 
     if (type === 'ruc') setIsSearchingRuc(true);
     if (type === 'dni') setIsSearchingDni(true);
-    setQuickClientPrefill(undefined);
+    setQuickClientPrefill(undefined); // Reset prefill
 
     try {
         const response = await fetch(`https://apiperu.dev/api/${type}/${value}`, {
@@ -218,7 +234,6 @@ export default function CreateInvoicePage() {
                 nameFromApi = `${apiData.nombres || ''} ${apiData.apellido_paterno || ''} ${apiData.apellido_materno || ''}`.trim() || 'No encontrado';
             }
             
-            setQuickClientPrefill({ name: nameFromApi, documentType: type, documentNumber: value });
             toast({ title: `${type.toUpperCase()} Encontrado`, description: `Nombre: ${nameFromApi}.` });
 
             const currentClientId = form.getValues('clientId');
@@ -226,11 +241,19 @@ export default function CreateInvoicePage() {
                 const existingClient = clients.find(c => c.name.toLowerCase() === nameFromApi.toLowerCase());
                 if (existingClient) {
                     form.setValue('clientId', existingClient.id);
+                    // Also fill RUC/DNI field if applicable
+                    if (documentType === 'factura' && type === 'ruc') form.setValue('ruc', value);
+                    if (documentType === 'boleta' && type === 'dni') form.setValue('dni', value);
                     toast({ title: "Cliente Encontrado", description: `Cliente '${nameFromApi}' seleccionado.`, variant: "default" });
                 } else {
-                    toast({ title: "Cliente No Encontrado", description: `'${nameFromApi}' no está en tu lista. Añádelo con [+].`, variant: "default" });
+                    setQuickClientPrefill({ name: nameFromApi, documentType: type, documentNumber: value });
+                    toast({ title: "Cliente No Encontrado", description: `'${nameFromApi}' no está en tu lista. Puedes añadirlo con [+].`, variant: "default" });
                 }
+            } else if (nameFromApi !== 'No encontrado') {
+                // If a client is already selected, or API name is "No encontrado", just prefill for potential new client
+                 setQuickClientPrefill({ name: nameFromApi, documentType: type, documentNumber: value });
             }
+
         } else {
             toast({ title: `Error Buscando ${type.toUpperCase()}`, description: result.message || "No se pudo encontrar.", variant: "destructive" });
         }
@@ -247,23 +270,41 @@ export default function CreateInvoicePage() {
   };
 
   const handleClientCreated = (clientId: string, clientName: string) => {
-    const newClient = clients.find(c => c.id === clientId) || { id: clientId, name: clientName, documentType: quickClientPrefill?.documentType, documentNumber: quickClientPrefill?.documentNumber};
+    const newClientDetails = quickClientPrefill || { name: clientName, id: clientId };
+    const newClientEntry: ClientForSelect = {
+        id: clientId,
+        name: clientName,
+        documentType: newClientDetails.documentType,
+        documentNumber: newClientDetails.documentNumber
+    };
     
     if (!clients.some(c=> c.id === clientId)) {
-        setClients(prevClients => [...prevClients, newClient].sort((a, b) => a.name.localeCompare(b.name)));
+        setClients(prevClients => [...prevClients, newClientEntry].sort((a, b) => a.name.localeCompare(b.name)));
     }
     
     form.setValue('clientId', clientId);
 
-    if (documentType && quickClientPrefill?.documentNumber) {
-        if (documentType === 'factura' && quickClientPrefill.documentType === 'ruc') {
-            form.setValue('ruc', quickClientPrefill.documentNumber);
-        } else if (documentType === 'boleta' && quickClientPrefill.documentType === 'dni') {
-            form.setValue('dni', quickClientPrefill.documentNumber);
+    if (documentType && newClientDetails.documentNumber) {
+        if (documentType === 'factura' && newClientDetails.documentType === 'ruc') {
+            form.setValue('ruc', newClientDetails.documentNumber);
+        } else if (documentType === 'boleta' && newClientDetails.documentType === 'dni') {
+            form.setValue('dni', newClientDetails.documentNumber);
         }
     }
     setIsQuickClientModalOpen(false);
-    setQuickClientPrefill(undefined);
+    setQuickClientPrefill(undefined); // Clear prefill after use
+  };
+  
+  const handleModalNewInvoice = () => {
+    form.reset();
+    setIsGeneratedModalOpen(false);
+    setGeneratedInvoiceData(null);
+  };
+
+  const handleModalGoToList = () => {
+    router.push('/invoicing/list');
+    setIsGeneratedModalOpen(false);
+    setGeneratedInvoiceData(null);
   };
 
 
@@ -484,9 +525,13 @@ export default function CreateInvoicePage() {
         onClientCreated={handleClientCreated}
         prefillData={quickClientPrefill}
       />
+      <GeneratedInvoiceModal
+        isOpen={isGeneratedModalOpen}
+        onClose={() => setIsGeneratedModalOpen(false)}
+        invoiceData={generatedInvoiceData}
+        onNewInvoice={handleModalNewInvoice}
+        onGoToList={handleModalGoToList}
+      />
     </div>
   );
 }
-
-    
-  

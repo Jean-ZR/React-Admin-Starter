@@ -29,6 +29,14 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { useAuth } from '@/contexts/auth-context';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -74,7 +82,7 @@ const navigationModules: NavModule[] = [
           { label: 'Reportes', href: '/assets/reports', id: 'assets-reports'},
         ]
       },
-      { icon: Users, label: 'Clientes', id: 'clients', href: '/clients/directory' }, // Reverted: No subItems for now
+      { icon: Users, label: 'Clientes', id: 'clients', href: '/clients/directory' },
       { icon: Package, label: 'Repuestos', id: 'inventory', href: '/inventory/stock', fields: 12 },
       { icon: Wrench, label: 'Servicios', id: 'services', href: '/services/catalog' },
     ],
@@ -90,7 +98,7 @@ const navigationModules: NavModule[] = [
     category: 'CONFIGURACIÓN',
     items: [
       { icon: Settings, label: 'Ajustes', id: 'settings', href: '/settings/general' },
-      { icon: HelpCircle, label: 'Soporte', id: 'support', href: '/dashboard' },
+      { icon: HelpCircle, label: 'Soporte', id: 'support', href: '/dashboard' }, // Placeholder
     ],
   },
 ];
@@ -127,45 +135,82 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const [activeModuleId, setActiveModuleId] = useState('dashboard');
+  const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
   const [openAccordionModules, setOpenAccordionModules] = useState<string[]>([]);
 
 
   useEffect(() => {
-    let currentModule = 'dashboard';
+    let currentModuleId: string | null = null;
     let parentModuleOfActiveSubItem: string | null = null;
 
     for (const modGroup of navigationModules) {
       for (const item of modGroup.items) {
-        if (pathname === item.href) {
-          currentModule = item.id;
+        if (pathname === item.href && !item.subItems) { // Exact match for items without sub-items
+          currentModuleId = item.id;
           break;
         }
         if (item.subItems) {
+          if (pathname === item.href || pathname.startsWith(item.href + "/")) { // If current path is the parent or starts with parent path
+             // parentModuleOfActiveSubItem = item.id; // Parent module should be considered active
+          }
           for (const subItem of item.subItems) {
-            if (pathname === subItem.href) {
-              currentModule = subItem.id; // Highlight sub-item
+            if (pathname === subItem.href || pathname.startsWith(subItem.href + "/")) {
+              currentModuleId = subItem.id; // Highlight sub-item
               parentModuleOfActiveSubItem = item.id; // Keep parent module highlighted too
               break;
             }
           }
         }
-        if (currentModule !== 'dashboard') break;
+        if (currentModuleId) break;
       }
-      if (currentModule !== 'dashboard') break;
+      if (currentModuleId) break;
     }
     
-    if (pathname.startsWith('/settings/')) currentModule = 'settings';
-    if (pathname.startsWith('/profile')) currentModule = 'profile';
-
-    setActiveModuleId(currentModule);
-
-    // Auto-open accordion if a sub-item is active
-    if (parentModuleOfActiveSubItem && !openAccordionModules.includes(parentModuleOfActiveSubItem)) {
-      setOpenAccordionModules(prev => [...prev, parentModuleOfActiveSubItem!]);
+    if (!currentModuleId) { // Fallback or special cases
+        if (pathname.startsWith('/settings/')) currentModuleId = 'settings';
+        else if (pathname.startsWith('/profile')) currentModuleId = 'profile';
+        else if (pathname.startsWith('/dashboard')) currentModuleId = 'dashboard';
+        else { // Try to find the closest parent module based on path segments
+            const pathSegments = pathname.split('/');
+            if (pathSegments.length > 1) {
+                const potentialParentPath = "/" + pathSegments[1];
+                 for (const modGroup of navigationModules) {
+                    for (const item of modGroup.items) {
+                        if(item.href.startsWith(potentialParentPath)) {
+                            parentModuleOfActiveSubItem = item.id;
+                            // If no specific sub-item is matched, the parent's href is the best guess
+                            if (pathname === item.href && item.subItems) {
+                                currentModuleId = item.id; // Highlight parent if on its direct page
+                            }
+                            break;
+                        }
+                    }
+                    if(parentModuleOfActiveSubItem) break;
+                 }
+            }
+        }
     }
 
-  }, [pathname, openAccordionModules]);
+
+    setActiveModuleId(currentModuleId);
+
+    if (parentModuleOfActiveSubItem && !openAccordionModules.includes(parentModuleOfActiveSubItem)) {
+      setOpenAccordionModules(prev => {
+        // Ensure only one accordion is open at a time for better UX, unless multiple are desired
+        // If only one at a time: return [parentModuleOfActiveSubItem!]
+        // If multiple allowed:
+        if (!prev.includes(parentModuleOfActiveSubItem!)) {
+            return [...prev, parentModuleOfActiveSubItem!];
+        }
+        return prev;
+      });
+    } else if (!parentModuleOfActiveSubItem && currentModuleId && !navigationModules.some(mg => mg.items.some(i => i.id === currentModuleId && i.subItems))) {
+        // If a top-level item without sub-items is active, close open accordions (optional behavior)
+        // setOpenAccordionModules([]); 
+    }
+
+
+  }, [pathname]); // Removed openAccordionModules from dependencies to prevent re-triggering on its own change
 
   if (!isFirebaseConfigured && !loading) {
     return (
@@ -202,10 +247,13 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
   const getInitials = (name: string | null | undefined, email: string | null | undefined) => {
     if (name) {
       const parts = name.split(' ');
-      if (parts.length > 1) {
+      if (parts.length > 1 && parts[0] && parts[parts.length -1]) {
         return (parts[0][0] + parts[parts.length -1][0]).toUpperCase();
+      } else if (parts[0] && parts[0].length >=2) {
+        return parts[0].substring(0, 2).toUpperCase();
+      } else if (parts[0]) {
+         return parts[0][0].toUpperCase();
       }
-      return name.substring(0, 2).toUpperCase();
     }
     if (email) return email.substring(0, 2).toUpperCase();
     return 'UP';
@@ -228,7 +276,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
           </div>
         </Link>
 
-        <nav className="flex-1 overflow-y-auto pr-0">
+        <nav className="flex-1 overflow-y-auto pr-0"> {/* Removed custom scrollbar style to use default */}
          <Accordion 
             type="multiple" 
             value={openAccordionModules}
@@ -236,7 +284,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
             className="w-full"
           >
             {navigationModules.map((section, idx) => (
-              <div key={idx} className="mb-2"> {/* Reduced mb between sections */}
+              <div key={section.category + idx} className="mb-2">
                 <div className="text-xs font-semibold text-muted-foreground mb-2 px-3 uppercase tracking-wider">
                   {section.category}
                 </div>
@@ -246,32 +294,35 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                       <AccordionTrigger
                         className={`
                           flex items-center w-full p-3 rounded-xl mb-1 cursor-pointer transition-colors group
-                          ${openAccordionModules.includes(item.id) || activeModuleId.startsWith(item.id + "-") ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}
+                          ${(openAccordionModules.includes(item.id) || activeModuleId?.startsWith(item.id + "-") || activeModuleId === item.id) ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}
                         `}
                         onClick={(e) => {
-                          // Allow AccordionTrigger to handle its open/close state
-                          // We still set activeModuleId to the parent if no subItem is explicitly active
-                          if (!activeModuleId.startsWith(item.id + "-")) {
-                            setActiveModuleId(item.id);
+                           // Toggle accordion state
+                            setOpenAccordionModules(prev => 
+                                prev.includes(item.id) ? prev.filter(id => id !== item.id) : [...prev, item.id]
+                            );
+                          // If clicking the parent of an active sub-item, or the parent itself, don't navigate, just toggle.
+                          // If it's not active and has a main href, navigate to its main page.
+                          if (item.href && !(activeModuleId?.startsWith(item.id + "-") || activeModuleId === item.id) && pathname !== item.href) {
+                            // router.push(item.href); // Navigate if parent has its own page
                           }
                         }}
                       >
                         <div className="flex items-center flex-1">
-                          <item.icon className={`mr-3 ${openAccordionModules.includes(item.id) || activeModuleId.startsWith(item.id + "-") ? 'text-sidebar-accent-foreground' : 'text-muted-foreground group-hover:text-sidebar-foreground'}`} size={20} />
+                          <item.icon className={`mr-3 ${openAccordionModules.includes(item.id) || activeModuleId?.startsWith(item.id + "-") || activeModuleId === item.id ? 'text-sidebar-accent-foreground' : 'text-muted-foreground group-hover:text-sidebar-foreground'}`} size={20} />
                           <span className="flex-1">{item.label}</span>
                         </div>
-                        {/* Chevron is part of AccordionTrigger now */}
                       </AccordionTrigger>
-                      <AccordionContent className="pl-5 pt-1 pb-1 border-l-2 border-sidebar-accent/50 ml-3"> {/* Indent sub-items */}
+                      <AccordionContent className="pl-5 pt-1 pb-1 border-l-2 border-sidebar-accent/50 ml-3">
                         {item.subItems.map(subItem => (
                           <Link
                             href={subItem.href}
                             key={subItem.id}
-                            onClick={() => setActiveModuleId(subItem.id)}
+                            onClick={() => { /* setActiveModuleId is handled by useEffect */ }}
                             className={`
                               flex items-center py-2 px-3 rounded-md text-sm transition-colors
                               ${activeModuleId === subItem.id
-                                ? 'text-sidebar-primary font-medium' 
+                                ? 'text-sidebar-primary font-medium bg-sidebar-accent/60' 
                                 : 'text-sidebar-foreground hover:text-sidebar-primary hover:bg-sidebar-accent/30'}
                             `}
                           >
@@ -284,11 +335,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                     <Link
                       href={item.href}
                       key={item.id}
-                      onClick={() => {
-                        setActiveModuleId(item.id);
-                        // Close accordions if a non-accordion item is clicked
-                        // setOpenAccordionModules([]); 
-                      }}
+                      onClick={() => { /* setActiveModuleId is handled by useEffect */ }}
                       className={`
                         flex items-center p-3 rounded-xl mb-1.5 cursor-pointer transition-colors group
                         ${activeModuleId === item.id

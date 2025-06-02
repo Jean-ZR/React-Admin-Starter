@@ -10,17 +10,16 @@ import { Label } from "@/components/ui/label";
 import { Bell, Mail, Smartphone, Save, Loader2 } from "lucide-react";
 import { useAuth, type NotificationPreferences } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
+// Removed Link, usePathname, Tabs, TabsList, TabsTrigger
 
-// Define the structure of notification types for iteration
 const notificationTypeDefinitions = [
-  { id: 'lowStock', label: 'Low Stock Alert', description: 'When inventory drops below reorder level.' },
-  { id: 'newTicket', label: 'New Service Ticket Created', description: 'When a client submits a new request.' },
-  { id: 'ticketUpdate', label: 'Service Ticket Updated', description: 'When status or comments change on a ticket.' },
-  { id: 'assetWarranty', label: 'Asset Warranty Expiring Soon', description: '30 days before an asset warranty expires.' },
-  { id: 'reportReady', label: 'Scheduled Report Ready', description: 'When an automated report has been generated.' },
+  { id: 'lowStock', label: 'Alerta de Stock Bajo', description: 'Cuando el inventario cae por debajo del nivel de reorden.' },
+  { id: 'newTicket', label: 'Nuevo Ticket de Servicio Creado', description: 'Cuando un cliente envía una nueva solicitud.' },
+  { id: 'ticketUpdate', label: 'Ticket de Servicio Actualizado', description: 'Cuando el estado o los comentarios cambian en un ticket.' },
+  { id: 'assetWarranty', label: 'Garantía de Activo por Expirar', description: '30 días antes de que expire la garantía de un activo.' },
+  { id: 'reportReady', label: 'Reporte Programado Listo', description: 'Cuando se ha generado un reporte automatizado.' },
 ];
 
-// Default structure if preferences are null
 const defaultPreferences: NotificationPreferences = {
   globalNotificationsEnabled: true,
   types: {
@@ -40,7 +39,6 @@ export default function NotificationSettingsPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Sync local state if context preferences change (e.g., after initial load)
     if (initialPreferences) {
       setCurrentPreferences(initialPreferences);
     }
@@ -53,7 +51,7 @@ export default function NotificationSettingsPage() {
   const handleTypeToggle = (typeId: string, field: 'enabled' | 'email' | 'sms', checked: boolean) => {
     setCurrentPreferences(prev => {
       const newTypes = { ...prev.types };
-      if (!newTypes[typeId]) { // Ensure type exists
+      if (!newTypes[typeId]) { 
         newTypes[typeId] = { enabled: false, email: false, sms: false };
       }
       newTypes[typeId] = { ...newTypes[typeId], [field]: checked };
@@ -65,10 +63,10 @@ export default function NotificationSettingsPage() {
     setIsSaving(true);
     try {
       await updateUserPreferences(currentPreferences);
-      toast({ title: "Success", description: "Notification preferences saved." });
+      toast({ title: "Éxito", description: "Preferencias de notificación guardadas." });
     } catch (error) {
       console.error("Error saving preferences:", error);
-      toast({ title: "Error", description: "Could not save preferences.", variant: "destructive" });
+      toast({ title: "Error", description: "No se pudieron guardar las preferencias.", variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
@@ -78,7 +76,7 @@ export default function NotificationSettingsPage() {
     return (
         <div className="flex justify-center items-center min-h-[200px]">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="ml-2">Loading notification settings...</p>
+            <p className="ml-2 text-muted-foreground">Cargando configuración de notificaciones...</p>
         </div>
     );
   }
@@ -86,50 +84,50 @@ export default function NotificationSettingsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Removed Tabs navigation */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold leading-none tracking-tight">
-          Notification Settings
-        </h1>
-        <Button size="sm" className="gap-1" onClick={handleSaveChanges} disabled={isSaving || authLoading}>
+         {/* Title handled by AppLayout */}
+         <div className="flex-1"></div> {/* Spacer */}
+        <Button size="sm" className="gap-1 bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleSaveChanges} disabled={isSaving || authLoading}>
           {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-          {isSaving ? 'Saving...' : 'Save Preferences'}
+          {isSaving ? 'Guardando...' : 'Guardar Preferencias'}
         </Button>
       </div>
 
-      <Card>
+      <Card className="bg-card text-card-foreground border-border">
         <CardHeader>
-          <CardTitle>Configure Notifications</CardTitle>
-          <CardDescription>Select which alerts you want to receive and how.</CardDescription>
+          <CardTitle className="text-foreground">Configurar Notificaciones</CardTitle>
+          <CardDescription className="text-muted-foreground">Selecciona qué alertas deseas recibir y cómo.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
-            <Label className="text-base font-semibold">Global Notification Settings</Label>
-            <div className="flex items-center space-x-2 p-3 border rounded-md bg-muted/30">
+            <Label className="text-base font-semibold text-foreground">Configuración Global de Notificaciones</Label>
+            <div className="flex items-center space-x-2 p-3 border border-border rounded-md bg-background">
               <Switch
                 id="global-notifications"
                 checked={currentPreferences.globalNotificationsEnabled}
                 onCheckedChange={handleGlobalToggle}
               />
-              <Label htmlFor="global-notifications">Enable All Notifications</Label>
+              <Label htmlFor="global-notifications" className="text-foreground">Habilitar Todas las Notificaciones</Label>
             </div>
           </div>
 
           <div className="space-y-4">
-            <Label className="text-base font-semibold">Notification Types</Label>
-            <Card className="overflow-hidden">
-              <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 p-3 font-medium bg-muted/50 border-b">
-                <div className="flex items-center gap-2"><Bell className="h-4 w-4" /> Event Type</div>
-                <div className="text-center w-16">Enabled</div>
-                <div className="text-center w-16"><Mail className="h-4 w-4 inline-block" /> Email</div>
-                <div className="text-center w-16"><Smartphone className="h-4 w-4 inline-block" /> SMS</div>
+            <Label className="text-base font-semibold text-foreground">Tipos de Notificación</Label>
+            <Card className="overflow-hidden bg-background border-border">
+              <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 p-3 font-medium bg-muted/50 border-b border-border">
+                <div className="flex items-center gap-2 text-muted-foreground"><Bell className="h-4 w-4" /> Tipo de Evento</div>
+                <div className="text-center w-16 text-muted-foreground">Habilitado</div>
+                <div className="text-center w-16 text-muted-foreground"><Mail className="h-4 w-4 inline-block" /> Email</div>
+                <div className="text-center w-16 text-muted-foreground"><Smartphone className="h-4 w-4 inline-block" /> SMS</div>
               </div>
-              <div className="divide-y">
+              <div className="divide-y divide-border">
                 {notificationTypeDefinitions.map(ntDef => {
                   const prefsForType = currentPreferences.types[ntDef.id] || { enabled: false, email: false, sms: false };
                   return (
                     <div key={ntDef.id} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 p-3 hover:bg-muted/20">
                       <div>
-                        <Label htmlFor={`enable-${ntDef.id}`} className="font-normal cursor-pointer">{ntDef.label}</Label>
+                        <Label htmlFor={`enable-${ntDef.id}`} className="font-normal cursor-pointer text-foreground">{ntDef.label}</Label>
                         <p className="text-xs text-muted-foreground">{ntDef.description}</p>
                       </div>
                       <div className="flex justify-center w-16">
@@ -146,6 +144,7 @@ export default function NotificationSettingsPage() {
                           checked={prefsForType.email}
                           onCheckedChange={(checked) => handleTypeToggle(ntDef.id, 'email', Boolean(checked))}
                           disabled={!currentPreferences.globalNotificationsEnabled || !prefsForType.enabled}
+                          className="border-primary"
                         />
                       </div>
                       <div className="flex justify-center w-16">
@@ -154,6 +153,7 @@ export default function NotificationSettingsPage() {
                           checked={prefsForType.sms}
                           onCheckedChange={(checked) => handleTypeToggle(ntDef.id, 'sms', Boolean(checked))}
                           disabled={!currentPreferences.globalNotificationsEnabled || !prefsForType.enabled}
+                          className="border-primary"
                         />
                       </div>
                     </div>
@@ -166,7 +166,7 @@ export default function NotificationSettingsPage() {
       </Card>
 
       <p className="text-sm text-muted-foreground">
-        Configure alert types and delivery methods. Settings are user-specific.
+        Configura tipos de alerta y métodos de entrega. La configuración es específica del usuario.
       </p>
     </div>
   );

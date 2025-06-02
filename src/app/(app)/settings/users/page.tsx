@@ -18,13 +18,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
+import { Label } // Changed from @/components/ui/label to @/components/ui/form Field specific labels
+from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { db } from '@/lib/firebase/config';
 import {
   collection,
-  getDocs,
   doc,
   updateDoc,
   deleteDoc,
@@ -38,9 +38,9 @@ import {
 import { UserFormModal, type UserFormData, type UserData } from '@/components/settings/user-form-modal';
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
 import { format } from 'date-fns';
+// Removed Link, usePathname, Tabs, TabsList, TabsTrigger
 
-
-const AVAILABLE_ROLES = ['Administrator', 'Teacher', 'Student', 'Read Only', 'Manager']; // Extended list
+const AVAILABLE_ROLES = ['Administrator', 'Teacher', 'Student', 'Read Only', 'Manager']; 
 const AVAILABLE_STATUSES = ['Active', 'Inactive', 'Pending'];
 
 
@@ -65,27 +65,23 @@ export default function UserManagementPage() {
 
   const isAdmin = currentUserRole === 'admin';
 
-  // Fetch users from Firestore
   const fetchUsers = useCallback(() => {
     if (!isAdmin) {
       setIsLoading(false);
-      // toast({ title: "Access Denied", description: "You don't have permission to manage users.", variant: "destructive"});
-      return () => {}; // Return an empty unsubscribe function
+      return () => {}; 
     }
     setIsLoading(true);
     const usersCollectionRef = collection(db, 'users');
-    let q = query(usersCollectionRef, orderBy('displayName', 'asc'));
+    let qConstraints = [orderBy('displayName', 'asc')];
 
-    const queryConstraints = [];
     if (filterRole !== 'all') {
-      queryConstraints.push(where('role', '==', filterRole));
+      qConstraints.push(where('role', '==', filterRole));
     }
     if (filterStatus !== 'all') {
-      queryConstraints.push(where('status', '==', filterStatus));
+      qConstraints.push(where('status', '==', filterStatus));
     }
-    if(queryConstraints.length > 0){
-        q = query(usersCollectionRef, ...queryConstraints, orderBy('displayName', 'asc'));
-    }
+    
+    const q = query(usersCollectionRef, ...qConstraints);
 
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -94,8 +90,8 @@ export default function UserManagementPage() {
         ...(doc.data() as Omit<UserData, 'id'>),
       }));
       
-      setAllUsers(usersData); // Store all users before client-side search
-      setDisplayedUsers(usersData); // Initially display all fetched users
+      setAllUsers(usersData);
+      setDisplayedUsers(usersData); 
       setIsLoading(false);
     }, (error) => {
       console.error("Error fetching users:", error);
@@ -111,7 +107,6 @@ export default function UserManagementPage() {
     return () => unsubscribe();
   }, [fetchUsers]);
 
-  // Client-side search based on allUsers
    useEffect(() => {
         let filtered = [...allUsers];
         if (searchTerm) {
@@ -141,7 +136,6 @@ export default function UserManagementPage() {
 
   const handleDeleteClick = (user: UserData) => {
     if (!isAdmin) return;
-    // Prevent current user from deleting themselves from this UI
     if (currentUser && user.id === currentUser.uid) {
         toast({ title: "Action Not Allowed", description: "You cannot delete your own account from this panel.", variant: "destructive" });
         return;
@@ -153,7 +147,6 @@ export default function UserManagementPage() {
   const confirmDeleteUser = async () => {
     if (!isAdmin || !userToDelete) return;
     try {
-      // Note: This only deletes from Firestore. Firebase Auth user deletion is separate & more complex.
       await deleteDoc(doc(db, 'users', userToDelete.id));
       toast({ title: "Success", description: `User ${userToDelete.displayName || userToDelete.email} removed from Firestore.` });
     } catch (error) {
@@ -172,16 +165,13 @@ export default function UserManagementPage() {
     }
 
     if (isInviteMode) {
-      // Conceptual: In a real app, this would trigger a backend function or more complex invite flow.
       console.log("Invite user data (conceptual):", formData);
       toast({ title: "Conceptual Invite", description: `Invitation for ${formData.email} with role ${formData.role} would be processed here.`});
     } else if (editingUser) {
-      // Update existing user in Firestore
       try {
         const userDocRef = doc(db, 'users', editingUser.id);
         await updateDoc(userDocRef, {
           displayName: formData.displayName,
-          // email: formData.email, // Email typically not changed this way
           role: formData.role,
           status: formData.status,
           updatedAt: serverTimestamp(),
@@ -190,7 +180,7 @@ export default function UserManagementPage() {
       } catch (error) {
         console.error("Error updating user:", error);
         toast({ title: "Error", description: "Could not update user details.", variant: "destructive" });
-        throw error; // Re-throw to keep modal open on error
+        throw error; 
       }
     }
     setIsUserFormModalOpen(false);
@@ -198,18 +188,11 @@ export default function UserManagementPage() {
     setIsInviteMode(false);
   };
   
-  const handleApplyFilters = () => {
-    // fetchUsers is re-called due to dependency on filterRole/filterStatus
-    // For a purely client-side filter approach on `allUsers`, you'd implement that here.
-    // But since we want to query Firestore, fetchUsers handles it.
-    toast({ title: "Filters Applied", description: "Fetching users with selected filters." });
-  };
 
   const handleClearFilters = () => {
     setSearchTerm('');
     setFilterRole('all');
     setFilterStatus('all');
-    // fetchUsers will be re-called.
     toast({ title: "Filters Cleared", description: "Showing all users." });
   };
 
@@ -220,13 +203,13 @@ export default function UserManagementPage() {
   };
   
 
-  if (!isAdmin && !isLoading) { // Check isLoading to avoid flicker
+  if (!isAdmin && !isLoading) { 
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold leading-none tracking-tight">User Management</h1>
-        <Card>
-          <CardHeader><CardTitle>Access Denied</CardTitle></CardHeader>
-          <CardContent><p>You do not have permission to manage users.</p></CardContent>
+         {/* Title handled by AppLayout */}
+        <Card className="bg-card text-card-foreground border-border">
+          <CardHeader><CardTitle className="text-foreground">Acceso Denegado</CardTitle></CardHeader>
+          <CardContent><p className="text-muted-foreground">No tienes permiso para administrar usuarios.</p></CardContent>
         </Card>
       </div>
     );
@@ -235,114 +218,113 @@ export default function UserManagementPage() {
 
   return (
     <div className="space-y-6">
+      {/* Removed Tabs navigation */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold leading-none tracking-tight">
-          User Management
-        </h1>
+         {/* Title handled by AppLayout */}
+         <div className="flex-1"></div> {/* Spacer */}
          <div className="flex gap-2 items-center w-full sm:w-auto">
            <div className="relative flex-1 sm:flex-initial">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search users (name, email)..."
-              className="pl-8 sm:w-[300px]"
+              placeholder="Buscar usuarios (nombre, email)..."
+              className="pl-8 sm:w-[300px] bg-background border-input text-foreground placeholder:text-muted-foreground"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               disabled={!isAdmin}
             />
           </div>
-          <Button size="sm" className="h-9 gap-1" onClick={handleInviteUser} disabled={!isAdmin}>
+          <Button size="sm" className="h-9 gap-1 bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleInviteUser} disabled={!isAdmin}>
             <PlusCircle className="h-3.5 w-3.5" />
-            <span className="sr-only sm:not-sr-only">Invite User</span>
+            <span className="sr-only sm:not-sr-only">Invitar Usuario</span>
           </Button>
          </div>
       </div>
 
-      <Card>
+      <Card className="bg-card text-card-foreground border-border">
         <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Filter className="h-5 w-5"/> Filter Users</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-foreground"><Filter className="h-5 w-5 text-primary"/> Filtrar Usuarios</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col sm:flex-row gap-4 items-end">
             <div className="flex-1 space-y-1">
-              <Label htmlFor="role-filter" className="text-xs">Filter by Role</Label>
+              <Label htmlFor="role-filter" className="text-xs text-muted-foreground">Filtrar por Rol</Label>
               <Select value={filterRole} onValueChange={setFilterRole} disabled={!isAdmin}>
-                <SelectTrigger id="role-filter" className="h-9">
-                  <SelectValue placeholder="All Roles" />
+                <SelectTrigger id="role-filter" className="h-9 bg-background border-input text-foreground">
+                  <SelectValue placeholder="Todos los Roles" />
                 </SelectTrigger>
-                <SelectContent>
-                   <SelectItem value="all">All Roles</SelectItem>
+                <SelectContent className="bg-popover text-popover-foreground border-border">
+                   <SelectItem value="all">Todos los Roles</SelectItem>
                    {AVAILABLE_ROLES.map(role => <SelectItem key={role} value={role}>{role}</SelectItem>)}
                 </SelectContent>
               </Select>
            </div>
             <div className="flex-1 space-y-1">
-              <Label htmlFor="status-filter" className="text-xs">Filter by Status</Label>
+              <Label htmlFor="status-filter" className="text-xs text-muted-foreground">Filtrar por Estado</Label>
               <Select value={filterStatus} onValueChange={setFilterStatus} disabled={!isAdmin}>
-                <SelectTrigger id="status-filter" className="h-9">
-                  <SelectValue placeholder="All Statuses" />
+                <SelectTrigger id="status-filter" className="h-9 bg-background border-input text-foreground">
+                  <SelectValue placeholder="Todos los Estados" />
                 </SelectTrigger>
-                <SelectContent>
-                   <SelectItem value="all">All Statuses</SelectItem>
+                <SelectContent className="bg-popover text-popover-foreground border-border">
+                   <SelectItem value="all">Todos los Estados</SelectItem>
                    {AVAILABLE_STATUSES.map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}
                 </SelectContent>
               </Select>
            </div>
-            <Button variant="outline" className="h-9 w-full sm:w-auto" onClick={handleClearFilters} disabled={!isAdmin}>Clear Filters</Button>
-            {/* Apply Filters button is implicit as filters trigger re-fetch. Can add explicit button if preferred. */}
-            {/* <Button className="h-9 w-full sm:w-auto" onClick={handleApplyFilters} disabled={!isAdmin}>Apply Filters</Button> */}
+            <Button variant="outline" className="h-9 w-full sm:w-auto border-input hover:bg-accent hover:text-accent-foreground" onClick={handleClearFilters} disabled={!isAdmin}>Limpiar Filtros</Button>
         </CardContent>
       </Card>
 
 
-      <Card>
+      <Card className="bg-card text-card-foreground border-border">
         <CardHeader>
-          <CardTitle>Users & Permissions</CardTitle>
-          <CardDescription>Manage user accounts, roles, and access levels.</CardDescription>
+          <CardTitle className="text-foreground">Usuarios y Permisos</CardTitle>
+          <CardDescription className="text-muted-foreground">Gestionar cuentas de usuario, roles y niveles de acceso.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="flex justify-center items-center min-h-[200px]">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="ml-2">Loading users...</p>
+                <p className="ml-2 text-muted-foreground">Cargando usuarios...</p>
             </div>
           ) : displayedUsers.length === 0 ? (
              <div className="text-center py-10 text-muted-foreground">
-                No users found matching your criteria.
+                No se encontraron usuarios que coincidan con tus criterios.
               </div>
           ) : (
-            <Table>
-                <TableCaption>A list of registered users. {displayedUsers.length} user(s) found.</TableCaption>
+            <div className="overflow-x-auto">
+                <Table>
+                <TableCaption className="text-muted-foreground">Lista de usuarios registrados. {displayedUsers.length} usuario(s) encontrado(s).</TableCaption>
               <TableHeader>
-                <TableRow>
+                <TableRow className="border-border">
                    <TableHead className="hidden w-[64px] sm:table-cell">
                     <span className="sr-only">Avatar</span>
                   </TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created At</TableHead>
-                  <TableHead><span className="sr-only">Actions</span></TableHead>
+                  <TableHead className="text-muted-foreground">Nombre</TableHead>
+                  <TableHead className="text-muted-foreground">Email</TableHead>
+                  <TableHead className="text-muted-foreground">Rol</TableHead>
+                  <TableHead className="text-muted-foreground">Estado</TableHead>
+                  <TableHead className="text-muted-foreground">Creado En</TableHead>
+                  <TableHead><span className="sr-only">Acciones</span></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {displayedUsers.map((user) => (
-                  <TableRow key={user.id}>
+                  <TableRow key={user.id} className="border-border hover:bg-muted/50">
                     <TableCell className="hidden sm:table-cell">
                         <Avatar className="h-9 w-9">
                            <AvatarImage src={user.id === currentUser?.uid ? currentUser.photoURL || undefined : undefined} alt={user.displayName || "User"} data-ai-hint="person avatar" />
-                           <AvatarFallback>{getInitials(user.displayName, user.email)}</AvatarFallback>
+                           <AvatarFallback className="bg-muted text-muted-foreground">{getInitials(user.displayName, user.email)}</AvatarFallback>
                         </Avatar>
                       </TableCell>
-                    <TableCell className="font-medium">{user.displayName || 'N/A'}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>{user.role}</TableCell>
+                    <TableCell className="font-medium text-foreground">{user.displayName || 'N/A'}</TableCell>
+                    <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                    <TableCell className="text-muted-foreground">{user.role}</TableCell>
                      <TableCell>
                        <Badge variant={user.status === 'Active' ? 'default' : 'outline'}
-                              className={user.status === 'Active' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 
-                                         user.status === 'Inactive' ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' :
-                                         user.status === 'Pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
-                                         'text-muted-foreground'}>
+                              className={user.status === 'Active' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-300 dark:border-green-700' : 
+                                         user.status === 'Inactive' ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700' :
+                                         user.status === 'Pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700' :
+                                         'text-muted-foreground border-border'}>
                          {user.status}
                        </Badge>
                     </TableCell>
@@ -352,23 +334,21 @@ export default function UserManagementPage() {
                      <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button aria-haspopup="true" size="icon" variant="ghost" disabled={!isAdmin}>
+                          <Button aria-haspopup="true" size="icon" variant="ghost" disabled={!isAdmin} className="text-muted-foreground hover:text-foreground hover:bg-accent">
                             <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
+                            <span className="sr-only">Alternar menú</span>
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => handleEditUser(user)} disabled={!isAdmin}>Edit User</DropdownMenuItem>
-                          {/* Placeholder for more actions */}
-                          {/* <DropdownMenuItem disabled={!isAdmin}>Reset Password (Not Impl.)</DropdownMenuItem> */}
-                          <DropdownMenuSeparator />
+                        <DropdownMenuContent align="end" className="bg-popover text-popover-foreground border-border">
+                          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => handleEditUser(user)} disabled={!isAdmin} className="hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">Editar Usuario</DropdownMenuItem>
+                          <DropdownMenuSeparator className="bg-border"/>
                           <DropdownMenuItem 
                             onClick={() => handleDeleteClick(user)} 
-                            className="text-destructive" 
+                            className="text-destructive focus:bg-destructive/10 focus:text-destructive hover:!bg-destructive/10 hover:!text-destructive" 
                             disabled={!isAdmin || (currentUser && user.id === currentUser.uid)}
                           >
-                            Delete User (Firestore)
+                            Eliminar Usuario (Firestore)
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -377,18 +357,19 @@ export default function UserManagementPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
-         <CardFooter>
+         <CardFooter className="border-t border-border pt-4">
             <div className="text-xs text-muted-foreground">
-              Showing <strong>{displayedUsers.length}</strong> of <strong>{allUsers.length}</strong> users.
+              Mostrando <strong>{displayedUsers.length}</strong> de <strong>{allUsers.length}</strong> usuarios.
             </div>
          </CardFooter>
       </Card>
 
       <p className="text-sm text-muted-foreground">
-        Manage role-based access control and user permissions. Audit logs track all changes.
-        Deleting a user here removes their Firestore record; full Firebase Auth deletion is a separate process.
+        Gestionar el control de acceso basado en roles y permisos de usuario. Los registros de auditoría rastrean todos los cambios.
+        Eliminar un usuario aquí elimina su registro de Firestore; la eliminación completa de Firebase Auth es un proceso separado.
       </p>
 
       {isAdmin && isUserFormModalOpen && (
@@ -411,7 +392,7 @@ export default function UserManagementPage() {
             isOpen={isDeleteDialogOpen}
             onClose={() => setIsDeleteDialogOpen(false)}
             onConfirm={confirmDeleteUser}
-            itemName={userToDelete?.displayName || userToDelete?.email || 'this user'}
+            itemName={userToDelete?.displayName || userToDelete?.email || 'este usuario'}
         />
       )}
     </div>

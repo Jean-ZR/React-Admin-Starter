@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { Save, Moon, Sun, Monitor, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
+// Removed Link, usePathname, Tabs, TabsList, TabsTrigger
 
 export default function AccountSettingsPage() {
   const { theme, setTheme } = useTheme();
@@ -20,7 +21,6 @@ export default function AccountSettingsPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Sync local state if context preference changes (e.g., after initial load or external update)
     if (contextLanguagePreference) {
       setSelectedLanguage(contextLanguagePreference);
     }
@@ -32,118 +32,116 @@ export default function AccountSettingsPage() {
       if (selectedLanguage !== contextLanguagePreference) {
         await updateUserLanguagePreference(selectedLanguage);
       }
-      // Theme is saved automatically by next-themes
-      toast({ title: 'Success', description: 'Account settings saved.' });
+      toast({ title: 'Éxito', description: 'Configuración de cuenta guardada.' });
     } catch (error) {
       console.error('Error saving account settings:', error);
-      toast({ title: 'Error', description: 'Could not save account settings.', variant: 'destructive' });
+      toast({ title: 'Error', description: 'No se pudo guardar la configuración de la cuenta.', variant: 'destructive' });
     } finally {
       setIsSaving(false);
     }
   };
 
-  if (authLoading && !contextLanguagePreference) { // Check contextLanguagePreference to avoid rendering with default before loaded
+  if (authLoading && !contextLanguagePreference) { 
     return (
       <div className="flex justify-center items-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="ml-2">Loading account settings...</p>
+        <p className="ml-2 text-muted-foreground">Cargando configuración de cuenta...</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {/* Removed Tabs navigation */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold leading-none tracking-tight">
-          Account Settings
-        </h1>
-        <Button size="sm" className="gap-1" onClick={handleSaveChanges} disabled={isSaving || authLoading}>
+        {/* Title is now managed by AppLayout */}
+        <div className="flex-1"></div> {/* Spacer */}
+        <Button size="sm" className="gap-1 bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleSaveChanges} disabled={isSaving || authLoading}>
           {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-          {isSaving ? 'Saving...' : 'Save Changes'}
+          {isSaving ? 'Guardando...' : 'Guardar Cambios'}
         </Button>
       </div>
 
-      <Card>
+      <Card className="bg-card text-card-foreground border-border">
         <CardHeader>
-          <CardTitle>Appearance</CardTitle>
-          <CardDescription>Customize the look and feel of the application.</CardDescription>
+          <CardTitle className="text-foreground">Apariencia</CardTitle>
+          <CardDescription className="text-muted-foreground">Personaliza la apariencia de la aplicación.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="theme">Theme</Label>
+            <Label htmlFor="theme" className="text-muted-foreground">Tema</Label>
             <Select value={theme} onValueChange={setTheme}>
-              <SelectTrigger id="theme" className="w-[200px]">
-                <SelectValue placeholder="Select theme" />
+              <SelectTrigger id="theme" className="w-[200px] bg-background border-input text-foreground">
+                <SelectValue placeholder="Seleccionar tema" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-popover text-popover-foreground border-border">
                 <SelectItem value="light">
                   <div className="flex items-center gap-2">
-                    <Sun className="h-4 w-4" /> Light
+                    <Sun className="h-4 w-4" /> Claro
                   </div>
                 </SelectItem>
                 <SelectItem value="dark">
                   <div className="flex items-center gap-2">
-                    <Moon className="h-4 w-4" /> Dark
+                    <Moon className="h-4 w-4" /> Oscuro
                   </div>
                 </SelectItem>
                 <SelectItem value="system">
                   <div className="flex items-center gap-2">
-                    <Monitor className="h-4 w-4" /> System
+                    <Monitor className="h-4 w-4" /> Sistema
                   </div>
                 </SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Select your preferred color scheme.
+              Selecciona tu esquema de color preferido.
             </p>
           </div>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-card text-card-foreground border-border">
         <CardHeader>
-          <CardTitle>Language & Region</CardTitle>
-          <CardDescription>Manage language and regional settings.</CardDescription>
+          <CardTitle className="text-foreground">Idioma y Región</CardTitle>
+          <CardDescription className="text-muted-foreground">Gestionar la configuración de idioma y regional.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="language">Application Language</Label>
+            <Label htmlFor="language" className="text-muted-foreground">Idioma de la Aplicación</Label>
             <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
-              <SelectTrigger id="language" className="w-[200px]">
-                <SelectValue placeholder="Select language" />
+              <SelectTrigger id="language" className="w-[200px] bg-background border-input text-foreground">
+                <SelectValue placeholder="Seleccionar idioma" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-popover text-popover-foreground border-border">
                 <SelectItem value="en">English (US)</SelectItem>
                 <SelectItem value="es">Español</SelectItem>
-                {/* Add other languages as needed */}
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Select your preferred language. Full app localization may not be complete.
+              Selecciona tu idioma preferido. La localización completa de la app podría no estar completa.
             </p>
           </div>
         </CardContent>
       </Card>
       
-      <Card>
+      <Card className="bg-card text-card-foreground border-border">
         <CardHeader>
-          <CardTitle>Notification Preferences</CardTitle>
-          <CardDescription>Manage how you receive notifications.</CardDescription>
+          <CardTitle className="text-foreground">Preferencias de Notificación</CardTitle>
+          <CardDescription className="text-muted-foreground">Gestiona cómo recibes las notificaciones.</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm mb-4">
-            Configure detailed notification settings for various events like alerts, updates, and system messages.
+          <p className="text-sm mb-4 text-muted-foreground">
+            Configura detalladamente las notificaciones para diversos eventos como alertas, actualizaciones y mensajes del sistema.
           </p>
-          <Button variant="outline" asChild>
+          <Button variant="outline" asChild className="border-input hover:bg-accent hover:text-accent-foreground">
             <Link href="/settings/notifications">
-              Go to Notification Settings
+              Ir a Configuración de Notificaciones
             </Link>
           </Button>
         </CardContent>
       </Card>
 
       <p className="text-sm text-muted-foreground">
-        Manage your personal account preferences.
+        Gestiona tus preferencias personales de cuenta.
       </p>
     </div>
   );

@@ -8,7 +8,6 @@ import * as z from 'zod';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label"; // Replaced by FormLabel in Form context
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -17,6 +16,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase/config';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+// Removed Link, usePathname, Tabs, TabsList, TabsTrigger
 
 const generalSettingsSchema = z.object({
   appName: z.string().min(1, "Application name is required."),
@@ -59,7 +59,7 @@ export default function GeneralSettingsPage() {
   useEffect(() => {
     if (!isFirebaseConfigured || !isAdmin) {
       setIsLoading(false);
-      if(isAdmin && !isFirebaseConfigured){ // Corrected this condition, firebase must be configured for admin check to be meaningful for data ops
+      if(isAdmin && !isFirebaseConfigured){ 
         toast({title: "Feature Unavailable", description: "General settings management is unavailable as Firebase is not configured.", variant: "destructive"});
       } else if (!isAdmin && isFirebaseConfigured) {
          toast({title: "Access Denied", description: "You do not have permission to view or modify general settings.", variant: "destructive"});
@@ -110,35 +110,37 @@ export default function GeneralSettingsPage() {
     return (
       <div className="flex justify-center items-center min-h-[300px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="ml-2 text-muted-foreground">Loading general settings...</p>
+        <p className="ml-2 text-muted-foreground">Cargando configuración general...</p>
       </div>
     );
   }
 
-  if (!isAdmin && isFirebaseConfigured) { // Non-admin, but Firebase is configured
+  if (!isAdmin && isFirebaseConfigured) { 
      return (
       <div className="space-y-6">
-        <Card>
+         {/* Title is handled by AppLayout */}
+        <Card className="bg-card text-card-foreground border-border">
           <CardHeader>
-            <CardTitle>Access Denied</CardTitle>
+            <CardTitle className="text-foreground">Acceso Denegado</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">You do not have permission to view or modify general system settings.</p>
+            <p className="text-muted-foreground">No tienes permiso para ver o modificar la configuración general del sistema.</p>
           </CardContent>
         </Card>
       </div>
     );
   }
   
-  if (!isFirebaseConfigured) { // Firebase itself is not configured
+  if (!isFirebaseConfigured) { 
     return (
      <div className="space-y-6">
-       <Card>
+        {/* Title is handled by AppLayout */}
+       <Card className="bg-card text-card-foreground border-border">
          <CardHeader>
-           <CardTitle>Feature Unavailable</CardTitle>
+           <CardTitle className="text-foreground">Función No Disponible</CardTitle>
          </CardHeader>
          <CardContent>
-           <p className="text-muted-foreground">Firebase is not configured. General settings management is unavailable.</p>
+           <p className="text-muted-foreground">Firebase no está configurado. La gestión de la configuración general no está disponible.</p>
          </CardContent>
        </Card>
      </div>
@@ -148,26 +150,25 @@ export default function GeneralSettingsPage() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="flex items-center justify-between mb-6">
-          {/* Title and description moved to CardHeader */}
-        </div>
-
-        <Card className="shadow-sm">
+        {/* Removed Tabs navigation */}
+        {/* Title and description moved to CardHeader or handled by AppLayout */}
+        
+        <Card className="shadow-sm bg-card text-card-foreground border-border">
           <CardHeader>
-            <CardTitle>System Configuration</CardTitle>
-            <CardDescription>Manage system-wide parameters and preferences.</CardDescription>
+            <CardTitle className="text-foreground">Configuración del Sistema</CardTitle>
+            <CardDescription className="text-muted-foreground">Administrar parámetros y preferencias globales del sistema.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6 pt-6">
             <div className="space-y-4 border-b border-border pb-6">
-              <h3 className="text-lg font-medium text-foreground">Basic Information</h3>
+              <h3 className="text-lg font-medium text-foreground">Información Básica</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="appName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Application Name</FormLabel>
-                      <FormControl><Input {...field} disabled={!isAdmin} className="bg-background text-foreground" /></FormControl>
+                      <FormLabel className="text-muted-foreground">Nombre de la Aplicación</FormLabel>
+                      <FormControl><Input {...field} disabled={!isAdmin} className="bg-background border-input text-foreground" /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -177,8 +178,8 @@ export default function GeneralSettingsPage() {
                   name="companyName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Company Name</FormLabel>
-                      <FormControl><Input {...field} placeholder="Your Company Inc." disabled={!isAdmin} className="bg-background text-foreground" /></FormControl>
+                      <FormLabel className="text-muted-foreground">Nombre de la Empresa</FormLabel>
+                      <FormControl><Input {...field} placeholder="Tu Empresa Inc." disabled={!isAdmin} className="bg-background border-input text-foreground" /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -189,9 +190,9 @@ export default function GeneralSettingsPage() {
                 name="systemEmail"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>System Email Address</FormLabel>
-                    <FormControl><Input type="email" {...field} placeholder="noreply@yourcompany.com" disabled={!isAdmin} className="bg-background text-foreground" /></FormControl>
-                    <FormDescription>Email address used for sending system notifications.</FormDescription>
+                    <FormLabel className="text-muted-foreground">Email del Sistema</FormLabel>
+                    <FormControl><Input type="email" {...field} placeholder="noreply@tuempresa.com" disabled={!isAdmin} className="bg-background border-input text-foreground" /></FormControl>
+                    <FormDescription className="text-xs text-muted-foreground/80">Email usado para enviar notificaciones del sistema.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -199,17 +200,17 @@ export default function GeneralSettingsPage() {
             </div>
 
             <div className="space-y-4 border-b border-border pb-6">
-              <h3 className="text-lg font-medium text-foreground">Localization</h3>
+              <h3 className="text-lg font-medium text-foreground">Localización</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
                   name="defaultLanguage"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Default Language</FormLabel>
+                      <FormLabel className="text-muted-foreground">Idioma Predeterminado</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value} disabled={!isAdmin}>
-                        <FormControl><SelectTrigger className="bg-background text-foreground"><SelectValue placeholder="Select language" /></SelectTrigger></FormControl>
-                        <SelectContent className="bg-popover text-popover-foreground">
+                        <FormControl><SelectTrigger className="bg-background border-input text-foreground"><SelectValue placeholder="Seleccionar idioma" /></SelectTrigger></FormControl>
+                        <SelectContent className="bg-popover text-popover-foreground border-border">
                           <SelectItem value="en">English (US)</SelectItem>
                           <SelectItem value="es">Español</SelectItem>
                           <SelectItem value="fr">Français</SelectItem>
@@ -224,10 +225,10 @@ export default function GeneralSettingsPage() {
                   name="timezone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Timezone</FormLabel>
+                      <FormLabel className="text-muted-foreground">Zona Horaria</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value} disabled={!isAdmin}>
-                        <FormControl><SelectTrigger className="bg-background text-foreground"><SelectValue placeholder="Select timezone" /></SelectTrigger></FormControl>
-                        <SelectContent className="max-h-60 bg-popover text-popover-foreground">
+                        <FormControl><SelectTrigger className="bg-background border-input text-foreground"><SelectValue placeholder="Seleccionar zona horaria" /></SelectTrigger></FormControl>
+                        <SelectContent className="max-h-60 bg-popover text-popover-foreground border-border">
                           <SelectItem value="utc">UTC</SelectItem>
                           <SelectItem value="est">EST (UTC-5)</SelectItem>
                           <SelectItem value="pst">PST (UTC-8)</SelectItem>
@@ -243,10 +244,10 @@ export default function GeneralSettingsPage() {
                   name="dateFormat"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Date Format</FormLabel>
+                      <FormLabel className="text-muted-foreground">Formato de Fecha</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value} disabled={!isAdmin}>
-                        <FormControl><SelectTrigger className="bg-background text-foreground"><SelectValue placeholder="Select format" /></SelectTrigger></FormControl>
-                        <SelectContent className="bg-popover text-popover-foreground">
+                        <FormControl><SelectTrigger className="bg-background border-input text-foreground"><SelectValue placeholder="Seleccionar formato" /></SelectTrigger></FormControl>
+                        <SelectContent className="bg-popover text-popover-foreground border-border">
                           <SelectItem value="mmddyyyy">MM/DD/YYYY</SelectItem>
                           <SelectItem value="ddmmyyyy">DD/MM/YYYY</SelectItem>
                           <SelectItem value="yyyymmdd">YYYY-MM-DD</SelectItem>
@@ -260,14 +261,14 @@ export default function GeneralSettingsPage() {
             </div>
 
             <div className="space-y-4">
-              <h3 className="text-lg font-medium text-foreground">Feature Flags</h3>
+              <h3 className="text-lg font-medium text-foreground">Indicadores de Funciones</h3>
               <div className="space-y-3">
                 <FormField
                   control={form.control}
                   name="clientPortalEnabled"
                   render={({ field }) => (
                     <FormItem className="flex items-center justify-between p-3 border border-border rounded-md bg-background">
-                      <FormLabel htmlFor="clientPortalEnabled" className="font-normal mb-0 text-foreground">Enable Client Portal</FormLabel>
+                      <FormLabel htmlFor="clientPortalEnabled" className="font-normal mb-0 text-foreground">Habilitar Portal del Cliente</FormLabel>
                       <FormControl><Switch id="clientPortalEnabled" checked={field.value} onCheckedChange={field.onChange} disabled={!isAdmin} /></FormControl>
                     </FormItem>
                   )}
@@ -277,7 +278,7 @@ export default function GeneralSettingsPage() {
                   name="auditLoggingEnabled"
                   render={({ field }) => (
                     <FormItem className="flex items-center justify-between p-3 border border-border rounded-md bg-background">
-                      <FormLabel htmlFor="auditLoggingEnabled" className="font-normal mb-0 text-foreground">Enable Detailed Audit Logging</FormLabel>
+                      <FormLabel htmlFor="auditLoggingEnabled" className="font-normal mb-0 text-foreground">Habilitar Registro de Auditoría Detallado</FormLabel>
                       <FormControl><Switch id="auditLoggingEnabled" checked={field.value} onCheckedChange={field.onChange} disabled={!isAdmin} /></FormControl>
                     </FormItem>
                   )}
@@ -287,7 +288,7 @@ export default function GeneralSettingsPage() {
                   name="apiAccessEnabled"
                   render={({ field }) => (
                     <FormItem className="flex items-center justify-between p-3 border border-border rounded-md bg-background">
-                      <FormLabel htmlFor="apiAccessEnabled" className="font-normal mb-0 text-foreground">Enable API Access</FormLabel>
+                      <FormLabel htmlFor="apiAccessEnabled" className="font-normal mb-0 text-foreground">Habilitar Acceso API</FormLabel>
                       <FormControl><Switch id="apiAccessEnabled" checked={field.value} onCheckedChange={field.onChange} disabled={!isAdmin} /></FormControl>
                     </FormItem>
                   )}
@@ -295,9 +296,9 @@ export default function GeneralSettingsPage() {
               </div>
             </div>
              <div className="flex justify-end pt-4">
-                <Button type="submit" size="sm" className="gap-1" disabled={isSaving || !isAdmin}>
+                <Button type="submit" size="sm" className="gap-1 bg-primary text-primary-foreground hover:bg-primary/90" disabled={isSaving || !isAdmin}>
                     {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                    Save Changes
+                    Guardar Cambios
                 </Button>
             </div>
           </CardContent>

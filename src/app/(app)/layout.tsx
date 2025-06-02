@@ -10,7 +10,7 @@ import {
   Users,
   Package,
   Wrench,
-  BarChart3,
+  BarChart3, // Changed for Reports main icon
   FileText,
   Settings,
   HelpCircle,
@@ -22,7 +22,7 @@ import {
   ChevronUp,
   ChevronDown,
   Palette,
-  BarChart, 
+  // BarChart, // Replaced by BarChart3 for main 'Reports'
 } from 'lucide-react';
 import {
   Accordion,
@@ -49,7 +49,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 interface NavSubItem {
   label: string;
   href: string;
-  id: string; 
+  id: string;
 }
 interface NavItem {
   icon: React.ElementType;
@@ -83,7 +83,7 @@ const navigationModules: NavModule[] = [
           { label: 'Reportes', href: '/assets/reports', id: 'assets-reports'},
         ]
       },
-      { 
+      {
         icon: Users, label: 'Clientes', id: 'clients', href: '/clients/directory',
         subItems: [
           { label: 'Directorio', href: '/clients/directory', id: 'clients-directory'},
@@ -91,8 +91,8 @@ const navigationModules: NavModule[] = [
           { label: 'Historial', href: '/clients/history', id: 'clients-history'},
         ]
       },
-      { 
-        icon: Package, label: 'Inventario', id: 'inventory', href: '/inventory/stock', 
+      {
+        icon: Package, label: 'Inventario', id: 'inventory', href: '/inventory/stock',
         subItems: [
             { label: 'Stock', href: '/inventory/stock', id: 'inventory-stock'},
             { label: 'Movimientos', href: '/inventory/movements', id: 'inventory-movements'},
@@ -100,7 +100,7 @@ const navigationModules: NavModule[] = [
             { label: 'Reportes', href: '/inventory/reports', id: 'inventory-reports'},
         ]
       },
-      { 
+      {
         icon: Wrench, label: 'Servicios', id: 'services', href: '/services/catalog',
         subItems: [
           { label: 'Catálogo', href: '/services/catalog', id: 'services-catalog'},
@@ -113,15 +113,30 @@ const navigationModules: NavModule[] = [
   {
     category: 'ANÁLISIS',
     items: [
-      { icon: BarChart, label: 'Gráficas', id: 'reports_custom', href: '/reports/custom' },
-      { icon: FileText, label: 'Reportes', id: 'reports_financial', href: '/reports/financial' },
+      {
+        icon: BarChart3, label: 'Reportes', id: 'analysis_reports', href: '/reports/financial',
+        subItems: [
+          { label: 'Financieros', href: '/reports/financial', id: 'reports-financial' },
+          { label: 'Operacionales', href: '/reports/operational', id: 'reports-operational' },
+          { label: 'Personalizados', href: '/reports/custom', id: 'reports-custom' },
+        ]
+      },
     ],
   },
   {
     category: 'CONFIGURACIÓN',
     items: [
-      { icon: Settings, label: 'Ajustes', id: 'settings', href: '/settings/general' },
-      { icon: HelpCircle, label: 'Soporte', id: 'support', href: '/dashboard' }, 
+      {
+        icon: Settings, label: 'Ajustes', id: 'settings', href: '/settings/general',
+        subItems: [
+            { label: 'General', href: '/settings/general', id: 'settings-general' },
+            { label: 'Cuenta', href: '/settings/account', id: 'settings-account' },
+            { label: 'Usuarios', href: '/settings/users', id: 'settings-users' },
+            { label: 'Notificaciones', href: '/settings/notifications', id: 'settings-notifications' },
+            { label: 'Logs del Sistema', href: '/settings/logs', id: 'settings-logs' },
+        ]
+      },
+      { icon: HelpCircle, label: 'Soporte', id: 'support', href: '/dashboard' },
     ],
   },
 ];
@@ -169,45 +184,44 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
     for (const modGroup of navigationModules) {
       for (const item of modGroup.items) {
         if (item.subItems) {
-           // Check if the current pathname matches the main item's href or any of its subItems' href
-          const isParentActive = pathname === item.href || pathname.startsWith(item.href + "/");
-          let isActiveSubItem = false;
+          const isParentActiveOrSubItemActive = item.subItems.some(subItem => pathname === subItem.href || pathname.startsWith(subItem.href + "/")) || pathname === item.href || pathname.startsWith(item.href + "/");
 
-          for (const subItem of item.subItems) {
-            if (pathname === subItem.href || pathname.startsWith(subItem.href + "/")) {
-              currentActiveSubId = subItem.id;
-              isActiveSubItem = true;
-              break; 
-            }
-          }
-          
-          if (isParentActive || isActiveSubItem) {
+          if (isParentActiveOrSubItemActive) {
             currentModuleIdForAccordion = item.id;
-            // If no specific sub-item matched but parent did, and activeSubId wasn't set,
-            // default to the first sub-item or the item.id itself if it's the target
-            if (!currentActiveSubId && isParentActive) {
-                 currentActiveSubId = item.subItems[0]?.id || item.id;
+            // Find the specific active sub-item
+            const activeSub = item.subItems.find(subItem => pathname === subItem.href || pathname.startsWith(subItem.href + "/"));
+            if (activeSub) {
+              currentActiveSubId = activeSub.id;
+            } else if (pathname === item.href || pathname.startsWith(item.href + "/")) {
+              // If parent is active but no specific sub-item, default to first sub-item or parent ID
+              currentActiveSubId = item.subItems[0]?.id || item.id;
             }
+            break; 
           }
-
         } else if (pathname === item.href || pathname.startsWith(item.href + "/")) {
-          currentActiveSubId = item.id; 
+          currentActiveSubId = item.id;
           currentModuleIdForAccordion = undefined; // Not an accordion item
+          break;
         }
-        if (currentActiveSubId && currentModuleIdForAccordion !== undefined) break; // Found active accordion item
-        if (currentActiveSubId && currentModuleIdForAccordion === undefined) break; // Found active non-accordion item
       }
-      if (currentActiveSubId && currentModuleIdForAccordion !== undefined) break;
-      if (currentActiveSubId && currentModuleIdForAccordion === undefined) break;
+      if (currentActiveSubId) break; 
+    }
+
+    // Fallbacks for non-module specific pages if no specific active sub-item was found from modules
+    if (!currentActiveSubId) {
+        if (pathname.startsWith('/settings/')) { // Special handling for settings if no specific sub-item matched directly
+            currentActiveSubId = 'settings-general'; // Default or derive from path
+            currentModuleIdForAccordion = 'settings';
+        } else if (pathname.startsWith('/reports/')) {
+             currentActiveSubId = 'reports-financial'; // Default or derive
+             currentModuleIdForAccordion = 'analysis_reports';
+        } else if (pathname.startsWith('/profile')) {
+            currentActiveSubId = 'profile'; 
+        } else if (pathname.startsWith('/dashboard')) {
+            currentActiveSubId = 'dashboard';
+        }
     }
     
-    // Fallbacks for non-module specific pages
-    if (!currentActiveSubId) {
-        if (pathname.startsWith('/settings/')) currentActiveSubId = 'settings';
-        else if (pathname.startsWith('/profile')) currentActiveSubId = 'profile'; 
-        else if (pathname.startsWith('/dashboard')) currentActiveSubId = 'dashboard';
-    }
-
     setActiveSubItemId(currentActiveSubId);
     setActiveAccordionValue(currentModuleIdForAccordion);
 
@@ -269,7 +283,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
       <div className="w-72 bg-sidebar text-sidebar-foreground border-r border-sidebar-border p-6 flex flex-col shrink-0">
         <Link href="/dashboard" className="flex items-center mb-10">
           <div className="w-12 h-12 bg-sidebar-primary rounded-xl flex items-center justify-center text-sidebar-primary-foreground mr-3 shrink-0">
-            <Truck size={24} /> 
+            <Truck size={24} />
           </div>
           <div>
             <div className="text-xl font-bold text-foreground">Sistema</div>
@@ -278,8 +292,8 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
         </Link>
 
         <nav className="flex-1 overflow-y-auto pr-0">
-         <Accordion 
-            type="single" 
+         <Accordion
+            type="single"
             collapsible
             value={activeAccordionValue}
             onValueChange={setActiveAccordionValue}
@@ -312,7 +326,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                             className={`
                               flex items-center py-2 px-3 rounded-md text-sm transition-colors
                               ${activeSubItemId === subItem.id
-                                ? 'text-sidebar-primary font-medium bg-sidebar-accent/60' 
+                                ? 'text-sidebar-primary font-medium bg-sidebar-accent/60'
                                 : 'text-sidebar-foreground hover:text-sidebar-primary hover:bg-sidebar-accent/30'}
                             `}
                           >
@@ -331,6 +345,11 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                           ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
                           : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}
                       `}
+                      onClick={() => {
+                        // If it's not an accordion item, ensure no accordion is active
+                        if (activeAccordionValue !== undefined) setActiveAccordionValue(undefined);
+                        setActiveSubItemId(item.id);
+                      }}
                     >
                       <item.icon className={`mr-3 ${activeSubItemId === item.id ? 'text-sidebar-accent-foreground' : 'text-muted-foreground group-hover:text-sidebar-foreground'}`} size={20} />
                       <span className="flex-1">{item.label}</span>
@@ -351,7 +370,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
               <DropdownMenuTrigger asChild>
                 <div className="flex items-center p-2 rounded-lg hover:bg-sidebar-accent/50 cursor-pointer group">
                     <Avatar className="h-10 w-10 mr-3">
-                       <AvatarImage src={user?.photoURL || undefined} alt={displayName || user?.email || "User"} data-ai-hint="person face"/>
+                       <AvatarImage src={user?.photoURL || undefined} alt={displayName || user?.email || "User"} data-ai-hint="person avatar"/>
                        <AvatarFallback className="bg-sidebar-primary/20 text-sidebar-primary font-semibold">
                          {getInitials(displayName, user?.email)}
                        </AvatarFallback>
@@ -381,7 +400,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                       </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-border" />
-                  <ThemeToggle /> 
+                  <ThemeToggle />
                   <DropdownMenuSeparator className="bg-border" />
                   <DropdownMenuItem onClick={logout} className="text-destructive focus:bg-destructive/10 focus:text-destructive flex items-center gap-2 cursor-pointer hover:!bg-destructive/10 hover:!text-destructive dark:hover:!bg-destructive/20 dark:focus:!bg-destructive/20">
                       <LogOut size={16}/> Cerrar Sesión
@@ -417,5 +436,3 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
 export default function AppLayout({ children }: { children: ReactNode }) {
   return <AppLayoutContent>{children}</AppLayoutContent>;
 }
-
-    

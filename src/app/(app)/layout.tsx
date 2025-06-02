@@ -40,11 +40,11 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { getTranslation, getPageTitleInfo } from '@/lib/translations'; // Import translation helpers
+import { getTranslation, getPageTitleInfo } from '@/lib/translations';
 
 
 interface NavSubItem {
-  labelKey: keyof import('@/lib/translations').TranslationSet; // Use keyof to ensure valid keys
+  labelKey: keyof import('@/lib/translations').TranslationSet;
   href: string;
   id: string;
 }
@@ -62,16 +62,15 @@ interface NavModule {
   items: NavItem[];
 }
 
-// Navigation structure using translation keys
 const getNavigationModules = (lang: string | null | undefined): NavModule[] => [
   {
-    categoryKey: "dashboard", // Assuming 'dashboard' can serve as a category label too or use a new key e.g., 'panel_category'
+    categoryKey: "dashboard",
     items: [
         { icon: Home, labelKey: 'dashboard', id: 'dashboard', href: '/dashboard' },
     ]
   },
   {
-    categoryKey: 'assets', // Assuming 'assets' can serve as 'GESTIÓN' category label or use 'management_category'
+    categoryKey: 'assets',
     items: [
       {
         icon: Truck, labelKey: 'assets', id: 'assets', href: '/assets/list',
@@ -134,7 +133,7 @@ const getNavigationModules = (lang: string | null | undefined): NavModule[] => [
             { labelKey: 'settings_logs', href: '/settings/logs', id: 'settings-logs' },
         ]
       },
-      { icon: HelpCircle, labelKey: 'support', id: 'support', href: '/dashboard' }, // Assuming /dashboard is a placeholder for support
+      { icon: HelpCircle, labelKey: 'support', id: 'support', href: '/dashboard' },
     ],
   },
 ];
@@ -148,52 +147,58 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
   const [activeSubItemId, setActiveSubItemId] = useState<string | null>(null);
   const [activeAccordionValue, setActiveAccordionValue] = useState<string | undefined>(undefined);
   
-  const navigationModules = getNavigationModules(languagePreference); // Get translated navigation structure
+  const navigationModules = getNavigationModules(languagePreference);
 
   useEffect(() => {
-    let currentActiveSubId: string | null = null;
-    let currentModuleIdForAccordion: string | undefined = undefined;
+    let newActiveSubId: string | null = null;
+    let newActiveAccordionValue: string | undefined = undefined;
+    let itemFound = false;
 
     for (const modGroup of navigationModules) {
+      if (itemFound) break;
       for (const item of modGroup.items) {
-        if (item.subItems) {
-          const isParentActiveOrSubItemActive = item.subItems.some(subItem => pathname === subItem.href || pathname.startsWith(subItem.href + "/")) || pathname === item.href || pathname.startsWith(item.href + "/");
-
-          if (isParentActiveOrSubItemActive) {
-            currentModuleIdForAccordion = item.id;
-            const activeSub = item.subItems.find(subItem => pathname === subItem.href || pathname.startsWith(subItem.href + "/"));
-            if (activeSub) {
-              currentActiveSubId = activeSub.id;
-            } else if (pathname === item.href || pathname.startsWith(item.href + "/")) {
-              currentActiveSubId = item.subItems[0]?.id || item.id;
-            }
-            break; 
+        if (item.subItems && item.subItems.length > 0) {
+          // This is an accordion item
+          const matchingSubItem = item.subItems.find(sub => pathname === sub.href || pathname.startsWith(sub.href + "/"));
+          if (matchingSubItem) {
+            newActiveSubId = matchingSubItem.id;
+            newActiveAccordionValue = item.id;
+            itemFound = true;
+            break; // Found active sub-item, break from inner loop
+          } else if (pathname === item.href || pathname.startsWith(item.href + "/")) {
+            // Path matches the main accordion item's href (which is typically the first sub-item's href)
+            // or a base path for this accordion section.
+            newActiveSubId = item.subItems[0].id; // Default to first sub-item
+            newActiveAccordionValue = item.id;
+            itemFound = true;
+            break; // Found active accordion by its main link, break from inner loop
           }
-        } else if (pathname === item.href || pathname.startsWith(item.href + "/")) {
-          currentActiveSubId = item.id;
-          currentModuleIdForAccordion = undefined; 
-          break;
+        } else {
+          // This is a direct link item (no subItems)
+          if (pathname === item.href || pathname.startsWith(item.href + "/")) {
+            newActiveSubId = item.id;
+            newActiveAccordionValue = undefined; // No accordion is open for direct links
+            itemFound = true;
+            break; // Found active direct link, break from inner loop
+          }
         }
       }
-      if (currentActiveSubId) break; 
     }
 
-    if (!currentActiveSubId) {
-        if (pathname.startsWith('/settings/')) { 
-            currentActiveSubId = 'settings-general'; 
-            currentModuleIdForAccordion = 'settings';
-        } else if (pathname.startsWith('/reports/')) {
-             currentActiveSubId = 'reports-financial'; 
-             currentModuleIdForAccordion = 'analysis_reports';
-        } else if (pathname.startsWith('/profile')) {
-            currentActiveSubId = 'profile'; 
-        } else if (pathname.startsWith('/dashboard')) {
-            currentActiveSubId = 'dashboard';
-        }
+    // If no specific item was found through the main logic (e.g., path is / or some other non-nav path)
+    if (!itemFound && (pathname === '/dashboard' || pathname === '/')) {
+        newActiveSubId = 'dashboard'; // Default to dashboard
+        newActiveAccordionValue = undefined;
+        itemFound = true; // Consider dashboard as found
     }
     
-    setActiveSubItemId(currentActiveSubId);
-    setActiveAccordionValue(currentModuleIdForAccordion);
+    // If still not found, it implies a path not in the main navigation (e.g., /profile).
+    // In this case, newActiveSubId will remain null and newActiveAccordionValue undefined,
+    // which means no sidebar item will be highlighted and no accordion will be forced open,
+    // allowing the previously user-opened accordion (if any and if collapsible is true) to remain or close.
+
+    setActiveSubItemId(newActiveSubId);
+    setActiveAccordionValue(newActiveAccordionValue);
 
   }, [pathname, navigationModules]);
 
@@ -405,5 +410,3 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
 export default function AppLayout({ children }: { children: ReactNode }) {
   return <AppLayoutContent>{children}</AppLayoutContent>;
 }
-
-    

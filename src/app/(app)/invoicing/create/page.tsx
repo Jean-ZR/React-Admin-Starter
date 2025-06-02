@@ -14,12 +14,12 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase/config';
-import { collection, getDocs, query, orderBy, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, addDoc, serverTimestamp, Timestamp, doc, getDoc, setDoc, runTransaction } from 'firebase/firestore';
 import { Loader2, Save, Send, Search, UserPlus } from 'lucide-react';
 import { QuickClientFormModal, type QuickClientFormData } from '@/components/invoicing/quick-client-form-modal';
-import { GeneratedInvoiceModal } from '@/components/invoicing/generated-invoice-modal'; // New Import
+import { GeneratedInvoiceModal } from '@/components/invoicing/generated-invoice-modal';
 import { useAuth } from '@/contexts/auth-context';
-import { useRouter } from 'next/navigation'; // New Import
+import { useRouter } from 'next/navigation';
 
 interface ClientForSelect {
   id: string;
@@ -76,6 +76,13 @@ const invoiceSchema = z.object({
 
 type InvoiceFormData = z.infer<typeof invoiceSchema>;
 
+// Helper function to pad numbers for invoice ID
+const padNumber = (num: number, size: number): string => {
+  let s = num.toString();
+  while (s.length < size) s = "0" + s;
+  return s;
+};
+
 export default function CreateInvoicePage() {
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
@@ -113,7 +120,7 @@ export default function CreateInvoicePage() {
   const dniValue = form.watch("dni");
 
   useEffect(() => {
-    if (!APIPERU_TOKEN || APIPERU_TOKEN === 'YOUR_APIPERU_TOKEN_HERE') {
+    if (!APIPERU_TOKEN || APIPERU_TOKEN === 'YOUR_APIPERU_TOKEN_HERE' || APIPERU_TOKEN.trim() === '') {
       setApiTokenMissing(true);
       toast({
         title: "Configuración Requerida",
@@ -148,6 +155,33 @@ export default function CreateInvoicePage() {
     fetchClients();
   }, [fetchClients]);
 
+  const getNextInvoiceNumber = async (docType: 'factura' | 'boleta'): Promise<{ fullNumber: string, sequence: number }> => {
+    const seriesPrefix = docType === 'factura' ? 'F001' : 'B001';
+    const counterRef = doc(db, "invoiceSeriesCounters", seriesPrefix);
+
+    try {
+      const newSequenceNumber = await runTransaction(db, async (transaction) => {
+        const counterSnap = await transaction.get(counterRef);
+        let currentLastNumber = 0;
+        if (counterSnap.exists()) {
+          currentLastNumber = counterSnap.data()?.lastNumber || 0;
+        }
+        const newNumber = currentLastNumber + 1;
+        transaction.set(counterRef, { lastNumber: newNumber }, { merge: true });
+        return newNumber;
+      });
+      return {
+        fullNumber: `${seriesPrefix}-${padNumber(newSequenceNumber, 7)}`,
+        sequence: newSequenceNumber,
+      };
+    } catch (error) {
+        console.error("Error generating invoice number:", error);
+        toast({ title: "Error Correlativo", description: "No se pudo generar el número de comprobante.", variant: "destructive"});
+        throw error; // Rethrow to stop invoice creation
+    }
+  };
+
+
   const handleFormSubmit: SubmitHandler<InvoiceFormData> = async (data, event) => {
     setIsSubmitting(true);
     const submitter = (event?.nativeEvent as SubmitEvent)?.submitter?.textContent || "";
@@ -160,45 +194,48 @@ export default function CreateInvoicePage() {
       return;
     }
 
-    const prefix = data.documentType === 'factura' ? 'F' : 'B';
-    const timestampSuffix = Date.now().toString().slice(-6);
-    const invoiceNumber = `${prefix}001-${timestampSuffix}`;
-
-    const invoiceData = {
-      invoiceNumber,
-      clientId: selectedClient.id,
-      clientName: selectedClient.name,
-      clientDocumentType: selectedClient.documentType || 'none',
-      clientDocumentNumber: selectedClient.documentNumber || data.ruc || data.dni || '',
-      documentType: data.documentType,
-      issueDate: Timestamp.fromDate(data.issueDate),
-      dueDate: Timestamp.fromDate(data.dueDate),
-      itemsDescription: data.itemsDescription,
-      notes: data.notes || '',
-      totalAmount: data.totalAmount,
-      status: submitter.includes("Enviar") ? 'Enviada' : 'Borrador',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      userId: currentUser?.uid || null,
-    };
-
     try {
-      const docRef = await addDoc(collection(db, 'invoices'), invoiceData);
-      toast({
-        title: `Comprobante ${invoiceData.status === 'Enviada' ? 'Generado y Enviado' : 'Guardado como Borrador'}`,
-        description: `${invoiceData.documentType.charAt(0).toUpperCase() + invoiceData.documentType.slice(1)} Nro: ${invoiceNumber} para ${selectedClient.name}.`,
-      });
-      setGeneratedInvoiceData({
-        invoiceNumber: invoiceNumber,
+        const { fullNumber: invoiceNumber, sequence: sequenceNumber } = await getNextInvoiceNumber(data.documentType);
+
+        const invoiceData = {
+        invoiceNumber,
+        sequenceNumber,
+        clientId: selectedClient.id,
         clientName: selectedClient.name,
+        clientDocumentType: selectedClient.documentType || 'none',
+        clientDocumentNumber: selectedClient.documentNumber || data.ruc || data.dni || '',
+        documentType: data.documentType,
+        issueDate: Timestamp.fromDate(data.issueDate),
+        dueDate: Timestamp.fromDate(data.dueDate),
+        itemsDescription: data.itemsDescription,
+        notes: data.notes || '',
         totalAmount: data.totalAmount,
-        documentType: data.documentType
-      });
-      setIsGeneratedModalOpen(true);
-      // Form reset is now handled by the modal's "Create New" action
+        status: submitter.includes("Enviar") ? 'Enviada' : 'Borrador',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        userId: currentUser?.uid || null,
+        };
+
+        await addDoc(collection(db, 'invoices'), invoiceData);
+        
+        toast({
+            title: `Comprobante ${invoiceData.status === 'Enviada' ? 'Generado y Enviado' : 'Guardado como Borrador'}`,
+            description: `${invoiceData.documentType.charAt(0).toUpperCase() + invoiceData.documentType.slice(1)} Nro: ${invoiceNumber} para ${selectedClient.name}.`,
+        });
+        setGeneratedInvoiceData({
+            invoiceNumber: invoiceNumber,
+            clientName: selectedClient.name,
+            totalAmount: data.totalAmount,
+            documentType: data.documentType
+        });
+        setIsGeneratedModalOpen(true);
+
     } catch (error) {
-      console.error("Error saving invoice:", error);
-      toast({ title: "Error", description: "No se pudo guardar el comprobante.", variant: "destructive" });
+      // Error generating invoice number or saving invoice
+      // Toast for specific error is handled in getNextInvoiceNumber or here if addDoc fails
+      if (!toast.toasts.find(t => t.title === "Error Correlativo")) { // Avoid double toast if from getNextInvoiceNumber
+          toast({ title: "Error", description: "No se pudo guardar el comprobante.", variant: "destructive" });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -216,7 +253,7 @@ export default function CreateInvoicePage() {
 
     if (type === 'ruc') setIsSearchingRuc(true);
     if (type === 'dni') setIsSearchingDni(true);
-    setQuickClientPrefill(undefined); // Reset prefill
+    setQuickClientPrefill(undefined);
 
     try {
         const response = await fetch(`https://apiperu.dev/api/${type}/${value}`, {
@@ -241,7 +278,6 @@ export default function CreateInvoicePage() {
                 const existingClient = clients.find(c => c.name.toLowerCase() === nameFromApi.toLowerCase());
                 if (existingClient) {
                     form.setValue('clientId', existingClient.id);
-                    // Also fill RUC/DNI field if applicable
                     if (documentType === 'factura' && type === 'ruc') form.setValue('ruc', value);
                     if (documentType === 'boleta' && type === 'dni') form.setValue('dni', value);
                     toast({ title: "Cliente Encontrado", description: `Cliente '${nameFromApi}' seleccionado.`, variant: "default" });
@@ -250,15 +286,16 @@ export default function CreateInvoicePage() {
                     toast({ title: "Cliente No Encontrado", description: `'${nameFromApi}' no está en tu lista. Puedes añadirlo con [+].`, variant: "default" });
                 }
             } else if (nameFromApi !== 'No encontrado') {
-                // If a client is already selected, or API name is "No encontrado", just prefill for potential new client
                  setQuickClientPrefill({ name: nameFromApi, documentType: type, documentNumber: value });
             }
 
         } else {
             toast({ title: `Error Buscando ${type.toUpperCase()}`, description: result.message || "No se pudo encontrar.", variant: "destructive" });
+             setQuickClientPrefill({ name: '', documentType: type, documentNumber: value }); // Still prefill for manual add
         }
     } catch (error) {
         toast({ title: "Error de API", description: `Error al consultar API de ${type.toUpperCase()}.`, variant: "destructive" });
+         setQuickClientPrefill({ name: '', documentType: type, documentNumber: value }); // Still prefill for manual add
     } finally {
         if (type === 'ruc') setIsSearchingRuc(false);
         if (type === 'dni') setIsSearchingDni(false);
@@ -292,7 +329,7 @@ export default function CreateInvoicePage() {
         }
     }
     setIsQuickClientModalOpen(false);
-    setQuickClientPrefill(undefined); // Clear prefill after use
+    setQuickClientPrefill(undefined);
   };
   
   const handleModalNewInvoice = () => {
@@ -341,7 +378,7 @@ export default function CreateInvoicePage() {
                               ))}
                             </SelectContent>
                           </Select>
-                          <Button type="button" variant="outline" size="icon" onClick={handleAddClientClick} className="shrink-0 border-input hover:bg-accent hover:text-accent-foreground" disabled={apiTokenMissing}>
+                          <Button type="button" variant="outline" size="icon" onClick={handleAddClientClick} className="shrink-0 border-input hover:bg-accent hover:text-accent-foreground">
                             <UserPlus className="h-4 w-4" />
                             <span className="sr-only">Añadir Nuevo Cliente</span>
                           </Button>
@@ -356,7 +393,11 @@ export default function CreateInvoicePage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tipo de Comprobante *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={(value) => {
+                          field.onChange(value);
+                          form.setValue('ruc', ''); // Clear RUC/DNI when type changes
+                          form.setValue('dni', '');
+                      }} value={field.value}>
                         <FormControl>
                           <SelectTrigger className="bg-background border-input">
                             <SelectValue placeholder="Seleccionar tipo" />
@@ -535,3 +576,4 @@ export default function CreateInvoicePage() {
     </div>
   );
 }
+

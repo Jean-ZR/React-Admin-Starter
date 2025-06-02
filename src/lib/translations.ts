@@ -6,6 +6,7 @@ export interface TranslationSet {
   clients: string;
   inventory: string;
   services: string;
+  invoicing: string; // New
   reports_category: string; // Category label for Reports
   settings_category: string; // Category label for Settings
   support: string;
@@ -13,7 +14,7 @@ export interface TranslationSet {
   // Sub-items for Assets
   assets_list: string;
   assets_categories: string;
-  assets_reports: string; // Distinct from inventory reports
+  assets_reports: string;
 
   // Sub-items for Clients
   clients_directory: string;
@@ -30,6 +31,10 @@ export interface TranslationSet {
   services_catalog: string;
   services_scheduling: string;
   services_history: string;
+
+  // Sub-items for Invoicing (New)
+  invoicing_list: string;
+  invoicing_create: string;
 
   // Sub-items for Reports Category
   reports_financial: string;
@@ -72,6 +77,10 @@ export interface TranslationSet {
   page_subtitle_services_scheduling: string;
   page_title_services_history: string;
   page_subtitle_services_history: string;
+  page_title_invoicing_list: string; // New
+  page_subtitle_invoicing_list: string; // New
+  page_title_invoicing_create: string; // New
+  page_subtitle_invoicing_create: string; // New
   page_title_reports_financial: string;
   page_subtitle_reports_financial: string;
   page_title_reports_operational: string;
@@ -103,6 +112,7 @@ export const translations: Translations = {
     clients: 'Clients',
     inventory: 'Inventory',
     services: 'Services',
+    invoicing: 'Invoicing', // New
     reports_category: 'Analysis',
     settings_category: 'Configuration',
     support: 'Support',
@@ -123,6 +133,9 @@ export const translations: Translations = {
     services_catalog: 'Catalog',
     services_scheduling: 'Scheduling',
     services_history: 'History',
+
+    invoicing_list: 'Invoice List', // New
+    invoicing_create: 'Create Invoice', // New
 
     reports_financial: 'Financial',
     reports_operational: 'Operational',
@@ -162,6 +175,10 @@ export const translations: Translations = {
     page_subtitle_services_scheduling: 'Calendar and appointments',
     page_title_services_history: 'Service History',
     page_subtitle_services_history: 'Record of jobs',
+    page_title_invoicing_list: 'Invoices', // New
+    page_subtitle_invoicing_list: 'Manage your customer invoices', // New
+    page_title_invoicing_create: 'Create New Invoice', // New
+    page_subtitle_invoicing_create: 'Generate a new invoice for a client', // New
     page_title_reports_financial: 'Financial Reports',
     page_subtitle_reports_financial: 'Income and expense analysis',
     page_title_reports_operational: 'Operational Reports',
@@ -187,6 +204,7 @@ export const translations: Translations = {
     clients: 'Clientes',
     inventory: 'Inventario',
     services: 'Servicios',
+    invoicing: 'Facturación', // New
     reports_category: 'Análisis',
     settings_category: 'Configuración',
     support: 'Soporte',
@@ -207,6 +225,9 @@ export const translations: Translations = {
     services_catalog: 'Catálogo',
     services_scheduling: 'Programación',
     services_history: 'Historial',
+
+    invoicing_list: 'Lista de Facturas', // New
+    invoicing_create: 'Crear Factura', // New
 
     reports_financial: 'Financieros',
     reports_operational: 'Operacionales',
@@ -246,6 +267,10 @@ export const translations: Translations = {
     page_subtitle_services_scheduling: 'Calendario y citas',
     page_title_services_history: 'Historial de Servicios',
     page_subtitle_services_history: 'Registro de trabajos',
+    page_title_invoicing_list: 'Facturas', // New
+    page_subtitle_invoicing_list: 'Gestiona las facturas de tus clientes', // New
+    page_title_invoicing_create: 'Crear Nueva Factura', // New
+    page_subtitle_invoicing_create: 'Genera una nueva factura para un cliente', // New
     page_title_reports_financial: 'Reportes Financieros',
     page_subtitle_reports_financial: 'Análisis de ingresos y gastos',
     page_title_reports_operational: 'Reportes Operacionales',

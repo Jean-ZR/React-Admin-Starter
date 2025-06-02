@@ -2,7 +2,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useEffect, useState, useCallback, useMemo } from 'react'; // Ensured useMemo is imported
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -19,6 +19,7 @@ import {
   LogOut,
   AlertTriangle,
   ChevronUp,
+  FileText as FileTextIcon, // Added for Invoicing
 } from 'lucide-react';
 import {
   Accordion,
@@ -51,7 +52,7 @@ const getNavigationModules = (lang: string | null | undefined): NavModule[] => [
     ]
   },
   {
-    categoryKey: 'assets',
+    categoryKey: 'assets', // Assuming this category key covers Assets, Clients, Inventory, Services
     items: [
       {
         icon: Truck, labelKey: 'assets', id: 'assets', href: '/assets/list',
@@ -84,6 +85,13 @@ const getNavigationModules = (lang: string | null | undefined): NavModule[] => [
           { labelKey: 'services_catalog', href: '/services/catalog', id: 'services-catalog'},
           { labelKey: 'services_scheduling', href: '/services/scheduling', id: 'services-scheduling'},
           { labelKey: 'services_history', href: '/services/history', id: 'services-history'},
+        ]
+      },
+      { // New Invoicing Module
+        icon: FileTextIcon, labelKey: 'invoicing', id: 'invoicing', href: '/invoicing/list',
+        subItems: [
+          { labelKey: 'invoicing_list', href: '/invoicing/list', id: 'invoicing-list'},
+          { labelKey: 'invoicing_create', href: '/invoicing/create', id: 'invoicing-create'},
         ]
       },
     ],
@@ -125,58 +133,58 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
+  const navigationModules = useMemo(() => getNavigationModules(languagePreference), [languagePreference]);
+
   const [activeSubItemId, setActiveSubItemId] = useState<string | null>(null);
   const [activeAccordionValue, setActiveAccordionValue] = useState<string | undefined>(undefined);
   
-  const navigationModules = useMemo(() => getNavigationModules(languagePreference), [languagePreference]);
 
   useEffect(() => {
     let newActiveSubId: string | null = null;
-    let determinedAccordionId: string | undefined = undefined;
+    let newActiveAccordionId: string | undefined = undefined;
     let itemFound = false;
 
     for (const modGroup of navigationModules) {
-      if (itemFound) break;
-      for (const item of modGroup.items) {
-        if (item.subItems && item.subItems.length > 0) {
-          const matchingSubItem = item.subItems.find(sub => pathname === sub.href || pathname.startsWith(sub.href + "/"));
-          if (matchingSubItem) {
-            newActiveSubId = matchingSubItem.id;
-            determinedAccordionId = item.id;
-            itemFound = true;
-            break; 
-          } else if (pathname === item.href || pathname.startsWith(item.href + "/")) {
-            newActiveSubId = item.subItems[0].id; 
-            determinedAccordionId = item.id;
-            itemFound = true;
-            break; 
-          }
-        } else {
-          if (pathname === item.href || pathname.startsWith(item.href + "/")) {
-            newActiveSubId = item.id;
-            determinedAccordionId = undefined; 
-            itemFound = true;
-            break;
-          }
+        if (itemFound) break;
+        for (const item of modGroup.items) {
+            if (item.subItems && item.subItems.length > 0) {
+                const matchingSubItem = item.subItems.find(sub => pathname === sub.href || pathname.startsWith(sub.href + "/"));
+                if (matchingSubItem) {
+                    newActiveSubId = matchingSubItem.id;
+                    newActiveAccordionId = item.id;
+                    itemFound = true;
+                    break;
+                } else if (pathname === item.href || pathname.startsWith(item.href + "/")) {
+                    // If path matches main item, default to first sub-item and open accordion
+                    newActiveSubId = item.subItems[0].id; 
+                    newActiveAccordionId = item.id;
+                    itemFound = true;
+                    break;
+                }
+            } else {
+                if (pathname === item.href || pathname.startsWith(item.href + "/")) {
+                    newActiveSubId = item.id;
+                    newActiveAccordionId = undefined; // No accordion for direct items
+                    itemFound = true;
+                    break;
+                }
+            }
         }
-      }
-    }
-
-    if (!itemFound && (pathname === '/dashboard' || pathname === '/')) {
-        newActiveSubId = 'dashboard'; 
-        determinedAccordionId = undefined;
     }
     
-    setActiveSubItemId(newActiveSubId);
-
-    // This effect synchronizes the accordion state with the URL.
-    // It runs when the pathname or navigationModules change.
-    // User clicks on accordion triggers are handled by onValueChange, which calls setActiveAccordionValue directly.
-    if (activeAccordionValue !== determinedAccordionId) {
-      setActiveAccordionValue(determinedAccordionId);
+    if (!itemFound && (pathname === '/dashboard' || pathname === '/')) {
+        newActiveSubId = 'dashboard';
+        newActiveAccordionId = undefined;
     }
 
-  }, [pathname, navigationModules]); // Removed activeAccordionValue from dependencies
+    setActiveSubItemId(newActiveSubId);
+    
+    // Only update accordion if pathname change implies a different accordion should be open
+    if (newActiveAccordionId !== activeAccordionValue) {
+        setActiveAccordionValue(newActiveAccordionId);
+    }
+
+  }, [pathname, navigationModules]); // Removed activeAccordionValue
 
   if (!isFirebaseConfigured && !loading) {
     return (

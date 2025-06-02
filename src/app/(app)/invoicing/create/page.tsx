@@ -15,12 +15,17 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase/config';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
-import { Loader2, Save, Send } from 'lucide-react';
+import { Loader2, Save, Send, Search, UserPlus } from 'lucide-react'; // Added Search and UserPlus
 
 interface ClientForSelect {
   id: string;
   name: string;
 }
+
+// IMPORTANT: Replace with your actual APIPeru token or use an environment variable.
+// For production, this token should NEVER be exposed on the client-side.
+// Use a backend proxy (e.g., Next.js API Route or Firebase Function).
+const APIPERU_TOKEN = 'YOUR_APIPERU_TOKEN_HERE'; // Replace this!
 
 const invoiceSchema = z.object({
   clientId: z.string().min(1, "Debes seleccionar un cliente."),
@@ -66,6 +71,8 @@ export default function CreateInvoicePage() {
   const [clients, setClients] = useState<ClientForSelect[]>([]);
   const [isLoadingClients, setIsLoadingClients] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSearchingRuc, setIsSearchingRuc] = useState(false);
+  const [isSearchingDni, setIsSearchingDni] = useState(false);
 
   const form = useForm<InvoiceFormData>({
     resolver: zodResolver(invoiceSchema),
@@ -75,7 +82,7 @@ export default function CreateInvoicePage() {
       ruc: '',
       dni: '',
       issueDate: new Date(),
-      dueDate: new Date(new Date().setDate(new Date().getDate() + 30)), // Default due date 30 days from now
+      dueDate: new Date(new Date().setDate(new Date().getDate() + 30)),
       itemsDescription: '',
       notes: '',
       totalAmount: null,
@@ -83,6 +90,8 @@ export default function CreateInvoicePage() {
   });
 
   const documentType = form.watch("documentType");
+  const rucValue = form.watch("ruc");
+  const dniValue = form.watch("dni");
 
   const fetchClients = useCallback(async () => {
     setIsLoadingClients(true);
@@ -110,15 +119,76 @@ export default function CreateInvoicePage() {
     setIsSubmitting(true);
     console.log("Invoice Data:", data);
     // TODO: Implement actual saving to Firestore
-    // For now, just simulate a delay and show a success toast
     await new Promise(resolve => setTimeout(resolve, 1000));
     toast({
       title: "Factura (Borrador) Creada",
       description: `Se ha generado un borrador para el cliente. Tipo: ${data.documentType}.`,
     });
-    // form.reset(); // Optionally reset form after submission
     setIsSubmitting(false);
   };
+
+  const handleSearchApi = async (type: 'ruc' | 'dni', value: string | undefined) => {
+    if (APIPERU_TOKEN === 'YOUR_APIPERU_TOKEN_HERE') {
+        toast({
+            title: "Token Requerido",
+            description: "Por favor, configura tu token de APIPeru para usar esta función.",
+            variant: "destructive",
+        });
+        return;
+    }
+    if (!value || (type === 'ruc' && value.length !== 11) || (type === 'dni' && value.length !== 8)) {
+        toast({
+            title: "Entrada Inválida",
+            description: `Por favor, ingresa un ${type.toUpperCase()} válido (${type === 'ruc' ? '11' : '8'} dígitos).`,
+            variant: "destructive",
+        });
+        return;
+    }
+
+    if (type === 'ruc') setIsSearchingRuc(true);
+    if (type === 'dni') setIsSearchingDni(true);
+
+    try {
+        const response = await fetch(`https://apiperu.dev/api/${type}/${value}`, {
+            headers: {
+                'Authorization': `Bearer ${APIPERU_TOKEN}`,
+                'Content-Type': 'application/json',
+            }
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            const data = result.data;
+            let name = '';
+            if (type === 'ruc') {
+                name = data.nombre_o_razon_social || 'No encontrado';
+                 toast({ title: "RUC Encontrado", description: `Nombre: ${name}. Dirección: ${data.direccion_completa || 'N/A'}` });
+                 // Potentially pre-fill form.control.setValue('clientName', name) or a dedicated field
+                 // form.control.setValue('addressFromApi', data.direccion_completa)
+            } else { // dni
+                name = `${data.nombres || ''} ${data.apellido_paterno || ''} ${data.apellido_materno || ''}`.trim();
+                name = name || 'No encontrado';
+                toast({ title: "DNI Encontrado", description: `Nombre: ${name}.` });
+                 // Potentially pre-fill form.control.setValue('clientName', name)
+            }
+            console.log(`API ${type.toUpperCase()} Data:`, data);
+        } else {
+            toast({ title: `Error Buscando ${type.toUpperCase()}`, description: result.message || "No se pudo encontrar el documento.", variant: "destructive" });
+        }
+    } catch (error) {
+        console.error(`Error searching ${type}:`, error);
+        toast({ title: "Error de API", description: `Ocurrió un error al consultar la API de ${type.toUpperCase()}.`, variant: "destructive" });
+    } finally {
+        if (type === 'ruc') setIsSearchingRuc(false);
+        if (type === 'dni') setIsSearchingDni(false);
+    }
+  };
+  
+  const handleAddClientClick = () => {
+    // TODO: Implement modal for quick client creation
+    toast({ title: "Próximamente", description: "Funcionalidad para añadir cliente rápido estará disponible pronto." });
+  };
+
 
   return (
     <div className="space-y-6">
@@ -139,19 +209,25 @@ export default function CreateInvoicePage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Cliente *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingClients}>
-                        <FormControl>
-                          <SelectTrigger className="bg-background border-input">
-                            <SelectValue placeholder={isLoadingClients ? "Cargando clientes..." : "Seleccionar cliente"} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent className="bg-popover text-popover-foreground border-border">
-                          {!isLoadingClients && clients.length === 0 && <SelectItem value="no-clients" disabled>No hay clientes disponibles</SelectItem>}
-                          {clients.map(client => (
-                            <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                       <div className="flex items-center gap-2">
+                          <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingClients}>
+                            <FormControl>
+                              <SelectTrigger className="bg-background border-input flex-1">
+                                <SelectValue placeholder={isLoadingClients ? "Cargando clientes..." : "Seleccionar cliente"} />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="bg-popover text-popover-foreground border-border">
+                              {!isLoadingClients && clients.length === 0 && <SelectItem value="no-clients" disabled>No hay clientes disponibles</SelectItem>}
+                              {clients.map(client => (
+                                <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button type="button" variant="outline" size="icon" onClick={handleAddClientClick} className="shrink-0">
+                            <UserPlus className="h-4 w-4" />
+                            <span className="sr-only">Añadir Nuevo Cliente</span>
+                          </Button>
+                       </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -186,9 +262,15 @@ export default function CreateInvoicePage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>RUC (11 dígitos) *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ingrese RUC del cliente" {...field} value={field.value || ''} className="bg-background border-input" maxLength={11} />
-                      </FormControl>
+                      <div className="flex items-center gap-2">
+                        <FormControl>
+                          <Input placeholder="Ingrese RUC del cliente" {...field} value={field.value || ''} className="bg-background border-input flex-1" maxLength={11} />
+                        </FormControl>
+                        <Button type="button" variant="outline" size="icon" onClick={() => handleSearchApi('ruc', rucValue)} disabled={isSearchingRuc || !rucValue || rucValue.length !== 11}>
+                          {isSearchingRuc ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                           <span className="sr-only">Buscar RUC</span>
+                        </Button>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -202,9 +284,15 @@ export default function CreateInvoicePage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>DNI (8 dígitos) *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ingrese DNI del cliente" {...field} value={field.value || ''} className="bg-background border-input" maxLength={8} />
-                      </FormControl>
+                       <div className="flex items-center gap-2">
+                          <FormControl>
+                            <Input placeholder="Ingrese DNI del cliente" {...field} value={field.value || ''} className="bg-background border-input flex-1" maxLength={8} />
+                          </FormControl>
+                          <Button type="button" variant="outline" size="icon" onClick={() => handleSearchApi('dni', dniValue)} disabled={isSearchingDni || !dniValue || dniValue.length !== 8}>
+                            {isSearchingDni ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                             <span className="sr-only">Buscar DNI</span>
+                          </Button>
+                       </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -298,11 +386,11 @@ export default function CreateInvoicePage() {
                 Limpiar Formulario
               </Button>
               <Button type="submit" variant="secondary" disabled={isSubmitting}>
-                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                {isSubmitting || isSearchingRuc || isSearchingDni ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Guardar Borrador
               </Button>
-              <Button type="submit" disabled={isSubmitting} onClick={() => console.log("Simulating Generate & Send")}>
-                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+              <Button type="submit" disabled={isSubmitting || isSearchingRuc || isSearchingDni} onClick={() => console.log("Simulating Generate & Send")}>
+                {isSubmitting || isSearchingRuc || isSearchingDni ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                 Generar y Enviar
               </Button>
             </CardFooter>
@@ -312,5 +400,3 @@ export default function CreateInvoicePage() {
     </div>
   );
 }
-
-    

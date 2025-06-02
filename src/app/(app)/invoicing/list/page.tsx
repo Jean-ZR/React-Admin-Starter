@@ -88,10 +88,10 @@ export default function InvoiceListPage() {
             status: newStatus,
             updatedAt: serverTimestamp()
         });
-        toast({title: "Estado Actualizado", description: `Factura ${invoiceId} marcada como ${newStatus}.`});
+        toast({title: "Estado Actualizado", description: `Comprobante ${invoiceId} marcado como ${newStatus}.`});
     } catch (error) {
         console.error("Error updating status: ", error);
-        toast({title: "Error", description: "No se pudo actualizar el estado de la factura.", variant: "destructive"});
+        toast({title: "Error", description: "No se pudo actualizar el estado del comprobante.", variant: "destructive"});
     }
   };
 
@@ -104,11 +104,11 @@ export default function InvoiceListPage() {
     if (invoiceToDelete) {
         try {
             await deleteDoc(doc(db, 'invoices', invoiceToDelete.id));
-            toast({title: "Factura Eliminada", description: `La factura ${invoiceToDelete.invoiceNumber} ha sido eliminada.`});
+            toast({title: "Comprobante Eliminado", description: `El comprobante ${invoiceToDelete.invoiceNumber} ha sido eliminado.`});
             setInvoiceToDelete(null);
         } catch (error) {
             console.error("Error deleting invoice: ", error);
-            toast({title: "Error", description: "No se pudo eliminar la factura.", variant: "destructive"});
+            toast({title: "Error", description: "No se pudo eliminar el comprobante.", variant: "destructive"});
         }
     }
     setIsDeleteDialogOpen(false);
@@ -193,14 +193,14 @@ export default function InvoiceListPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="bg-popover text-popover-foreground border-border">
                             <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                            <DropdownMenuItem onSelect={() => toast({title: "Próximamente", description: "Detalle de factura aún no implementado."})} className="cursor-pointer hover:!bg-accent hover:!text-accent-foreground">
+                            <DropdownMenuItem onSelect={() => toast({title: "Próximamente", description: "Detalle de comprobante aún no implementado."})} className="cursor-pointer hover:!bg-accent hover:!text-accent-foreground">
                               <Eye className="mr-2 h-4 w-4" /> Ver Detalles
                             </DropdownMenuItem>
                              <DropdownMenuItem onSelect={() => handleDownloadPDF(invoice.invoiceNumber)} className="cursor-pointer hover:!bg-accent hover:!text-accent-foreground">
                               <Download className="mr-2 h-4 w-4" /> Descargar PDF
                             </DropdownMenuItem>
                             {invoice.status === 'Borrador' && (
-                              <DropdownMenuItem onSelect={() => toast({title: "Próximamente", description:"Edición de factura aún no implementada."})} className="cursor-pointer hover:!bg-accent hover:!text-accent-foreground">
+                              <DropdownMenuItem onSelect={() => toast({title: "Próximamente", description:"Edición de comprobante aún no implementada."})} className="cursor-pointer hover:!bg-accent hover:!text-accent-foreground">
                                 <Edit className="mr-2 h-4 w-4" /> Editar
                               </DropdownMenuItem>
                             )}
@@ -255,3 +255,5 @@ export default function InvoiceListPage() {
 
     
   
+
+    

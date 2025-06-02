@@ -8,14 +8,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableCaption } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Search, ListFilter, FileDown, CheckCircle, AlertCircle, Clock, Loader2 } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
+  DropdownMenuTrigger,
   DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuCheckboxItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { db } from '@/lib/firebase/config';
@@ -26,6 +26,7 @@ import {
   orderBy,
   Timestamp,
   type DocumentData,
+  where,
 } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { exportToCSV, exportToPDF } from '@/lib/export';
@@ -56,7 +57,15 @@ export default function ServiceHistoryPage() {
   const fetchServiceLogs = useCallback(() => {
     setIsLoading(true);
     const logsCollectionRef = collection(db, 'serviceAppointments');
-    const q = query(logsCollectionRef, orderBy('scheduledDate', 'desc'), orderBy('scheduledTime', 'desc'));
+    
+    let qConstraints = [orderBy('scheduledDate', 'desc'), orderBy('scheduledTime', 'desc')];
+    
+    // Note: Firestore requires the first orderBy to be on the field used in inequality filters.
+    // If statusFilters is used with 'in', it might conflict if not indexed properly.
+    // For simplicity, status filtering is done client-side after fetching all ordered data.
+    // If performance becomes an issue, consider more specific Firestore queries or server-side filtering.
+
+    const q = query(logsCollectionRef, ...qConstraints);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const logsData = snapshot.docs.map(docSnapshot => {
@@ -223,7 +232,7 @@ export default function ServiceHistoryPage() {
            ) : (
             <div className="overflow-x-auto">
               <Table>
-                <TableCaption className="text-muted-foreground">Historical record of all service appointments.</TableCaption>
+                <TableCaption className="text-muted-foreground">Historical record of all service appointments. {displayedServiceLogs.length} of {allServiceLogs.length} records shown.</TableCaption>
                 <TableHeader>
                   <TableRow className="border-border">
                     <TableHead className="text-muted-foreground">Ticket ID</TableHead>

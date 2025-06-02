@@ -15,17 +15,15 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase/config';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
-import { Loader2, Save, Send, Search, UserPlus } from 'lucide-react'; // Added Search and UserPlus
+import { Loader2, Save, Send, Search, UserPlus } from 'lucide-react';
 
 interface ClientForSelect {
   id: string;
   name: string;
 }
 
-// IMPORTANT: Replace with your actual APIPeru token or use an environment variable.
-// For production, this token should NEVER be exposed on the client-side.
-// Use a backend proxy (e.g., Next.js API Route or Firebase Function).
-const APIPERU_TOKEN = 'YOUR_APIPERU_TOKEN_HERE'; // Replace this!
+// Read the API token from environment variables
+const APIPERU_TOKEN = process.env.NEXT_PUBLIC_APIPERU_TOKEN;
 
 const invoiceSchema = z.object({
   clientId: z.string().min(1, "Debes seleccionar un cliente."),
@@ -73,6 +71,7 @@ export default function CreateInvoicePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSearchingRuc, setIsSearchingRuc] = useState(false);
   const [isSearchingDni, setIsSearchingDni] = useState(false);
+  const [apiTokenMissing, setApiTokenMissing] = useState(false);
 
   const form = useForm<InvoiceFormData>({
     resolver: zodResolver(invoiceSchema),
@@ -92,6 +91,18 @@ export default function CreateInvoicePage() {
   const documentType = form.watch("documentType");
   const rucValue = form.watch("ruc");
   const dniValue = form.watch("dni");
+
+  useEffect(() => {
+    if (!APIPERU_TOKEN || APIPERU_TOKEN === 'YOUR_APIPERU_TOKEN_HERE') {
+      setApiTokenMissing(true);
+      toast({
+        title: "Configuración Requerida",
+        description: "El token para APIPeru no está configurado en las variables de entorno. La búsqueda de RUC/DNI está deshabilitada.",
+        variant: "destructive",
+        duration: 7000,
+      });
+    }
+  }, []);
 
   const fetchClients = useCallback(async () => {
     setIsLoadingClients(true);
@@ -128,10 +139,10 @@ export default function CreateInvoicePage() {
   };
 
   const handleSearchApi = async (type: 'ruc' | 'dni', value: string | undefined) => {
-    if (APIPERU_TOKEN === 'YOUR_APIPERU_TOKEN_HERE') {
+    if (apiTokenMissing) {
         toast({
             title: "Token Requerido",
-            description: "Por favor, configura tu token de APIPeru para usar esta función.",
+            description: "Por favor, configura tu token de APIPeru en las variables de entorno para usar esta función.",
             variant: "destructive",
         });
         return;
@@ -159,19 +170,30 @@ export default function CreateInvoicePage() {
 
         if (result.success) {
             const data = result.data;
-            let name = '';
+            let nameFromApi = '';
+            let addressFromApi = '';
+
             if (type === 'ruc') {
-                name = data.nombre_o_razon_social || 'No encontrado';
-                 toast({ title: "RUC Encontrado", description: `Nombre: ${name}. Dirección: ${data.direccion_completa || 'N/A'}` });
-                 // Potentially pre-fill form.control.setValue('clientName', name) or a dedicated field
-                 // form.control.setValue('addressFromApi', data.direccion_completa)
+                nameFromApi = data.nombre_o_razon_social || 'No encontrado';
+                addressFromApi = data.direccion_completa || '';
+                toast({ title: "RUC Encontrado", description: `Nombre: ${nameFromApi}. Dirección: ${addressFromApi || 'N/A'}` });
             } else { // dni
-                name = `${data.nombres || ''} ${data.apellido_paterno || ''} ${data.apellido_materno || ''}`.trim();
-                name = name || 'No encontrado';
-                toast({ title: "DNI Encontrado", description: `Nombre: ${name}.` });
-                 // Potentially pre-fill form.control.setValue('clientName', name)
+                nameFromApi = `${data.nombres || ''} ${data.apellido_paterno || ''} ${data.apellido_materno || ''}`.trim();
+                nameFromApi = nameFromApi || 'No encontrado';
+                toast({ title: "DNI Encontrado", description: `Nombre: ${nameFromApi}.` });
             }
             console.log(`API ${type.toUpperCase()} Data:`, data);
+
+            // Attempt to auto-select client if name matches and no client is selected
+            const currentClientId = form.getValues('clientId');
+            if (!currentClientId && nameFromApi !== 'No encontrado') {
+                const existingClient = clients.find(c => c.name.toLowerCase() === nameFromApi.toLowerCase());
+                if (existingClient) {
+                    form.setValue('clientId', existingClient.id);
+                    toast({ title: "Cliente Encontrado", description: `Cliente '${nameFromApi}' seleccionado automáticamente.`, variant: "default" });
+                }
+            }
+
         } else {
             toast({ title: `Error Buscando ${type.toUpperCase()}`, description: result.message || "No se pudo encontrar el documento.", variant: "destructive" });
         }
@@ -266,7 +288,7 @@ export default function CreateInvoicePage() {
                         <FormControl>
                           <Input placeholder="Ingrese RUC del cliente" {...field} value={field.value || ''} className="bg-background border-input flex-1" maxLength={11} />
                         </FormControl>
-                        <Button type="button" variant="outline" size="icon" onClick={() => handleSearchApi('ruc', rucValue)} disabled={isSearchingRuc || !rucValue || rucValue.length !== 11}>
+                        <Button type="button" variant="outline" size="icon" onClick={() => handleSearchApi('ruc', rucValue)} disabled={isSearchingRuc || !rucValue || rucValue.length !== 11 || apiTokenMissing}>
                           {isSearchingRuc ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                            <span className="sr-only">Buscar RUC</span>
                         </Button>
@@ -288,7 +310,7 @@ export default function CreateInvoicePage() {
                           <FormControl>
                             <Input placeholder="Ingrese DNI del cliente" {...field} value={field.value || ''} className="bg-background border-input flex-1" maxLength={8} />
                           </FormControl>
-                          <Button type="button" variant="outline" size="icon" onClick={() => handleSearchApi('dni', dniValue)} disabled={isSearchingDni || !dniValue || dniValue.length !== 8}>
+                          <Button type="button" variant="outline" size="icon" onClick={() => handleSearchApi('dni', dniValue)} disabled={isSearchingDni || !dniValue || dniValue.length !== 8 || apiTokenMissing}>
                             {isSearchingDni ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                              <span className="sr-only">Buscar DNI</span>
                           </Button>
@@ -379,17 +401,21 @@ export default function CreateInvoicePage() {
                   )}
                 />
               </div>
-
+               {apiTokenMissing && (
+                <p className="text-sm text-destructive text-center col-span-full">
+                  La búsqueda de RUC/DNI está deshabilitada. Configure el token APIPERU_TOKEN en sus variables de entorno.
+                </p>
+              )}
             </CardContent>
             <CardFooter className="flex justify-end gap-2 border-t border-border pt-6">
-              <Button type="button" variant="outline" onClick={() => form.reset()} disabled={isSubmitting}>
+              <Button type="button" variant="outline" onClick={() => form.reset()} disabled={isSubmitting || isSearchingRuc || isSearchingDni}>
                 Limpiar Formulario
               </Button>
-              <Button type="submit" variant="secondary" disabled={isSubmitting}>
+              <Button type="submit" variant="secondary" disabled={isSubmitting || isSearchingRuc || isSearchingDni || apiTokenMissing}>
                 {isSubmitting || isSearchingRuc || isSearchingDni ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Guardar Borrador
               </Button>
-              <Button type="submit" disabled={isSubmitting || isSearchingRuc || isSearchingDni} onClick={() => console.log("Simulating Generate & Send")}>
+              <Button type="submit" disabled={isSubmitting || isSearchingRuc || isSearchingDni || apiTokenMissing} onClick={() => console.log("Simulating Generate & Send")}>
                 {isSubmitting || isSearchingRuc || isSearchingDni ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                 Generar y Enviar
               </Button>
@@ -400,3 +426,4 @@ export default function CreateInvoicePage() {
     </div>
   );
 }
+

@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { PlusCircle, Search, MoreHorizontal, Eye, Edit, DollarSign, Send, Trash2, FileDown, Download, Loader2 } from "lucide-react";
+import { PlusCircle, Search, MoreHorizontal, Eye, Edit, DollarSign, Send, Trash2, FileDown, Download, Loader2, Ban } from "lucide-react";
 import { InvoiceStatusBadge } from '@/components/invoicing/invoice-status-badge';
 import { useAuth } from '@/contexts/auth-context';
 import { getPageTitleInfo } from '@/lib/translations';
@@ -65,7 +65,7 @@ export default function InvoiceListPage() {
       setIsLoading(false);
     }, (error) => {
       console.error("Error fetching invoices: ", error);
-      toast({ title: "Error", description: "No se pudieron cargar las facturas.", variant: "destructive" });
+      toast({ title: "Error", description: "No se pudieron cargar los comprobantes.", variant: "destructive" });
       setIsLoading(false);
     });
 
@@ -77,8 +77,20 @@ export default function InvoiceListPage() {
     invoice.clientName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleDownloadPDF = (invoiceId: string) => {
-    toast({ title: "Función Próxima", description: `La descarga de PDF para ${invoiceId} aún no está implementada.` });
+  const handleDownloadPDF = (invoiceNumber: string) => {
+    toast({ 
+        title: "Función Próxima: Descargar PDF", 
+        description: `La descarga del PDF para el comprobante ${invoiceNumber} estará disponible pronto.`,
+        duration: 5000,
+    });
+  };
+
+  const handleSendEmail = (invoiceNumber: string) => {
+    toast({ 
+        title: "Función Próxima: Enviar por Email", 
+        description: `El envío por email del comprobante ${invoiceNumber} desde contact@jczap.net se implementará a futuro usando un backend seguro.`,
+        duration: 7000,
+    });
   };
   
   const handleChangeStatus = async (invoiceId: string, newStatus: Invoice['status']) => {
@@ -197,7 +209,10 @@ export default function InvoiceListPage() {
                               <Eye className="mr-2 h-4 w-4" /> Ver Detalles
                             </DropdownMenuItem>
                              <DropdownMenuItem onSelect={() => handleDownloadPDF(invoice.invoiceNumber)} className="cursor-pointer hover:!bg-accent hover:!text-accent-foreground">
-                              <Download className="mr-2 h-4 w-4" /> Descargar PDF
+                              <Download className="mr-2 h-4 w-4" /> Descargar PDF (Próx.)
+                            </DropdownMenuItem>
+                             <DropdownMenuItem onSelect={() => handleSendEmail(invoice.invoiceNumber)} className="cursor-pointer hover:!bg-accent hover:!text-accent-foreground">
+                              <Send className="mr-2 h-4 w-4" /> Enviar por Email (Próx.)
                             </DropdownMenuItem>
                             {invoice.status === 'Borrador' && (
                               <DropdownMenuItem onSelect={() => toast({title: "Próximamente", description:"Edición de comprobante aún no implementada."})} className="cursor-pointer hover:!bg-accent hover:!text-accent-foreground">
@@ -217,7 +232,7 @@ export default function InvoiceListPage() {
                             <DropdownMenuSeparator className="bg-border" />
                              {invoice.status !== 'Cancelada' && invoice.status !== 'Pagada' && (
                               <DropdownMenuItem onSelect={() => handleChangeStatus(invoice.id, 'Cancelada')} className="text-orange-600 focus:text-orange-600 cursor-pointer hover:!bg-orange-100 hover:!text-orange-700 dark:focus:!bg-orange-700/30 dark:hover:!bg-orange-700/30">
-                                <Trash2 className="mr-2 h-4 w-4" /> Anular Comprobante
+                                <Ban className="mr-2 h-4 w-4" /> Anular Comprobante
                               </DropdownMenuItem>
                             )}
                              <DropdownMenuItem onSelect={() => handleDeleteClick(invoice)} className="text-destructive focus:text-destructive cursor-pointer hover:!bg-destructive/10 hover:!text-destructive">
@@ -252,8 +267,3 @@ export default function InvoiceListPage() {
     </div>
   );
 }
-
-    
-  
-
-    

@@ -41,11 +41,19 @@ export function GeneratedInvoiceModal({
   if (!invoiceData) return null;
 
   const handleDownloadPDF = () => {
-    toast({ title: "Función Próxima", description: `La descarga PDF para ${invoiceData.invoiceNumber} se implementará pronto.` });
+    toast({ 
+        title: "Función Próxima: Descargar PDF", 
+        description: `La descarga del PDF para el comprobante ${invoiceData.invoiceNumber} estará disponible pronto.`,
+        duration: 5000,
+    });
   };
 
   const handleSendEmail = () => {
-    toast({ title: "Función Próxima", description: `El envío por email para ${invoiceData.invoiceNumber} se implementará pronto.` });
+    toast({ 
+        title: "Función Próxima: Enviar por Email", 
+        description: `El envío por email del comprobante ${invoiceData.invoiceNumber} desde contact@jczap.net se implementará a futuro usando un backend seguro.`,
+        duration: 7000,
+    });
   };
 
   const handleCreateNew = () => {
@@ -80,10 +88,10 @@ export function GeneratedInvoiceModal({
 
         <div className="space-y-3">
             <Button onClick={handleDownloadPDF} variant="outline" className="w-full border-input hover:bg-accent hover:text-accent-foreground">
-                <Download className="mr-2 h-4 w-4" /> Descargar PDF
+                <Download className="mr-2 h-4 w-4" /> Descargar PDF (Próximamente)
             </Button>
             <Button onClick={handleSendEmail} variant="outline" className="w-full border-input hover:bg-accent hover:text-accent-foreground">
-                <Send className="mr-2 h-4 w-4" /> Enviar por Email
+                <Send className="mr-2 h-4 w-4" /> Enviar por Email (Próximamente)
             </Button>
         </div>
         

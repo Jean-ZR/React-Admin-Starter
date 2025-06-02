@@ -100,7 +100,14 @@ const navigationModules: NavModule[] = [
             { label: 'Reportes', href: '/inventory/reports', id: 'inventory-reports'},
         ]
       },
-      { icon: Wrench, label: 'Servicios', id: 'services', href: '/services/catalog' },
+      { 
+        icon: Wrench, label: 'Servicios', id: 'services', href: '/services/catalog',
+        subItems: [
+          { label: 'Catálogo', href: '/services/catalog', id: 'services-catalog'},
+          { label: 'Programación', href: '/services/scheduling', id: 'services-scheduling'},
+          { label: 'Historial', href: '/services/history', id: 'services-history'},
+        ]
+      },
     ],
   },
   {
@@ -162,29 +169,39 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
     for (const modGroup of navigationModules) {
       for (const item of modGroup.items) {
         if (item.subItems) {
-          if (pathname === item.href || pathname.startsWith(item.href + "/")) { // Check main item href first for accordion
-            currentModuleIdForAccordion = item.id;
-            // If main item href matches, find the first subitem as active, or the item itself if it's also a subitem target
-            const activeSub = item.subItems.find(sub => pathname === sub.href || pathname.startsWith(sub.href + "/")) || item.subItems[0];
-            currentActiveSubId = activeSub ? activeSub.id : item.id; // Default to first subitem or main item id
-          }
+           // Check if the current pathname matches the main item's href or any of its subItems' href
+          const isParentActive = pathname === item.href || pathname.startsWith(item.href + "/");
+          let isActiveSubItem = false;
+
           for (const subItem of item.subItems) {
             if (pathname === subItem.href || pathname.startsWith(subItem.href + "/")) {
               currentActiveSubId = subItem.id;
-              currentModuleIdForAccordion = item.id; 
-              break;
+              isActiveSubItem = true;
+              break; 
             }
           }
+          
+          if (isParentActive || isActiveSubItem) {
+            currentModuleIdForAccordion = item.id;
+            // If no specific sub-item matched but parent did, and activeSubId wasn't set,
+            // default to the first sub-item or the item.id itself if it's the target
+            if (!currentActiveSubId && isParentActive) {
+                 currentActiveSubId = item.subItems[0]?.id || item.id;
+            }
+          }
+
         } else if (pathname === item.href || pathname.startsWith(item.href + "/")) {
           currentActiveSubId = item.id; 
           currentModuleIdForAccordion = undefined; // Not an accordion item
-          break;
         }
-        if (currentActiveSubId) break;
+        if (currentActiveSubId && currentModuleIdForAccordion !== undefined) break; // Found active accordion item
+        if (currentActiveSubId && currentModuleIdForAccordion === undefined) break; // Found active non-accordion item
       }
-      if (currentActiveSubId) break;
+      if (currentActiveSubId && currentModuleIdForAccordion !== undefined) break;
+      if (currentActiveSubId && currentModuleIdForAccordion === undefined) break;
     }
     
+    // Fallbacks for non-module specific pages
     if (!currentActiveSubId) {
         if (pathname.startsWith('/settings/')) currentActiveSubId = 'settings';
         else if (pathname.startsWith('/profile')) currentActiveSubId = 'profile'; 
@@ -192,14 +209,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
     }
 
     setActiveSubItemId(currentActiveSubId);
-    
-    if (currentModuleIdForAccordion) {
-      setActiveAccordionValue(currentModuleIdForAccordion);
-    } else {
-      // If current page is not part of an accordion item, close all accordions
-      // by setting activeAccordionValue to undefined. This works with type="single" collapsible.
-      setActiveAccordionValue(undefined);
-    }
+    setActiveAccordionValue(currentModuleIdForAccordion);
 
   }, [pathname]);
 

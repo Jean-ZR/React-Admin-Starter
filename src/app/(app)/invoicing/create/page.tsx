@@ -14,13 +14,16 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase/config';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { Loader2, Save, Send, Search, UserPlus } from 'lucide-react';
 import { QuickClientFormModal, type QuickClientFormData } from '@/components/invoicing/quick-client-form-modal';
+import { useAuth } from '@/contexts/auth-context';
 
 interface ClientForSelect {
   id: string;
   name: string;
+  documentType?: "ruc" | "dni" | "none";
+  documentNumber?: string;
 }
 
 const APIPERU_TOKEN = process.env.NEXT_PUBLIC_APIPERU_TOKEN;
@@ -66,6 +69,7 @@ type InvoiceFormData = z.infer<typeof invoiceSchema>;
 
 export default function CreateInvoicePage() {
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
   const [clients, setClients] = useState<ClientForSelect[]>([]);
   const [isLoadingClients, setIsLoadingClients] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -100,9 +104,9 @@ export default function CreateInvoicePage() {
       setApiTokenMissing(true);
       toast({
         title: "Configuración Requerida",
-        description: "El token para APIPeru no está configurado en las variables de entorno. La búsqueda de RUC/DNI está deshabilitada.",
+        description: "El token para APIPeru no está configurado. La búsqueda de RUC/DNI está deshabilitada.",
         variant: "destructive",
-        duration: 10000, // Increased duration for visibility
+        duration: 10000,
       });
     }
   }, [toast]);
@@ -115,6 +119,8 @@ export default function CreateInvoicePage() {
       const fetchedClients = querySnapshot.docs.map(doc => ({
         id: doc.id,
         name: doc.data().name as string,
+        documentType: doc.data().documentType as "ruc" | "dni" | "none",
+        documentNumber: doc.data().documentNumber as string,
       }));
       setClients(fetchedClients);
     } catch (error) {
@@ -129,81 +135,107 @@ export default function CreateInvoicePage() {
     fetchClients();
   }, [fetchClients]);
 
-  const handleFormSubmit: SubmitHandler<InvoiceFormData> = async (data) => {
+  const handleFormSubmit: SubmitHandler<InvoiceFormData> = async (data, event) => {
     setIsSubmitting(true);
-    console.log("Invoice Data:", data);
-    // TODO: Implement actual saving to Firestore
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    toast({
-      title: "Factura (Borrador) Creada",
-      description: `Se ha generado un borrador para el cliente. Tipo: ${data.documentType}.`,
-    });
-    setIsSubmitting(false);
+    const submitter = (event?.nativeEvent as SubmitEvent)?.submitter?.textContent || "";
+
+    const selectedClient = clients.find(c => c.id === data.clientId);
+
+    if (!selectedClient) {
+      toast({ title: "Error", description: "Cliente no encontrado.", variant: "destructive" });
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Simple invoice number generation (not sequential for F001-X format yet)
+    const prefix = data.documentType === 'factura' ? 'F' : 'B';
+    const timestampSuffix = Date.now().toString().slice(-6);
+    const invoiceNumber = `${prefix}001-${timestampSuffix}`;
+
+    const invoiceData = {
+      invoiceNumber,
+      clientId: selectedClient.id,
+      clientName: selectedClient.name,
+      clientDocumentType: selectedClient.documentType || 'none',
+      clientDocumentNumber: selectedClient.documentNumber || data.ruc || data.dni || '',
+      documentType: data.documentType,
+      issueDate: Timestamp.fromDate(data.issueDate),
+      dueDate: Timestamp.fromDate(data.dueDate),
+      itemsDescription: data.itemsDescription,
+      notes: data.notes || '',
+      totalAmount: data.totalAmount,
+      // TODO: Add subTotal, igvAmount, currency later
+      status: submitter.includes("Enviar") ? 'Enviada' : 'Borrador',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      userId: currentUser?.uid || null,
+    };
+
+    try {
+      await addDoc(collection(db, 'invoices'), invoiceData);
+      toast({
+        title: `Comprobante ${invoiceData.status === 'Enviada' ? 'Generado y Enviado' : 'Guardado como Borrador'}`,
+        description: `${invoiceData.documentType.charAt(0).toUpperCase() + invoiceData.documentType.slice(1)} Nro: ${invoiceNumber} para ${selectedClient.name}.`,
+      });
+      form.reset(); 
+      // Here we would typically open the "Comprobante Generado" modal
+      // For now, we just reset and show a toast.
+    } catch (error) {
+      console.error("Error saving invoice:", error);
+      toast({ title: "Error", description: "No se pudo guardar el comprobante.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSearchApi = async (type: 'ruc' | 'dni', value: string | undefined) => {
     if (apiTokenMissing) {
-        toast({
-            title: "Token Requerido",
-            description: "Por favor, configura tu token de APIPeru en las variables de entorno para usar esta función.",
-            variant: "destructive",
-        });
+        toast({ title: "Token Requerido", description: "Configura tu token de APIPeru.", variant: "destructive"});
         return;
     }
     if (!value || (type === 'ruc' && value.length !== 11) || (type === 'dni' && value.length !== 8)) {
-        toast({
-            title: "Entrada Inválida",
-            description: `Por favor, ingresa un ${type.toUpperCase()} válido (${type === 'ruc' ? '11' : '8'} dígitos).`,
-            variant: "destructive",
-        });
+        toast({ title: "Entrada Inválida", description: `Ingresa un ${type.toUpperCase()} válido.`, variant: "destructive"});
         return;
     }
 
     if (type === 'ruc') setIsSearchingRuc(true);
     if (type === 'dni') setIsSearchingDni(true);
-    setQuickClientPrefill(undefined); // Reset prefill
+    setQuickClientPrefill(undefined);
 
     try {
         const response = await fetch(`https://apiperu.dev/api/${type}/${value}`, {
-            headers: {
-                'Authorization': `Bearer ${APIPERU_TOKEN}`,
-                'Content-Type': 'application/json',
-            }
+            headers: { 'Authorization': `Bearer ${APIPERU_TOKEN}`, 'Content-Type': 'application/json'}
         });
         const result = await response.json();
 
         if (result.success) {
-            const data = result.data;
+            const apiData = result.data;
             let nameFromApi = '';
             
             if (type === 'ruc') {
-                nameFromApi = data.nombre_o_razon_social || 'No encontrado';
-                setQuickClientPrefill({ name: nameFromApi, documentType: 'ruc', documentNumber: value });
-                toast({ title: "RUC Encontrado", description: `Nombre: ${nameFromApi}. Dirección: ${data.direccion_completa || 'N/A'}` });
-            } else { // dni
-                nameFromApi = `${data.nombres || ''} ${data.apellido_paterno || ''} ${data.apellido_materno || ''}`.trim();
-                nameFromApi = nameFromApi || 'No encontrado';
-                setQuickClientPrefill({ name: nameFromApi, documentType: 'dni', documentNumber: value });
-                toast({ title: "DNI Encontrado", description: `Nombre: ${nameFromApi}.` });
+                nameFromApi = apiData.nombre_o_razon_social || 'No encontrado';
+            } else {
+                nameFromApi = `${apiData.nombres || ''} ${apiData.apellido_paterno || ''} ${apiData.apellido_materno || ''}`.trim() || 'No encontrado';
             }
             
+            setQuickClientPrefill({ name: nameFromApi, documentType: type, documentNumber: value });
+            toast({ title: `${type.toUpperCase()} Encontrado`, description: `Nombre: ${nameFromApi}.` });
+
             const currentClientId = form.getValues('clientId');
             if (!currentClientId && nameFromApi !== 'No encontrado') {
                 const existingClient = clients.find(c => c.name.toLowerCase() === nameFromApi.toLowerCase());
                 if (existingClient) {
                     form.setValue('clientId', existingClient.id);
-                    toast({ title: "Cliente Encontrado", description: `Cliente '${nameFromApi}' seleccionado automáticamente.`, variant: "default" });
+                    toast({ title: "Cliente Encontrado", description: `Cliente '${nameFromApi}' seleccionado.`, variant: "default" });
                 } else {
-                    toast({ title: "Cliente No Encontrado", description: `Cliente '${nameFromApi}' no está en tu lista. Puedes añadirlo con el botón [+].`, variant: "default" });
+                    toast({ title: "Cliente No Encontrado", description: `'${nameFromApi}' no está en tu lista. Añádelo con [+].`, variant: "default" });
                 }
             }
-
         } else {
-            toast({ title: `Error Buscando ${type.toUpperCase()}`, description: result.message || "No se pudo encontrar el documento.", variant: "destructive" });
+            toast({ title: `Error Buscando ${type.toUpperCase()}`, description: result.message || "No se pudo encontrar.", variant: "destructive" });
         }
     } catch (error) {
-        console.error(`Error searching ${type}:`, error);
-        toast({ title: "Error de API", description: `Ocurrió un error al consultar la API de ${type.toUpperCase()}.`, variant: "destructive" });
+        toast({ title: "Error de API", description: `Error al consultar API de ${type.toUpperCase()}.`, variant: "destructive" });
     } finally {
         if (type === 'ruc') setIsSearchingRuc(false);
         if (type === 'dni') setIsSearchingDni(false);
@@ -215,9 +247,14 @@ export default function CreateInvoicePage() {
   };
 
   const handleClientCreated = (clientId: string, clientName: string) => {
-    const newClient = { id: clientId, name: clientName };
-    setClients(prevClients => [...prevClients, newClient].sort((a, b) => a.name.localeCompare(b.name)));
+    const newClient = clients.find(c => c.id === clientId) || { id: clientId, name: clientName, documentType: quickClientPrefill?.documentType, documentNumber: quickClientPrefill?.documentNumber};
+    
+    if (!clients.some(c=> c.id === clientId)) {
+        setClients(prevClients => [...prevClients, newClient].sort((a, b) => a.name.localeCompare(b.name)));
+    }
+    
     form.setValue('clientId', clientId);
+
     if (documentType && quickClientPrefill?.documentNumber) {
         if (documentType === 'factura' && quickClientPrefill.documentType === 'ruc') {
             form.setValue('ruc', quickClientPrefill.documentNumber);
@@ -236,7 +273,7 @@ export default function CreateInvoicePage() {
         <form onSubmit={form.handleSubmit(handleFormSubmit)}>
           <Card className="bg-card text-card-foreground border-border">
             <CardHeader>
-              <CardTitle className="text-foreground">Crear Nueva Factura</CardTitle>
+              <CardTitle className="text-foreground">Crear Nuevo Comprobante</CardTitle>
               <CardDescription className="text-muted-foreground">
                 Completa los detalles para generar una nueva factura o boleta.
               </CardDescription>
@@ -257,7 +294,7 @@ export default function CreateInvoicePage() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent className="bg-popover text-popover-foreground border-border">
-                              {!isLoadingClients && clients.length === 0 && <SelectItem value="no-clients" disabled>No hay clientes disponibles</SelectItem>}
+                              {!isLoadingClients && clients.length === 0 && <SelectItem value="no-clients" disabled>No hay clientes</SelectItem>}
                               {clients.map(client => (
                                 <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
                               ))}
@@ -402,7 +439,7 @@ export default function CreateInvoicePage() {
                   name="totalAmount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Monto Total *</FormLabel>
+                      <FormLabel>Monto Total (S/) *</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
@@ -421,7 +458,7 @@ export default function CreateInvoicePage() {
               </div>
                {apiTokenMissing && (
                 <p className="text-sm text-destructive text-center col-span-full">
-                  La búsqueda de RUC/DNI está deshabilitada. Configure el token APIPERU_TOKEN en sus variables de entorno.
+                  La búsqueda de RUC/DNI está deshabilitada. Configure el token APIPERU_TOKEN.
                 </p>
               )}
             </CardContent>
@@ -430,11 +467,11 @@ export default function CreateInvoicePage() {
                 Limpiar Formulario
               </Button>
               <Button type="submit" variant="secondary" disabled={isSubmitting || isSearchingRuc || isSearchingDni || apiTokenMissing}>
-                {isSubmitting || isSearchingRuc || isSearchingDni ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Guardar Borrador
               </Button>
-              <Button type="submit" disabled={isSubmitting || isSearchingRuc || isSearchingDni || apiTokenMissing} onClick={() => console.log("Simulating Generate & Send")}>
-                {isSubmitting || isSearchingRuc || isSearchingDni ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+              <Button type="submit" disabled={isSubmitting || isSearchingRuc || isSearchingDni || apiTokenMissing}>
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                 Generar y Enviar
               </Button>
             </CardFooter>
@@ -451,3 +488,5 @@ export default function CreateInvoicePage() {
   );
 }
 
+    
+  

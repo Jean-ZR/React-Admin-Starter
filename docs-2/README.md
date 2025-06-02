@@ -1,4 +1,3 @@
-
 # Documentación V2: React Admin Starter - Firebase Edition
 
 Bienvenido a la documentación V2 para el React Admin Starter. Este conjunto de documentos tiene como objetivo proporcionar una guía exhaustiva y actualizada sobre la arquitectura, configuración, uso y personalización de la aplicación.
@@ -24,6 +23,7 @@ La documentación está organizada en las siguientes secciones principales:
 7.  [**Mejores Prácticas (`07-best-practices.md`)**](./07-best-practices.md): Consejos sobre cómo usar y desarrollar el sistema correctamente.
 8.  [**Despliegue (`08-deployment.md`)**](./08-deployment.md): (Próximamente) Guías para desplegar la aplicación en diferentes plataformas.
 9.  [**Solución de Problemas (`09-troubleshooting.md`)**](./09-troubleshooting.md): (Próximamente) Problemas comunes y sus soluciones.
+10. [**Consideraciones de Seguridad (`10-security-considerations.md`)**](./10-security-considerations.md): Guía sobre cómo asegurar la aplicación.
 
 ## Cómo Contribuir
 

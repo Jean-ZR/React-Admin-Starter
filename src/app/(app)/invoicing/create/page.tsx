@@ -76,7 +76,6 @@ const invoiceSchema = z.object({
 
 type InvoiceFormData = z.infer<typeof invoiceSchema>;
 
-// Helper function to pad numbers for invoice ID
 const padNumber = (num: number, size: number): string => {
   let s = num.toString();
   while (s.length < size) s = "0" + s;
@@ -115,10 +114,9 @@ export default function CreateInvoicePage() {
     },
   });
 
-  const documentTypeFormValue = form.watch("documentType"); // Watch this field for UI changes
+  const documentTypeFormValue = form.watch("documentType");
   const rucValue = form.watch("ruc");
   const dniValue = form.watch("dni");
-  // const clientIdValue = form.watch("clientId"); // Not needed for this change directly, but useful for debugging
 
  useEffect(() => {
     if (!APIPERU_TOKEN || APIPERU_TOKEN === 'YOUR_APIPERU_TOKEN_HERE' || APIPERU_TOKEN.trim() === '') {
@@ -127,7 +125,7 @@ export default function CreateInvoicePage() {
         title: "Configuración Requerida",
         description: "El token para APIPeru no está configurado. La búsqueda de RUC/DNI y la creación de clientes están deshabilitadas. Por favor, configure la variable NEXT_PUBLIC_APIPERU_TOKEN en su archivo .env.local y reinicie el servidor.",
         variant: "destructive",
-        duration: Infinity, // Make it persistent until action is taken
+        duration: Infinity,
       });
     }
   }, [toast]);
@@ -137,12 +135,15 @@ export default function CreateInvoicePage() {
     try {
       const clientsQuery = query(collection(db, 'clients'), orderBy('name'));
       const querySnapshot = await getDocs(clientsQuery);
-      const fetchedClients = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        name: doc.data().name as string,
-        documentType: doc.data().documentType as "ruc" | "dni" | "none", // Ensure these fields exist in your Firestore client docs
-        documentNumber: doc.data().documentNumber as string,
-      }));
+      const fetchedClients = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            name: data.name as string,
+            documentType: (data.documentType || 'none') as "ruc" | "dni" | "none",
+            documentNumber: data.documentNumber as string | undefined,
+        };
+      });
       setClients(fetchedClients);
     } catch (error) {
       console.error("Error fetching clients:", error);
@@ -156,20 +157,11 @@ export default function CreateInvoicePage() {
     fetchClients();
   }, [fetchClients]);
 
-  // Effect to handle document type changes and client selection changes
   useEffect(() => {
     const subscription = form.watch((value, { name, type }) => {
-      if (name === 'documentType' && type === 'change') {
-        if (value.documentType === 'factura') {
-          form.setValue('dni', ''); // Clear DNI when Factura is selected
-        } else if (value.documentType === 'boleta') {
-          form.setValue('ruc', ''); // Clear RUC when Boleta is selected
-        } else { // 'none' or undefined
-          form.setValue('ruc', '');
-          form.setValue('dni', '');
-        }
-      }
-      if (name === 'clientId' && type === 'change') {
+      if (type !== 'change') return;
+
+      if (name === 'clientId') {
         const selectedClientId = value.clientId;
         if (selectedClientId) {
           const client = clients.find(c => c.id === selectedClientId);
@@ -183,19 +175,33 @@ export default function CreateInvoicePage() {
               form.setValue('dni', client.documentNumber, { shouldValidate: true });
               form.setValue('ruc', '', { shouldValidate: true });
             } else {
-              // Client has 'none' or no document type, or no number.
-              // Don't change documentType automatically if user manually selected one.
-              // But clear RUC/DNI if they were set by a previous client.
+              // Client has 'none', no specific documentType, or no documentNumber.
+              // Reset document related fields to force user selection if client has no preference.
+              form.setValue('documentType', undefined, { shouldValidate: true });
               form.setValue('ruc', '', { shouldValidate: true });
               form.setValue('dni', '', { shouldValidate: true });
             }
+          } else {
+            // Client not found in list (shouldn't happen if ID comes from dropdown)
+            form.setValue('documentType', undefined, { shouldValidate: true });
+            form.setValue('ruc', '', { shouldValidate: true });
+            form.setValue('dni', '', { shouldValidate: true });
           }
-        } else { // Client selection cleared
+        } else {
+          // Client selection was cleared
+          form.setValue('documentType', undefined, { shouldValidate: true });
           form.setValue('ruc', '', { shouldValidate: true });
           form.setValue('dni', '', { shouldValidate: true });
-          // Optionally, reset documentType as well, or leave as is.
-          // If you want to clear documentType when client is unselected:
-          // form.setValue('documentType', undefined, { shouldValidate: true });
+        }
+      } else if (name === 'documentType') {
+        const newDocumentType = value.documentType;
+        if (newDocumentType === 'factura') {
+          form.setValue('dni', '', { shouldValidate: true });
+        } else if (newDocumentType === 'boleta') {
+          form.setValue('ruc', '', { shouldValidate: true });
+        } else { // 'none' or undefined selected for documentType
+          form.setValue('ruc', '', { shouldValidate: true });
+          form.setValue('dni', '', { shouldValidate: true });
         }
       }
     });
@@ -254,7 +260,7 @@ export default function CreateInvoicePage() {
         sequenceNumber,
         clientId: selectedClient.id,
         clientName: selectedClient.name,
-        clientDocumentType: selectedClient.documentType || 'none',
+        clientDocumentType: client.documentType || 'none',
         clientDocumentNumber: data.documentType === 'factura' ? data.ruc : (data.documentType === 'boleta' ? data.dni : ''),
         documentType: data.documentType,
         issueDate: Timestamp.fromDate(data.issueDate),
@@ -299,7 +305,7 @@ export default function CreateInvoicePage() {
 
     if (type === 'ruc') setIsSearchingRuc(true);
     if (type === 'dni') setIsSearchingDni(true);
-    setQuickClientPrefill(undefined);
+    setQuickClientPrefill(undefined); // Reset prefill before new search
 
     try {
         const response = await fetch(`https://apiperu.dev/api/${type}/${value}`, {
@@ -313,7 +319,7 @@ export default function CreateInvoicePage() {
             
             if (type === 'ruc') {
                 nameFromApi = apiData.nombre_o_razon_social || 'No encontrado';
-            } else {
+            } else { // dni
                 nameFromApi = `${apiData.nombres || ''} ${apiData.apellido_paterno || ''} ${apiData.apellido_materno || ''}`.trim() || 'No encontrado';
             }
             
@@ -322,21 +328,19 @@ export default function CreateInvoicePage() {
             const existingClient = clients.find(c => c.documentNumber === value && c.documentType === type);
             if (existingClient) {
                 form.setValue('clientId', existingClient.id, { shouldValidate: true });
-                // The useEffect watching clientId will handle setting documentType, ruc, and dni.
                 toast({ title: "Cliente Existente", description: `Cliente '${nameFromApi}' seleccionado automáticamente.`, variant: "default" });
-                setQuickClientPrefill(undefined);
             } else if (nameFromApi !== 'No encontrado') {
                  setQuickClientPrefill({ name: nameFromApi, documentType: type, documentNumber: value });
                  toast({ title: "Cliente No Registrado", description: `'${nameFromApi}' no está en tu lista. Puedes añadirlo rápidamente con el botón [+].`, variant: "default" });
             }
 
         } else {
-            toast({ title: `Error Buscando ${type.toUpperCase()}`, description: result.message || "No se pudo encontrar. Puedes añadirlo manually.", variant: "destructive" });
-            setQuickClientPrefill({ name: '', documentType: type, documentNumber: value });
+            toast({ title: `Error Buscando ${type.toUpperCase()}`, description: result.message || "No se pudo encontrar. Puedes añadirlo manualmente.", variant: "destructive" });
+            setQuickClientPrefill({ name: '', documentType: type, documentNumber: value }); // Allow manual add even if API fails
         }
     } catch (error) {
         toast({ title: "Error de API", description: `Error al consultar API de ${type.toUpperCase()}. Verifica tu conexión o el token.`, variant: "destructive" });
-        setQuickClientPrefill({ name: '', documentType: type, documentNumber: value });
+        setQuickClientPrefill({ name: '', documentType: type, documentNumber: value }); // Allow manual add
     } finally {
         if (type === 'ruc') setIsSearchingRuc(false);
         if (type === 'dni') setIsSearchingDni(false);
@@ -348,7 +352,6 @@ export default function CreateInvoicePage() {
         toast({ title: "Token Requerido", description: "La creación de clientes está deshabilitada hasta que se configure el token de APIPeru.", variant: "destructive" });
         return;
     }
-    // quickClientPrefill is set by handleSearchApi if a new entity is found
     setIsQuickClientModalOpen(true);
   };
 
@@ -356,7 +359,7 @@ export default function CreateInvoicePage() {
     const newClientEntry: ClientForSelect = {
         id: clientId,
         name: clientName,
-        documentType: clientDocType,
+        documentType: clientDocType || 'none',
         documentNumber: clientDocNumber
     };
     
@@ -365,7 +368,7 @@ export default function CreateInvoicePage() {
     form.setValue('clientId', clientId, { shouldValidate: true }); // This will trigger the useEffect
 
     setIsQuickClientModalOpen(false);
-    setQuickClientPrefill(undefined);
+    setQuickClientPrefill(undefined); // Clear prefill after client is created
   };
   
   const handleModalNewInvoice = () => {
@@ -590,7 +593,7 @@ export default function CreateInvoicePage() {
         isOpen={isQuickClientModalOpen}
         onClose={() => {
             setIsQuickClientModalOpen(false);
-            setQuickClientPrefill(undefined); // Clear prefill when modal is closed manually
+            setQuickClientPrefill(undefined);
         }}
         onClientCreated={(clientId, clientName, clientDocType, clientDocNumber) => 
             handleClientCreated(clientId, clientName, clientDocType, clientDocNumber)
@@ -612,5 +615,6 @@ export default function CreateInvoicePage() {
     </div>
   );
 }
+    
 
     

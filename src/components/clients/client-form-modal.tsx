@@ -1,13 +1,12 @@
 
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -20,12 +19,16 @@ import {
     DialogClose,
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2, Search } from 'lucide-react';
+
+const APIPERU_TOKEN = process.env.NEXT_PUBLIC_APIPERU_TOKEN;
 
 // Define Zod schema for validation
 const clientSchema = z.object({
   name: z.string().min(2, { message: "Client name must be at least 2 characters." }),
   contact: z.string().min(2, { message: "Contact name must be at least 2 characters." }),
-  email: z.string().email({ message: "Invalid email address." }),
+  email: z.string().email({ message: "Invalid email address." }).optional().or(z.literal('')),
   phone: z.string()
     .regex(/^\d{9}$/, { message: "Phone number must be 9 digits." })
     .optional()
@@ -73,7 +76,6 @@ interface ClientFormModalProps {
   clientData?: ClientFormData | null; // Data for editing
 }
 
-// Example data for selects
 const statuses = ["Active", "Inactive", "Prospect"];
 const documentTypes = [
     { value: "none", label: "Ninguno" },
@@ -82,6 +84,11 @@ const documentTypes = [
 ];
 
 export function ClientFormModal({ isOpen, onClose, onSubmit, clientData }: ClientFormModalProps) {
+  const { toast } = useToast();
+  const [isSubmittingForm, setIsSubmittingForm] = useState(false);
+  const [isSearchingApi, setIsSearchingApi] = useState(false);
+  const [apiTokenMissing, setApiTokenMissing] = useState(false);
+
   const form = useForm<ClientFormData>({
     resolver: zodResolver(clientSchema),
     defaultValues: clientData || {
@@ -90,7 +97,7 @@ export function ClientFormModal({ isOpen, onClose, onSubmit, clientData }: Clien
       email: '',
       phone: '',
       address: '',
-      status: '',
+      status: 'Active',
       dataAiHint: 'company client',
       documentType: "none",
       documentNumber: '',
@@ -98,34 +105,102 @@ export function ClientFormModal({ isOpen, onClose, onSubmit, clientData }: Clien
   });
 
   const watchedDocumentType = form.watch("documentType");
+  const watchedDocumentNumber = form.watch("documentNumber");
 
-   // Reset form when clientData changes or modal opens
-    useEffect(() => {
-        if (isOpen) {
-            if (clientData) {
-                form.reset({
-                    ...clientData,
-                    documentType: clientData.documentType || "none",
-                    documentNumber: clientData.documentNumber || '',
-                });
-            } else {
-                form.reset({
-                    name: '', contact: '', email: '', phone: '', address: '', status: '', dataAiHint: 'company client',
-                    documentType: "none", documentNumber: ''
-                });
-            }
+  useEffect(() => {
+    if (!APIPERU_TOKEN || APIPERU_TOKEN === 'YOUR_APIPERU_TOKEN_HERE' || APIPERU_TOKEN.trim() === '') {
+      setApiTokenMissing(true);
+      toast({
+        title: "Token APIPeru Faltante",
+        description: "La búsqueda de RUC/DNI está deshabilitada. Configure NEXT_PUBLIC_APIPERU_TOKEN.",
+        variant: "destructive",
+        duration: 7000,
+      });
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (clientData) {
+        form.reset({
+          ...clientData,
+          documentType: clientData.documentType || "none",
+          documentNumber: clientData.documentNumber || '',
+        });
+      } else {
+        form.reset({
+          name: '', contact: '', email: '', phone: '', address: '', status: 'Active', dataAiHint: 'company client',
+          documentType: "none", documentNumber: ''
+        });
+      }
+    }
+  }, [clientData, form, isOpen]);
+
+  const handleSearchDocumentApi = async () => {
+    if (apiTokenMissing) {
+        toast({ title: "Token Requerido", description: "Configure APIPeru token.", variant: "destructive"});
+        return;
+    }
+    const docType = form.getValues("documentType");
+    const docNumber = form.getValues("documentNumber");
+
+    if (docType === 'none' || !docNumber || 
+        (docType === 'ruc' && docNumber.length !== 11) || 
+        (docType === 'dni' && docNumber.length !== 8)) {
+      toast({ title: "Entrada Inválida", description: `Ingrese un ${docType.toUpperCase()} válido.`, variant: "destructive"});
+      return;
+    }
+
+    setIsSearchingApi(true);
+    try {
+      const response = await fetch(`https://apiperu.dev/api/${docType}/${docNumber}`, {
+        headers: { 'Authorization': `Bearer ${APIPERU_TOKEN}`, 'Content-Type': 'application/json' }
+      });
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        let nameFromApi = '';
+        if (docType === 'ruc') {
+          nameFromApi = result.data.nombre_o_razon_social || '';
+          form.setValue("address", result.data.direccion_completa || form.getValues("address"));
+        } else { // dni
+          nameFromApi = `${result.data.nombres || ''} ${result.data.apellido_paterno || ''} ${result.data.apellido_materno || ''}`.trim();
         }
-    }, [clientData, form, isOpen]);
+        form.setValue("name", nameFromApi || form.getValues("name"));
+        if (!form.getValues("contact") && nameFromApi) { // Prefill contact if empty and name was found
+            form.setValue("contact", nameFromApi);
+        }
+        toast({ title: `${docType.toUpperCase()} Encontrado`, description: `Nombre/Razón Social: ${nameFromApi}. Campos actualizados.` });
+      } else {
+        toast({ title: `Error Buscando ${docType.toUpperCase()}`, description: result.message || "No se pudo encontrar el documento.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Error de API", description: `Error al consultar API de ${docType.toUpperCase()}.`, variant: "destructive" });
+    } finally {
+      setIsSearchingApi(false);
+    }
+  };
 
-
-  const handleFormSubmit: SubmitHandler<ClientFormData> = (data) => {
+  const handleFormSubmit: SubmitHandler<ClientFormData> = async (data) => {
+    setIsSubmittingForm(true);
     const dataToSubmit = {
         ...data,
-        documentNumber: data.documentType === 'none' ? '' : data.documentNumber, // Ensure documentNumber is empty if type is none
+        documentNumber: data.documentType === 'none' ? '' : data.documentNumber,
+        dataAiHint: data.dataAiHint || data.name.toLowerCase().split(' ').slice(0,2).join(' ') || 'company client',
     };
-    onSubmit(dataToSubmit);
-    onClose(); // Close modal after submit
+    try {
+        onSubmit(dataToSubmit); // The actual Firestore operation is in the parent
+        // onClose(); // Parent should close after successful onSubmit
+    } catch (error) {
+        // Errors from onSubmit (Firestore) should be handled by the parent or here if preferred
+        toast({ title: "Error Guardando", description: "No se pudo guardar el cliente.", variant: "destructive" });
+    } finally {
+        setIsSubmittingForm(false);
+    }
   };
+  
+  const canSearch = (watchedDocumentType === 'ruc' && watchedDocumentNumber && watchedDocumentNumber.length === 11) ||
+                    (watchedDocumentType === 'dni' && watchedDocumentNumber && watchedDocumentNumber.length === 8);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -137,158 +212,173 @@ export function ClientFormModal({ isOpen, onClose, onSubmit, clientData }: Clien
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Client Name / Business Name *</FormLabel>
-                        <FormControl>
-                        <Input placeholder="e.g., Alpha Corp" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                 <FormField
-                    control={form.control}
-                    name="contact"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Contact Person *</FormLabel>
-                        <FormControl>
-                        <Input placeholder="e.g., Alice Johnson" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                 />
-                <FormField
-                    control={form.control}
-                    name="documentType"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Document Type *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Client Name / Business Name *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., Alpha Corp" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="contact"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Contact Person *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., Alice Johnson" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-x-2 gap-y-4 items-end">
+                <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                        control={form.control}
+                        name="documentType"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Document Type *</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select document type" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                {documentTypes.map(docType => <SelectItem key={docType.value} value={docType.value}>{docType.label}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="documentNumber"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>
+                                Document Number 
+                                {watchedDocumentType === 'ruc' && ' (11 digits)'}
+                                {watchedDocumentType === 'dni' && ' (8 digits)'}
+                            </FormLabel>
                             <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select document type" />
-                            </SelectTrigger>
+                                <Input 
+                                    placeholder="Enter document number" 
+                                    {...field} 
+                                    value={field.value || ''}
+                                    disabled={watchedDocumentType === "none"}
+                                    maxLength={watchedDocumentType === "ruc" ? 11 : (watchedDocumentType === "dni" ? 8 : undefined)}
+                                />
                             </FormControl>
-                            <SelectContent>
-                            {documentTypes.map(docType => <SelectItem key={docType.value} value={docType.value}>{docType.label}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="documentNumber"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>
-                            Document Number 
-                            {watchedDocumentType === 'ruc' && ' (11 digits)'}
-                            {watchedDocumentType === 'dni' && ' (8 digits)'}
-                        </FormLabel>
-                        <FormControl>
-                            <Input 
-                                placeholder="Enter document number" 
-                                {...field} 
-                                value={field.value || ''}
-                                disabled={watchedDocumentType === "none"}
-                                maxLength={watchedDocumentType === "ruc" ? 11 : (watchedDocumentType === "dni" ? 8 : undefined)}
-                            />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Email *</FormLabel>
-                        <FormControl>
-                        <Input type="email" placeholder="e.g., contact@alpha.com" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                 />
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Phone (9 digits)</FormLabel>
-                        <FormControl>
-                        <Input type="tel" placeholder="e.g., 987654321" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                 />
-                 <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Status *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
-                            <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a status" />
-                            </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            {statuses.map(stat => <SelectItem key={stat} value={stat}>{stat}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                 />
-             </div>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+                <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={handleSearchDocumentApi} 
+                    disabled={!canSearch || isSearchingApi || apiTokenMissing}
+                    className="h-10 w-10 shrink-0" 
+                    title="Buscar RUC/DNI con APIPeru"
+                >
+                    {isSearchingApi ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="address"
+                name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Address</FormLabel>
+                    <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="e.g., 123 Main St, Anytown, USA 12345" {...field} value={field.value || ''} rows={3} />
+                      <Input type="email" placeholder="e.g., contact@alpha.com" {...field} value={field.value || ''}/>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-               <FormField
+              <FormField
                 control={form.control}
-                name="dataAiHint"
+                name="phone"
                 render={({ field }) => (
-                  <FormItem className="hidden">
-                    <FormLabel>AI Hint</FormLabel>
+                  <FormItem>
+                    <FormLabel>Phone (9 digits)</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input type="tel" placeholder="e.g., 987654321" {...field} value={field.value || ''}/>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
-            <DialogFooter>
-               <DialogClose asChild>
-                 <Button type="button" variant="outline">Cancel</Button>
-               </DialogClose>
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Saving...' : (clientData ? 'Save Changes' : 'Add Client')}
-                </Button>
+            </div>
+            <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status *</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a status" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {statuses.map(stat => <SelectItem key={stat} value={stat}>{stat}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="address"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Address</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="e.g., 123 Main St, Anytown, USA 12345" {...field} value={field.value || ''} rows={3} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="dataAiHint"
+              render={({ field }) => (
+                <FormItem className="hidden">
+                  <FormLabel>AI Hint</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter className="pt-4">
+              <DialogClose asChild>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" disabled={isSubmittingForm || isSearchingApi}>
+                {isSubmittingForm ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (clientData ? 'Save Changes' : 'Add Client')}
+              </Button>
             </DialogFooter>
           </form>
         </Form>
@@ -296,6 +386,3 @@ export function ClientFormModal({ isOpen, onClose, onSubmit, clientData }: Clien
     </Dialog>
   );
 }
-
-
-    

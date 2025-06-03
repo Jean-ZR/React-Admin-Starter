@@ -19,7 +19,8 @@ import {
   LogOut,
   AlertTriangle,
   ChevronUp,
-  FileText as FileTextIcon, // Added for Invoicing
+  FileText as FileTextIcon, 
+  Share2 // New icon for Integrations
 } from 'lucide-react';
 import {
   Accordion,
@@ -52,7 +53,7 @@ const getNavigationModules = (lang: string | null | undefined): NavModule[] => [
     ]
   },
   {
-    categoryKey: 'assets', // Assuming this category key covers Assets, Clients, Inventory, Services
+    categoryKey: 'assets', 
     items: [
       {
         icon: Truck, labelKey: 'assets', id: 'assets', href: '/assets/list',
@@ -87,7 +88,7 @@ const getNavigationModules = (lang: string | null | undefined): NavModule[] => [
           { labelKey: 'services_history', href: '/services/history', id: 'services-history'},
         ]
       },
-      { // New Invoicing Module
+      { 
         icon: FileTextIcon, labelKey: 'invoicing', id: 'invoicing', href: '/invoicing/list',
         subItems: [
           { labelKey: 'invoicing_list', href: '/invoicing/list', id: 'invoicing-list'},
@@ -119,6 +120,7 @@ const getNavigationModules = (lang: string | null | undefined): NavModule[] => [
             { labelKey: 'settings_account', href: '/settings/account', id: 'settings-account' },
             { labelKey: 'settings_users', href: '/settings/users', id: 'settings-users' },
             { labelKey: 'settings_notifications', href: '/settings/notifications', id: 'settings-notifications' },
+            { labelKey: 'settings_integrations', href: '/settings/integrations', id: 'settings-integrations' }, // New
             { labelKey: 'settings_logs', href: '/settings/logs', id: 'settings-logs' },
         ]
       },
@@ -155,7 +157,6 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                     itemFound = true;
                     break;
                 } else if (pathname === item.href || pathname.startsWith(item.href + "/")) {
-                    // If path matches main item, default to first sub-item and open accordion
                     newActiveSubId = item.subItems[0].id; 
                     newActiveAccordionId = item.id;
                     itemFound = true;
@@ -164,7 +165,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
             } else {
                 if (pathname === item.href || pathname.startsWith(item.href + "/")) {
                     newActiveSubId = item.id;
-                    newActiveAccordionId = undefined; // No accordion for direct items
+                    newActiveAccordionId = undefined; 
                     itemFound = true;
                     break;
                 }
@@ -179,12 +180,11 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
 
     setActiveSubItemId(newActiveSubId);
     
-    // Only update accordion if pathname change implies a different accordion should be open
     if (newActiveAccordionId !== activeAccordionValue) {
         setActiveAccordionValue(newActiveAccordionId);
     }
 
-  }, [pathname, navigationModules]); // Removed activeAccordionValue
+  }, [pathname, navigationModules, activeAccordionValue]); 
 
   if (!isFirebaseConfigured && !loading) {
     return (
@@ -309,11 +309,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                     >
                       <item.icon className={`mr-3 ${activeSubItemId === item.id ? 'text-sidebar-accent-foreground' : 'text-muted-foreground group-hover:text-sidebar-foreground'}`} size={20} />
                       <span className="flex-1">{getTranslation(languagePreference, item.labelKey)}</span>
-                      {item.fields && (
-                        <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
-                          {item.fields}
-                        </span>
-                      )}
+                      
                     </Link>
                   )
                 ))}

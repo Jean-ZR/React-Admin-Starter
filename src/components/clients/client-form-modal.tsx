@@ -21,10 +21,10 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Search } from 'lucide-react';
+import { useAuth } from '@/contexts/auth-context'; // Import useAuth
 
-const APIPERU_TOKEN = process.env.NEXT_PUBLIC_APIPERU_TOKEN;
+// const APIPERU_TOKEN = process.env.NEXT_PUBLIC_APIPERU_TOKEN; // Replaced by context
 
-// Define Zod schema for validation
 const clientSchema = z.object({
   name: z.string().min(2, { message: "Client name must be at least 2 characters." }),
   contact: z.string().min(2, { message: "Contact name must be at least 2 characters." }),
@@ -73,7 +73,7 @@ interface ClientFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: ClientFormData) => void;
-  clientData?: ClientFormData | null; // Data for editing
+  clientData?: ClientFormData | null; 
 }
 
 const statuses = ["Active", "Inactive", "Prospect"];
@@ -85,9 +85,13 @@ const documentTypes = [
 
 export function ClientFormModal({ isOpen, onClose, onSubmit, clientData }: ClientFormModalProps) {
   const { toast } = useToast();
+  const { apiPeruConfig } = useAuth(); // Use apiPeruConfig from context
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
   const [isSearchingApi, setIsSearchingApi] = useState(false);
-  const [apiTokenMissing, setApiTokenMissing] = useState(false);
+  // const [apiTokenMissing, setApiTokenMissing] = useState(false); // Replaced by apiPeruConfig check
+
+  const APIPERU_TOKEN = apiPeruConfig?.apiToken;
+  const apiTokenMissing = !APIPERU_TOKEN;
 
   const form = useForm<ClientFormData>({
     resolver: zodResolver(clientSchema),
@@ -108,16 +112,15 @@ export function ClientFormModal({ isOpen, onClose, onSubmit, clientData }: Clien
   const watchedDocumentNumber = form.watch("documentNumber");
 
   useEffect(() => {
-    if (!APIPERU_TOKEN || APIPERU_TOKEN === 'YOUR_APIPERU_TOKEN_HERE' || APIPERU_TOKEN.trim() === '') {
-      setApiTokenMissing(true);
+    if (!apiPeruConfig?.apiToken && apiPeruConfig !== null && isOpen) { // Check if config is loaded but token is missing, and modal is open
       toast({
         title: "Token APIPeru Faltante",
-        description: "La búsqueda de RUC/DNI está deshabilitada. Configure NEXT_PUBLIC_APIPERU_TOKEN.",
+        description: "La búsqueda de RUC/DNI está deshabilitada. Configure el token en Ajustes > Integraciones.",
         variant: "destructive",
         duration: 7000,
       });
     }
-  }, [toast]);
+  }, [apiPeruConfig, toast, isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -126,6 +129,7 @@ export function ClientFormModal({ isOpen, onClose, onSubmit, clientData }: Clien
           ...clientData,
           documentType: clientData.documentType || "none",
           documentNumber: clientData.documentNumber || '',
+          status: clientData.status || "Active",
         });
       } else {
         form.reset({
@@ -138,7 +142,7 @@ export function ClientFormModal({ isOpen, onClose, onSubmit, clientData }: Clien
 
   const handleSearchDocumentApi = async () => {
     if (apiTokenMissing) {
-        toast({ title: "Token Requerido", description: "Configure APIPeru token.", variant: "destructive"});
+        toast({ title: "Token Requerido", description: "Configure el token de APIPeru en Ajustes > Integraciones.", variant: "destructive"});
         return;
     }
     const docType = form.getValues("documentType");
@@ -162,12 +166,12 @@ export function ClientFormModal({ isOpen, onClose, onSubmit, clientData }: Clien
         let nameFromApi = '';
         if (docType === 'ruc') {
           nameFromApi = result.data.nombre_o_razon_social || '';
-          form.setValue("address", result.data.direccion_completa || form.getValues("address"));
-        } else { // dni
+          form.setValue("address", result.data.direccion_completa || form.getValues("address") || '');
+        } else { 
           nameFromApi = `${result.data.nombres || ''} ${result.data.apellido_paterno || ''} ${result.data.apellido_materno || ''}`.trim();
         }
         form.setValue("name", nameFromApi || form.getValues("name"));
-        if (!form.getValues("contact") && nameFromApi) { // Prefill contact if empty and name was found
+        if (!form.getValues("contact") && nameFromApi) { 
             form.setValue("contact", nameFromApi);
         }
         toast({ title: `${docType.toUpperCase()} Encontrado`, description: `Nombre/Razón Social: ${nameFromApi}. Campos actualizados.` });
@@ -189,10 +193,8 @@ export function ClientFormModal({ isOpen, onClose, onSubmit, clientData }: Clien
         dataAiHint: data.dataAiHint || data.name.toLowerCase().split(' ').slice(0,2).join(' ') || 'company client',
     };
     try {
-        onSubmit(dataToSubmit); // The actual Firestore operation is in the parent
-        // onClose(); // Parent should close after successful onSubmit
+        onSubmit(dataToSubmit); 
     } catch (error) {
-        // Errors from onSubmit (Firestore) should be handled by the parent or here if preferred
         toast({ title: "Error Guardando", description: "No se pudo guardar el cliente.", variant: "destructive" });
     } finally {
         setIsSubmittingForm(false);
@@ -386,3 +388,4 @@ export function ClientFormModal({ isOpen, onClose, onSubmit, clientData }: Clien
     </Dialog>
   );
 }
+

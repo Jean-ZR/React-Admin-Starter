@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, type ReactNode, useCallback } from 'react';
 import {
   onAuthStateChanged,
   createUserWithEmailAndPassword,
@@ -50,12 +50,18 @@ export interface NotificationPreferences {
   };
 }
 
+interface ApiPeruConfig {
+  apiUrl: string | null;
+  apiToken: string | null;
+}
+
 interface AuthContextType {
   user: FirebaseUser | null;
   role: string | null;
   displayName: string | null;
   notificationPreferences: NotificationPreferences | null;
-  languagePreference: string | null; // This will be the effective language
+  languagePreference: string | null; 
+  apiPeruConfig: ApiPeruConfig | null; // New
   loading: boolean;
   isFirebaseConfigured: boolean; 
   login: (email: string, pass: string) => Promise<void>;
@@ -66,20 +72,45 @@ interface AuthContextType {
   updateUserPassword: (currentPassword: string, newPassword: string) => Promise<void>;
   updateUserPreferences: (preferences: NotificationPreferences) => Promise<void>;
   updateUserLanguagePreference: (language: string) => Promise<void>;
+  refreshApiPeruToken: () => Promise<void>; // New
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const APIPERU_CONFIG_DOC_PATH = 'settings/apiPeruConfig';
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences | null>(defaultNotificationPreferences);
-  const [languagePreference, setLanguagePreference] = useState<string | null>('en'); // User's specific preference
-  const [systemDefaultLanguage, setSystemDefaultLanguage] = useState<string>('en'); // System-wide default
+  const [languagePreference, setLanguagePreference] = useState<string | null>('en'); 
+  const [systemDefaultLanguage, setSystemDefaultLanguage] = useState<string>('en'); 
+  const [apiPeruConfig, setApiPeruConfig] = useState<ApiPeruConfig | null>(null); // New
   const [loading, setLoading] = useState(true); 
 
-  // Effect to load system default language
+  const fetchApiPeruConfig = useCallback(async () => {
+    if (isFirebaseConfigurationValid && configuredDb) {
+      try {
+        const configDocRef = doc(configuredDb, APIPERU_CONFIG_DOC_PATH);
+        const docSnap = await getDoc(configDocRef);
+        if (docSnap.exists() && docSnap.data()) {
+          const data = docSnap.data();
+          setApiPeruConfig({
+            apiUrl: data.apiUrl || "https://apiperu.dev",
+            apiToken: data.apiToken || null,
+          });
+        } else {
+          setApiPeruConfig({ apiUrl: "https://apiperu.dev", apiToken: null });
+        }
+      } catch (e) {
+        console.error('[AUTH_CONTEXT] Error fetching APIPeru config:', e);
+        setApiPeruConfig({ apiUrl: "https://apiperu.dev", apiToken: null });
+      }
+    } else {
+      setApiPeruConfig({ apiUrl: "https://apiperu.dev", apiToken: null });
+    }
+  }, []);
+
   useEffect(() => {
     if (isFirebaseConfigurationValid && configuredDb) {
       const fetchSystemDefaultLanguage = async () => {
@@ -94,19 +125,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       };
       fetchSystemDefaultLanguage();
+      fetchApiPeruConfig(); // Fetch APIPeru config on initial load
     }
-  }, []);
+  }, [fetchApiPeruConfig]);
 
 
   useEffect(() => {
     if (!isFirebaseConfigurationValid || !configuredAuth) {
-      console.warn("[AUTH_CONTEXT] Firebase is not configured or auth service is unavailable. Auth features disabled.");
       setLoading(false);
       setUser(null);
       setRole(null);
       setDisplayName(null);
       setNotificationPreferences(defaultNotificationPreferences);
-      setLanguagePreference(systemDefaultLanguage); // Fallback to system default
+      setLanguagePreference(systemDefaultLanguage); 
+      setApiPeruConfig({ apiUrl: "https://apiperu.dev", apiToken: null });
       return;
     }
 
@@ -125,41 +157,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                       setDisplayName(userData.displayName);
                     }
                     setNotificationPreferences(userData.notificationPreferences || defaultNotificationPreferences);
-                    // Set language preference: user's preference OR system default
                     setLanguagePreference(userData.languagePreference || systemDefaultLanguage);
                 } else {
-                    console.warn(`[AUTH_CONTEXT] User document not found for UID: ${currentUser.uid}. Using default role and preferences.`);
                     setRole(null); 
                     setNotificationPreferences(defaultNotificationPreferences);
-                    setLanguagePreference(systemDefaultLanguage); // Fallback to system default
+                    setLanguagePreference(systemDefaultLanguage); 
                 }
             } catch (e) {
-                console.error('[AUTH_CONTEXT] Error fetching user data from Firestore:', e);
                 setRole(null);
                 setNotificationPreferences(defaultNotificationPreferences);
-                setLanguagePreference(systemDefaultLanguage); // Fallback to system default
+                setLanguagePreference(systemDefaultLanguage); 
             }
         } else {
-            console.warn("[AUTH_CONTEXT] Firestore (db) is not configured. Cannot fetch user role/preferences.");
             setRole(null); 
             setNotificationPreferences(defaultNotificationPreferences);
-            setLanguagePreference(systemDefaultLanguage); // Fallback to system default
+            setLanguagePreference(systemDefaultLanguage); 
         }
       } else {
         setRole(null);
         setDisplayName(null);
         setNotificationPreferences(defaultNotificationPreferences);
-        setLanguagePreference(systemDefaultLanguage); // Fallback to system default for logged-out users
+        setLanguagePreference(systemDefaultLanguage); 
       }
       setLoading(false);
     });
 
     return unsubscribe;
-  }, [systemDefaultLanguage]); // Add systemDefaultLanguage as dependency
+  }, [systemDefaultLanguage]); 
 
   const ensureServicesAvailable = (): boolean => {
     if (!isFirebaseConfigurationValid || !configuredAuth || !configuredDb) {
-      console.error('[AUTH_CONTEXT] Firebase services are not available. Operation cancelled.');
       return false;
     }
     return true;
@@ -170,9 +197,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLoading(true);
     try {
       await signInWithEmailAndPassword(configuredAuth, email, pass);
-      // User data (including languagePreference) will be fetched by onAuthStateChanged
+      await fetchApiPeruConfig(); // Fetch APIPeru config on login
     } catch (e) {
-      console.error('[AUTH_CONTEXT] Login error:', e);
       setLoading(false); 
       throw e; 
     }
@@ -193,7 +219,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         role: userRole,
         displayName: finalDisplayName,
         notificationPreferences: defaultNotificationPreferences,
-        languagePreference: systemDefaultLanguage, // Set new user's preference to system default
+        languagePreference: systemDefaultLanguage, 
         createdAt: new Date(), 
       });
       setUser(newUser); 
@@ -201,8 +227,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setDisplayName(finalDisplayName);
       setNotificationPreferences(defaultNotificationPreferences);
       setLanguagePreference(systemDefaultLanguage);
+      await fetchApiPeruConfig(); // Fetch APIPeru config on signup
     } catch (e) {
-      console.error('[AUTH_CONTEXT] Signup error:', e);
       setLoading(false);
       throw e;
     }
@@ -215,20 +241,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setDisplayName(null);
       setNotificationPreferences(defaultNotificationPreferences);
       setLanguagePreference(systemDefaultLanguage);
+      setApiPeruConfig({ apiUrl: "https://apiperu.dev", apiToken: null });
       setLoading(false); 
-      console.warn("[AUTH_CONTEXT] Firebase not configured, performing local logout.");
       return;
     }
     setLoading(true); 
     try {
       await signOut(configuredAuth);
     } catch (e) {
-      console.error('[AUTH_CONTEXT] Logout error:', e);
       setUser(null);
       setRole(null);
       setDisplayName(null);
       setNotificationPreferences(defaultNotificationPreferences);
       setLanguagePreference(systemDefaultLanguage);
+      setApiPeruConfig({ apiUrl: "https://apiperu.dev", apiToken: null });
       setLoading(false); 
       throw e;
     }
@@ -239,7 +265,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       await sendPasswordResetEmail(configuredAuth, email);
     } catch (e) {
-      console.error('[AUTH_CONTEXT] Reset password error:', e);
       throw e;
     }
   };
@@ -278,7 +303,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
     const userDocRef = doc(configuredDb, 'users', user.uid);
     await updateDoc(userDocRef, { languagePreference: language });
-    setLanguagePreference(language); // Update context state immediately
+    setLanguagePreference(language); 
   };
 
   return (
@@ -288,7 +313,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         role,
         displayName,
         notificationPreferences,
-        languagePreference, // This is the effective language for the UI
+        languagePreference, 
+        apiPeruConfig, // Provide APIPeru config
         loading,
         isFirebaseConfigured: isFirebaseConfigurationValid, 
         login,
@@ -299,6 +325,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         updateUserPassword,
         updateUserPreferences,
         updateUserLanguagePreference,
+        refreshApiPeruToken: fetchApiPeruConfig, // Provide refresh function
       }}
     >
       {children}

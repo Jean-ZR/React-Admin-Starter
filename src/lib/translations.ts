@@ -6,9 +6,9 @@ export interface TranslationSet {
   clients: string;
   inventory: string;
   services: string;
-  invoicing: string; // New
-  reports_category: string; // Category label for Reports
-  settings_category: string; // Category label for Settings
+  invoicing: string;
+  reports_category: string; 
+  settings_category: string; 
   support: string;
 
   // Sub-items for Assets
@@ -32,7 +32,7 @@ export interface TranslationSet {
   services_scheduling: string;
   services_history: string;
 
-  // Sub-items for Invoicing (New)
+  // Sub-items for Invoicing
   invoicing_list: string;
   invoicing_create: string;
 
@@ -47,7 +47,8 @@ export interface TranslationSet {
   settings_users: string;
   settings_notifications: string;
   settings_logs: string;
-  
+  settings_integrations: string; // New
+
   // Page Titles and Subtitles
   page_title_dashboard: string;
   page_subtitle_dashboard: string;
@@ -77,10 +78,10 @@ export interface TranslationSet {
   page_subtitle_services_scheduling: string;
   page_title_services_history: string;
   page_subtitle_services_history: string;
-  page_title_invoicing_list: string; // New
-  page_subtitle_invoicing_list: string; // New
-  page_title_invoicing_create: string; // New
-  page_subtitle_invoicing_create: string; // New
+  page_title_invoicing_list: string; 
+  page_subtitle_invoicing_list: string; 
+  page_title_invoicing_create: string; 
+  page_subtitle_invoicing_create: string; 
   page_title_reports_financial: string;
   page_subtitle_reports_financial: string;
   page_title_reports_operational: string;
@@ -97,6 +98,8 @@ export interface TranslationSet {
   page_subtitle_settings_notifications: string;
   page_title_settings_logs: string;
   page_subtitle_settings_logs: string;
+  page_title_settings_integrations: string; // New
+  page_subtitle_settings_integrations: string; // New
   page_title_profile: string;
   page_subtitle_profile: string;
 }
@@ -112,7 +115,7 @@ export const translations: Translations = {
     clients: 'Clients',
     inventory: 'Inventory',
     services: 'Services',
-    invoicing: 'Invoicing', // New
+    invoicing: 'Invoicing',
     reports_category: 'Analysis',
     settings_category: 'Configuration',
     support: 'Support',
@@ -134,8 +137,8 @@ export const translations: Translations = {
     services_scheduling: 'Scheduling',
     services_history: 'History',
 
-    invoicing_list: 'Invoice List', // New
-    invoicing_create: 'Create Invoice', // New
+    invoicing_list: 'Invoice List',
+    invoicing_create: 'Create Invoice',
 
     reports_financial: 'Financial',
     reports_operational: 'Operational',
@@ -146,6 +149,7 @@ export const translations: Translations = {
     settings_users: 'User Management',
     settings_notifications: 'Notifications',
     settings_logs: 'System Logs',
+    settings_integrations: 'Integrations', // New
 
     page_title_dashboard: 'Dashboard',
     page_subtitle_dashboard: 'Management Overview',
@@ -175,10 +179,10 @@ export const translations: Translations = {
     page_subtitle_services_scheduling: 'Calendar and appointments',
     page_title_services_history: 'Service History',
     page_subtitle_services_history: 'Record of jobs',
-    page_title_invoicing_list: 'Invoices', // New
-    page_subtitle_invoicing_list: 'Manage your customer invoices', // New
-    page_title_invoicing_create: 'Create New Invoice', // New
-    page_subtitle_invoicing_create: 'Generate a new invoice for a client', // New
+    page_title_invoicing_list: 'Invoices', 
+    page_subtitle_invoicing_list: 'Manage your customer invoices', 
+    page_title_invoicing_create: 'Create New Invoice', 
+    page_subtitle_invoicing_create: 'Generate a new invoice for a client', 
     page_title_reports_financial: 'Financial Reports',
     page_subtitle_reports_financial: 'Income and expense analysis',
     page_title_reports_operational: 'Operational Reports',
@@ -195,6 +199,8 @@ export const translations: Translations = {
     page_subtitle_settings_notifications: 'Alerts and notices',
     page_title_settings_logs: 'System Logs',
     page_subtitle_settings_logs: 'Activity and events',
+    page_title_settings_integrations: 'API Integrations', // New
+    page_subtitle_settings_integrations: 'Manage third-party API configurations', // New
     page_title_profile: 'User Profile',
     page_subtitle_profile: 'Manage your personal information',
   },
@@ -204,7 +210,7 @@ export const translations: Translations = {
     clients: 'Clientes',
     inventory: 'Inventario',
     services: 'Servicios',
-    invoicing: 'Facturación', // New
+    invoicing: 'Facturación',
     reports_category: 'Análisis',
     settings_category: 'Configuración',
     support: 'Soporte',
@@ -226,8 +232,8 @@ export const translations: Translations = {
     services_scheduling: 'Programación',
     services_history: 'Historial',
 
-    invoicing_list: 'Lista de Facturas', // New
-    invoicing_create: 'Crear Factura', // New
+    invoicing_list: 'Lista de Comprobantes',
+    invoicing_create: 'Crear Comprobante',
 
     reports_financial: 'Financieros',
     reports_operational: 'Operacionales',
@@ -238,6 +244,7 @@ export const translations: Translations = {
     settings_users: 'Gestión de Usuarios',
     settings_notifications: 'Notificaciones',
     settings_logs: 'Registros del Sistema',
+    settings_integrations: 'Integraciones', // New
     
     page_title_dashboard: 'Panel de Control',
     page_subtitle_dashboard: 'Resumen de gestión',
@@ -267,10 +274,10 @@ export const translations: Translations = {
     page_subtitle_services_scheduling: 'Calendario y citas',
     page_title_services_history: 'Historial de Servicios',
     page_subtitle_services_history: 'Registro de trabajos',
-    page_title_invoicing_list: 'Facturas', // New
-    page_subtitle_invoicing_list: 'Gestiona las facturas de tus clientes', // New
-    page_title_invoicing_create: 'Crear Nueva Factura', // New
-    page_subtitle_invoicing_create: 'Genera una nueva factura para un cliente', // New
+    page_title_invoicing_list: 'Lista de Comprobantes', 
+    page_subtitle_invoicing_list: 'Gestiona los comprobantes de tus clientes', 
+    page_title_invoicing_create: 'Crear Nuevo Comprobante', 
+    page_subtitle_invoicing_create: 'Genera un nuevo comprobante para un cliente', 
     page_title_reports_financial: 'Reportes Financieros',
     page_subtitle_reports_financial: 'Análisis de ingresos y gastos',
     page_title_reports_operational: 'Reportes Operacionales',
@@ -287,6 +294,8 @@ export const translations: Translations = {
     page_subtitle_settings_notifications: 'Alertas y avisos',
     page_title_settings_logs: 'Registros del Sistema',
     page_subtitle_settings_logs: 'Actividad y eventos',
+    page_title_settings_integrations: 'Integraciones API', // New
+    page_subtitle_settings_integrations: 'Gestionar configuraciones de API de terceros', // New
     page_title_profile: 'Perfil de Usuario',
     page_subtitle_profile: 'Gestiona tu información personal',
   }
@@ -295,18 +304,15 @@ export const translations: Translations = {
 // Helper function to get a translation
 export const getTranslation = (lang: string | null | undefined, key: keyof TranslationSet, fallbackLang: string = 'en'): string => {
   const effectiveLang = (lang && translations[lang]) ? lang : fallbackLang;
-  // Fallback to English if the key is not in the effective language, then to the key itself
-  return translations[effectiveLang]?.[key] || translations[fallbackLang]?.[key] || key;
+  return translations[effectiveLang]?.[key] || translations[fallbackLang]?.[key] || key.replace(/_/g, ' ');
 };
 
 // Helper to get page title object
 export const getPageTitleInfo = (lang: string | null | undefined, path: string, fallbackLang: string = 'en'): { title: string; subtitle: string } => {
-  const pathKey = path.replace(/\//g, '_').substring(1) || 'dashboard'; // e.g., /assets/list -> _assets_list
+  const pathKey = path.replace(/\//g, '_').substring(1) || 'dashboard'; 
 
   const titleKey = `page_title_${pathKey}` as keyof TranslationSet;
   const subtitleKey = `page_subtitle_${pathKey}` as keyof TranslationSet;
-  
-  const defaultInfo = { title: 'Admin', subtitle: 'Welcome' };
   
   const effectiveLang = (lang && translations[lang]) ? lang : fallbackLang;
 
@@ -315,5 +321,3 @@ export const getPageTitleInfo = (lang: string | null | undefined, path: string, 
 
   return { title, subtitle };
 };
-
-    

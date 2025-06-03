@@ -35,7 +35,7 @@ interface GeneratedInvoiceData {
   documentType: 'factura' | 'boleta';
 }
 
-const APIPERU_TOKEN = process.env.NEXT_PUBLIC_APIPERU_TOKEN;
+// const APIPERU_TOKEN = process.env.NEXT_PUBLIC_APIPERU_TOKEN; // Replaced by context
 
 const invoiceSchema = z.object({
   clientId: z.string().min(1, "Debes seleccionar un cliente."),
@@ -84,19 +84,22 @@ const padNumber = (num: number, size: number): string => {
 
 export default function CreateInvoicePage() {
   const { toast } = useToast();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, apiPeruConfig } = useAuth(); // Use apiPeruConfig from context
   const router = useRouter();
   const [clients, setClients] = useState<ClientForSelect[]>([]);
   const [isLoadingClients, setIsLoadingClients] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSearchingRuc, setIsSearchingRuc] = useState(false);
   const [isSearchingDni, setIsSearchingDni] = useState(false);
-  const [apiTokenMissing, setApiTokenMissing] = useState(false);
+  // const [apiTokenMissing, setApiTokenMissing] = useState(false); // Replaced by apiPeruConfig check
   const [isQuickClientModalOpen, setIsQuickClientModalOpen] = useState(false);
   const [quickClientPrefill, setQuickClientPrefill] = useState<Partial<QuickClientFormData> | undefined>(undefined);
 
   const [isGeneratedModalOpen, setIsGeneratedModalOpen] = useState(false);
   const [generatedInvoiceData, setGeneratedInvoiceData] = useState<GeneratedInvoiceData | null>(null);
+
+  const APIPERU_TOKEN = apiPeruConfig?.apiToken; // Get token from context
+  const apiTokenMissing = !APIPERU_TOKEN;
 
 
   const form = useForm<InvoiceFormData>({
@@ -119,16 +122,15 @@ export default function CreateInvoicePage() {
   const dniValue = form.watch("dni");
 
  useEffect(() => {
-    if (!APIPERU_TOKEN || APIPERU_TOKEN === 'YOUR_APIPERU_TOKEN_HERE' || APIPERU_TOKEN.trim() === '') {
-      setApiTokenMissing(true);
+    if (!apiPeruConfig?.apiToken && apiPeruConfig !== null) { // Check if config is loaded but token is missing
       toast({
         title: "Configuración Requerida",
-        description: "El token para APIPeru no está configurado. La búsqueda de RUC/DNI y la creación de clientes están deshabilitadas. Por favor, configure la variable NEXT_PUBLIC_APIPERU_TOKEN en su archivo .env.local y reinicie el servidor.",
+        description: "El token para APIPeru no está configurado en el sistema. La búsqueda de RUC/DNI y la creación de clientes están deshabilitadas. Por favor, configure el token en Ajustes > Integraciones.",
         variant: "destructive",
         duration: Infinity,
       });
     }
-  }, [toast]);
+  }, [apiPeruConfig, toast]);
 
   const fetchClients = useCallback(async () => {
     setIsLoadingClients(true);
@@ -174,13 +176,13 @@ export default function CreateInvoicePage() {
               form.setValue('documentType', 'boleta', { shouldValidate: true });
               form.setValue('dni', client.documentNumber, { shouldValidate: true });
               form.setValue('ruc', '', { shouldValidate: true });
-            } else { // client.documentType === 'none' or no documentNumber
+            } else { 
               form.setValue('documentType', undefined, { shouldValidate: true });
               form.setValue('ruc', '', { shouldValidate: true });
               form.setValue('dni', '', { shouldValidate: true });
             }
           }
-        } else { // Client selection was cleared
+        } else { 
           form.setValue('documentType', undefined, { shouldValidate: true });
           form.setValue('ruc', '', { shouldValidate: true });
           form.setValue('dni', '', { shouldValidate: true });
@@ -191,7 +193,7 @@ export default function CreateInvoicePage() {
           form.setValue('dni', '', { shouldValidate: true });
         } else if (newDocumentType === 'boleta') {
           form.setValue('ruc', '', { shouldValidate: true });
-        } else { // 'none' or undefined selected for documentType
+        } else { 
           form.setValue('ruc', '', { shouldValidate: true });
           form.setValue('dni', '', { shouldValidate: true });
         }
@@ -223,14 +225,14 @@ export default function CreateInvoicePage() {
     } catch (error) {
         console.error("Error generating invoice number:", error);
         toast({ title: "Error Correlativo", description: "No se pudo generar el número de comprobante.", variant: "destructive"});
-        throw error; // Re-throw to be caught by caller
+        throw error; 
     }
   };
 
 
   const handleFormSubmit: SubmitHandler<InvoiceFormData> = async (data, event) => {
-    if (apiTokenMissing) {
-      toast({ title: "Operación Bloqueada", description: "No se pueden crear comprobantes hasta que se configure el token de APIPeru.", variant: "destructive" });
+    if (apiTokenMissing && (data.documentType === 'factura' || data.documentType === 'boleta')) {
+      toast({ title: "Operación Bloqueada", description: "No se pueden crear comprobantes con RUC/DNI hasta que se configure el token de APIPeru en Ajustes > Integraciones.", variant: "destructive", duration: 7000 });
       return;
     }
     setIsSubmitting(true);
@@ -277,8 +279,6 @@ export default function CreateInvoicePage() {
         setIsGeneratedModalOpen(true);
 
     } catch (error) {
-      // Error generating invoice number is already toasted by getNextInvoiceNumber
-      // Only toast if it's a different error, or avoid double-toasting
       if (!toast.toasts.find(t => t.title === "Error Correlativo")) {
           toast({ title: "Error", description: "No se pudo guardar el comprobante.", variant: "destructive" });
       }
@@ -289,7 +289,7 @@ export default function CreateInvoicePage() {
 
   const handleSearchApi = async (type: 'ruc' | 'dni', value: string | undefined) => {
     if (apiTokenMissing) {
-        toast({ title: "Token Requerido", description: "Configura tu token de APIPeru para habilitar la búsqueda.", variant: "destructive"});
+        toast({ title: "Token Requerido", description: "Configure el token de APIPeru en Ajustes > Integraciones.", variant: "destructive"});
         return;
     }
     if (!value || (type === 'ruc' && value.length !== 11) || (type === 'dni' && value.length !== 8)) {
@@ -299,7 +299,7 @@ export default function CreateInvoicePage() {
 
     if (type === 'ruc') setIsSearchingRuc(true);
     if (type === 'dni') setIsSearchingDni(true);
-    setQuickClientPrefill(undefined);
+    setQuickClientPrefill(undefined); 
 
     try {
         const response = await fetch(`https://apiperu.dev/api/${type}/${value}`, {
@@ -313,7 +313,7 @@ export default function CreateInvoicePage() {
             
             if (type === 'ruc') {
                 nameFromApi = apiData.nombre_o_razon_social || 'No encontrado';
-            } else { // dni
+            } else { 
                 nameFromApi = `${apiData.nombres || ''} ${apiData.apellido_paterno || ''} ${apiData.apellido_materno || ''}`.trim() || 'No encontrado';
             }
             
@@ -348,10 +348,9 @@ export default function CreateInvoicePage() {
   
   const handleAddClientClick = () => {
     if (apiTokenMissing) {
-        toast({ title: "Token Requerido", description: "La creación de clientes está deshabilitada hasta que se configure el token de APIPeru.", variant: "destructive" });
+        toast({ title: "Token Requerido", description: "La creación de clientes está deshabilitada hasta que se configure el token de APIPeru en Ajustes > Integraciones.", variant: "destructive" });
         return;
     }
-    // Prefill logic is handled inside handleSearchApi by setting quickClientPrefill
     setIsQuickClientModalOpen(true);
   };
 
@@ -365,9 +364,8 @@ export default function CreateInvoicePage() {
     
     setClients(prevClients => [...prevClients, newClientEntry].sort((a, b) => a.name.localeCompare(b.name)));
     
-    form.setValue('clientId', clientId, { shouldValidate: true }); // This will trigger the useEffect
+    form.setValue('clientId', clientId, { shouldValidate: true }); 
 
-    // If the newly created client has RUC/DNI, and the main form's documentType matches, set it
     if (clientDocType === 'ruc' && clientDocNumber && documentTypeFormValue === 'factura') {
         form.setValue('ruc', clientDocNumber, {shouldValidate: true});
     } else if (clientDocType === 'dni' && clientDocNumber && documentTypeFormValue === 'boleta') {
@@ -410,7 +408,7 @@ export default function CreateInvoicePage() {
                     <FormItem>
                       <FormLabel>Cliente *</FormLabel>
                        <div className="flex items-center gap-2">
-                          <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingClients}>
+                          <Select onValueChange={field.onChange} value={field.value || ''} disabled={isLoadingClients}>
                             <FormControl>
                               <SelectTrigger className="bg-background border-input flex-1">
                                 <SelectValue placeholder={isLoadingClients ? "Cargando clientes..." : "Seleccionar cliente"} />
@@ -581,14 +579,14 @@ export default function CreateInvoicePage() {
               </div>
             </CardContent>
             <CardFooter className="flex justify-end gap-2 border-t border-border pt-6">
-              <Button type="button" variant="outline" onClick={() => form.reset()} disabled={isSubmitting || isSearchingRuc || isSearchingDni || apiTokenMissing} className="border-input hover:bg-accent hover:text-accent-foreground">
+              <Button type="button" variant="outline" onClick={() => form.reset()} disabled={isSubmitting || isSearchingRuc || isSearchingDni || (apiTokenMissing && (documentTypeFormValue === "factura" || documentTypeFormValue === "boleta"))} className="border-input hover:bg-accent hover:text-accent-foreground">
                 Limpiar Formulario
               </Button>
-              <Button type="submit" variant="secondary" disabled={isSubmitting || isSearchingRuc || isSearchingDni || apiTokenMissing}>
+              <Button type="submit" variant="secondary" disabled={isSubmitting || isSearchingRuc || isSearchingDni || (apiTokenMissing && (documentTypeFormValue === "factura" || documentTypeFormValue === "boleta"))}>
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Guardar Borrador
               </Button>
-              <Button type="submit" disabled={isSubmitting || isSearchingRuc || isSearchingDni || apiTokenMissing}>
+              <Button type="submit" disabled={isSubmitting || isSearchingRuc || isSearchingDni || (apiTokenMissing && (documentTypeFormValue === "factura" || documentTypeFormValue === "boleta"))}>
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                 Generar y Enviar
               </Button>
@@ -602,9 +600,7 @@ export default function CreateInvoicePage() {
             setIsQuickClientModalOpen(false);
             setQuickClientPrefill(undefined);
         }}
-        onClientCreated={(clientId, clientName, clientDocType, clientDocNumber) => 
-            handleClientCreated(clientId, clientName, clientDocType, clientDocNumber)
-        }
+        onClientCreated={handleClientCreated}
         prefillData={quickClientPrefill}
       />
       {generatedInvoiceData && (
@@ -625,3 +621,4 @@ export default function CreateInvoicePage() {
     
 
     
+

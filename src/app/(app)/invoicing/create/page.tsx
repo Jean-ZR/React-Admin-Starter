@@ -14,7 +14,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase/config';
-import { collection, getDocs, query, orderBy, addDoc, serverTimestamp, Timestamp, doc, getDoc, setDoc, runTransaction } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, addDoc, serverTimestamp, Timestamp, doc, runTransaction } from 'firebase/firestore';
 import { Loader2, Save, Send, Search, UserPlus } from 'lucide-react';
 import { QuickClientFormModal, type QuickClientFormData } from '@/components/invoicing/quick-client-form-modal';
 import { GeneratedInvoiceModal } from '@/components/invoicing/generated-invoice-modal';
@@ -174,21 +174,13 @@ export default function CreateInvoicePage() {
               form.setValue('documentType', 'boleta', { shouldValidate: true });
               form.setValue('dni', client.documentNumber, { shouldValidate: true });
               form.setValue('ruc', '', { shouldValidate: true });
-            } else {
-              // Client has 'none', no specific documentType, or no documentNumber.
-              // Reset document related fields to force user selection if client has no preference.
+            } else { // client.documentType === 'none' or no documentNumber
               form.setValue('documentType', undefined, { shouldValidate: true });
               form.setValue('ruc', '', { shouldValidate: true });
               form.setValue('dni', '', { shouldValidate: true });
             }
-          } else {
-            // Client not found in list (shouldn't happen if ID comes from dropdown)
-            form.setValue('documentType', undefined, { shouldValidate: true });
-            form.setValue('ruc', '', { shouldValidate: true });
-            form.setValue('dni', '', { shouldValidate: true });
           }
-        } else {
-          // Client selection was cleared
+        } else { // Client selection was cleared
           form.setValue('documentType', undefined, { shouldValidate: true });
           form.setValue('ruc', '', { shouldValidate: true });
           form.setValue('dni', '', { shouldValidate: true });
@@ -231,7 +223,7 @@ export default function CreateInvoicePage() {
     } catch (error) {
         console.error("Error generating invoice number:", error);
         toast({ title: "Error Correlativo", description: "No se pudo generar el número de comprobante.", variant: "destructive"});
-        throw error;
+        throw error; // Re-throw to be caught by caller
     }
   };
 
@@ -260,7 +252,7 @@ export default function CreateInvoicePage() {
         sequenceNumber,
         clientId: selectedClient.id,
         clientName: selectedClient.name,
-        clientDocumentType: client.documentType || 'none',
+        clientDocumentType: selectedClient.documentType || 'none',
         clientDocumentNumber: data.documentType === 'factura' ? data.ruc : (data.documentType === 'boleta' ? data.dni : ''),
         documentType: data.documentType,
         issueDate: Timestamp.fromDate(data.issueDate),
@@ -285,6 +277,8 @@ export default function CreateInvoicePage() {
         setIsGeneratedModalOpen(true);
 
     } catch (error) {
+      // Error generating invoice number is already toasted by getNextInvoiceNumber
+      // Only toast if it's a different error, or avoid double-toasting
       if (!toast.toasts.find(t => t.title === "Error Correlativo")) {
           toast({ title: "Error", description: "No se pudo guardar el comprobante.", variant: "destructive" });
       }
@@ -305,7 +299,7 @@ export default function CreateInvoicePage() {
 
     if (type === 'ruc') setIsSearchingRuc(true);
     if (type === 'dni') setIsSearchingDni(true);
-    setQuickClientPrefill(undefined); // Reset prefill before new search
+    setQuickClientPrefill(undefined);
 
     try {
         const response = await fetch(`https://apiperu.dev/api/${type}/${value}`, {
@@ -325,10 +319,15 @@ export default function CreateInvoicePage() {
             
             toast({ title: `${type.toUpperCase()} Encontrado`, description: `Nombre: ${nameFromApi}.` });
 
-            const existingClient = clients.find(c => c.documentNumber === value && c.documentType === type);
-            if (existingClient) {
-                form.setValue('clientId', existingClient.id, { shouldValidate: true });
-                toast({ title: "Cliente Existente", description: `Cliente '${nameFromApi}' seleccionado automáticamente.`, variant: "default" });
+            const existingClientByName = clients.find(c => c.name.toLowerCase() === nameFromApi.toLowerCase());
+            const existingClientByDoc = clients.find(c => c.documentNumber === value && c.documentType === type);
+            
+            if (existingClientByDoc) {
+                form.setValue('clientId', existingClientByDoc.id, { shouldValidate: true });
+                toast({ title: "Cliente Existente", description: `Cliente '${nameFromApi}' seleccionado por número de documento.`, variant: "default" });
+            } else if (existingClientByName && !form.getValues('clientId')) {
+                form.setValue('clientId', existingClientByName.id, { shouldValidate: true });
+                 toast({ title: "Cliente Existente", description: `Cliente '${nameFromApi}' seleccionado por nombre.`, variant: "default" });
             } else if (nameFromApi !== 'No encontrado') {
                  setQuickClientPrefill({ name: nameFromApi, documentType: type, documentNumber: value });
                  toast({ title: "Cliente No Registrado", description: `'${nameFromApi}' no está en tu lista. Puedes añadirlo rápidamente con el botón [+].`, variant: "default" });
@@ -336,11 +335,11 @@ export default function CreateInvoicePage() {
 
         } else {
             toast({ title: `Error Buscando ${type.toUpperCase()}`, description: result.message || "No se pudo encontrar. Puedes añadirlo manualmente.", variant: "destructive" });
-            setQuickClientPrefill({ name: '', documentType: type, documentNumber: value }); // Allow manual add even if API fails
+            setQuickClientPrefill({ name: '', documentType: type, documentNumber: value }); 
         }
     } catch (error) {
         toast({ title: "Error de API", description: `Error al consultar API de ${type.toUpperCase()}. Verifica tu conexión o el token.`, variant: "destructive" });
-        setQuickClientPrefill({ name: '', documentType: type, documentNumber: value }); // Allow manual add
+        setQuickClientPrefill({ name: '', documentType: type, documentNumber: value }); 
     } finally {
         if (type === 'ruc') setIsSearchingRuc(false);
         if (type === 'dni') setIsSearchingDni(false);
@@ -352,6 +351,7 @@ export default function CreateInvoicePage() {
         toast({ title: "Token Requerido", description: "La creación de clientes está deshabilitada hasta que se configure el token de APIPeru.", variant: "destructive" });
         return;
     }
+    // Prefill logic is handled inside handleSearchApi by setting quickClientPrefill
     setIsQuickClientModalOpen(true);
   };
 
@@ -367,8 +367,15 @@ export default function CreateInvoicePage() {
     
     form.setValue('clientId', clientId, { shouldValidate: true }); // This will trigger the useEffect
 
+    // If the newly created client has RUC/DNI, and the main form's documentType matches, set it
+    if (clientDocType === 'ruc' && clientDocNumber && documentTypeFormValue === 'factura') {
+        form.setValue('ruc', clientDocNumber, {shouldValidate: true});
+    } else if (clientDocType === 'dni' && clientDocNumber && documentTypeFormValue === 'boleta') {
+        form.setValue('dni', clientDocNumber, {shouldValidate: true});
+    }
+
     setIsQuickClientModalOpen(false);
-    setQuickClientPrefill(undefined); // Clear prefill after client is created
+    setQuickClientPrefill(undefined); 
   };
   
   const handleModalNewInvoice = () => {
@@ -431,7 +438,7 @@ export default function CreateInvoicePage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tipo de Comprobante *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value || ''}>
                         <FormControl>
                           <SelectTrigger className="bg-background border-input">
                             <SelectValue placeholder="Seleccionar tipo" />

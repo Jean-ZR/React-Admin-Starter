@@ -47,7 +47,7 @@ export interface TranslationSet {
   settings_users: string;
   settings_notifications: string;
   settings_logs: string;
-  settings_integrations: string; // New
+  // settings_integrations: string; // Reverted
 
   // Page Titles and Subtitles
   page_title_dashboard: string;
@@ -98,8 +98,8 @@ export interface TranslationSet {
   page_subtitle_settings_notifications: string;
   page_title_settings_logs: string;
   page_subtitle_settings_logs: string;
-  page_title_settings_integrations: string; // New
-  page_subtitle_settings_integrations: string; // New
+  // page_title_settings_integrations: string; // Reverted
+  // page_subtitle_settings_integrations: string; // Reverted
   page_title_profile: string;
   page_subtitle_profile: string;
 }
@@ -149,7 +149,7 @@ export const translations: Translations = {
     settings_users: 'User Management',
     settings_notifications: 'Notifications',
     settings_logs: 'System Logs',
-    settings_integrations: 'Integrations', // New
+    // settings_integrations: 'Integrations', // Reverted
 
     page_title_dashboard: 'Dashboard',
     page_subtitle_dashboard: 'Management Overview',
@@ -199,8 +199,8 @@ export const translations: Translations = {
     page_subtitle_settings_notifications: 'Alerts and notices',
     page_title_settings_logs: 'System Logs',
     page_subtitle_settings_logs: 'Activity and events',
-    page_title_settings_integrations: 'API Integrations', // New
-    page_subtitle_settings_integrations: 'Manage third-party API configurations', // New
+    // page_title_settings_integrations: 'API Integrations', // Reverted
+    // page_subtitle_settings_integrations: 'Manage third-party API configurations', // Reverted
     page_title_profile: 'User Profile',
     page_subtitle_profile: 'Manage your personal information',
   },
@@ -244,7 +244,7 @@ export const translations: Translations = {
     settings_users: 'Gestión de Usuarios',
     settings_notifications: 'Notificaciones',
     settings_logs: 'Registros del Sistema',
-    settings_integrations: 'Integraciones', // New
+    // settings_integrations: 'Integraciones', // Reverted
     
     page_title_dashboard: 'Panel de Control',
     page_subtitle_dashboard: 'Resumen de gestión',
@@ -294,8 +294,8 @@ export const translations: Translations = {
     page_subtitle_settings_notifications: 'Alertas y avisos',
     page_title_settings_logs: 'Registros del Sistema',
     page_subtitle_settings_logs: 'Actividad y eventos',
-    page_title_settings_integrations: 'Integraciones API', // New
-    page_subtitle_settings_integrations: 'Gestionar configuraciones de API de terceros', // New
+    // page_title_settings_integrations: 'Integraciones API', // Reverted
+    // page_subtitle_settings_integrations: 'Gestionar configuraciones de API de terceros', // Reverted
     page_title_profile: 'Perfil de Usuario',
     page_subtitle_profile: 'Gestiona tu información personal',
   }
@@ -321,3 +321,22 @@ export const getPageTitleInfo = (lang: string | null | undefined, path: string, 
 
   return { title, subtitle };
 };
+
+export interface NavSubItem {
+  labelKey: keyof TranslationSet;
+  href: string;
+  id: string;
+  icon?: React.ElementType; // Optional icon for sub-items
+}
+
+export interface NavModule {
+  categoryKey: keyof TranslationSet;
+  items: Array<{
+    icon: React.ElementType;
+    labelKey: keyof TranslationSet;
+    id: string;
+    href: string;
+    subItems?: NavSubItem[];
+    adminOnly?: boolean; // Optional flag for admin-only top-level items
+  }>;
+}

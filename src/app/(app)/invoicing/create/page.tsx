@@ -15,11 +15,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase/config';
 import { collection, getDocs, query, orderBy, addDoc, serverTimestamp, Timestamp, doc, runTransaction } from 'firebase/firestore';
-import { Loader2, Save, Send, Search, UserPlus } from 'lucide-react';
+import { Loader2, Save, Send, Search, UserPlus, AlertTriangle } from 'lucide-react'; // Added AlertTriangle
 import { QuickClientFormModal, type QuickClientFormData } from '@/components/invoicing/quick-client-form-modal';
 import { GeneratedInvoiceModal } from '@/components/invoicing/generated-invoice-modal';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'; // Added Alert components
 
 interface ClientForSelect {
   id: string;
@@ -35,7 +36,7 @@ interface GeneratedInvoiceData {
   documentType: 'factura' | 'boleta';
 }
 
-// const APIPERU_TOKEN = process.env.NEXT_PUBLIC_APIPERU_TOKEN; // Replaced by context
+const APIPERU_TOKEN = process.env.NEXT_PUBLIC_APIPERU_TOKEN;
 
 const invoiceSchema = z.object({
   clientId: z.string().min(1, "Debes seleccionar un cliente."),
@@ -84,23 +85,19 @@ const padNumber = (num: number, size: number): string => {
 
 export default function CreateInvoicePage() {
   const { toast } = useToast();
-  const { user: currentUser, apiPeruConfig } = useAuth(); // Use apiPeruConfig from context
+  const { user: currentUser } = useAuth(); 
   const router = useRouter();
   const [clients, setClients] = useState<ClientForSelect[]>([]);
   const [isLoadingClients, setIsLoadingClients] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSearchingRuc, setIsSearchingRuc] = useState(false);
   const [isSearchingDni, setIsSearchingDni] = useState(false);
-  // const [apiTokenMissing, setApiTokenMissing] = useState(false); // Replaced by apiPeruConfig check
+  const [apiTokenMissing, setApiTokenMissing] = useState(false); 
   const [isQuickClientModalOpen, setIsQuickClientModalOpen] = useState(false);
   const [quickClientPrefill, setQuickClientPrefill] = useState<Partial<QuickClientFormData> | undefined>(undefined);
 
   const [isGeneratedModalOpen, setIsGeneratedModalOpen] = useState(false);
   const [generatedInvoiceData, setGeneratedInvoiceData] = useState<GeneratedInvoiceData | null>(null);
-
-  const APIPERU_TOKEN = apiPeruConfig?.apiToken; // Get token from context
-  const apiTokenMissing = !APIPERU_TOKEN;
-
 
   const form = useForm<InvoiceFormData>({
     resolver: zodResolver(invoiceSchema),
@@ -121,16 +118,20 @@ export default function CreateInvoicePage() {
   const rucValue = form.watch("ruc");
   const dniValue = form.watch("dni");
 
- useEffect(() => {
-    if (!apiPeruConfig?.apiToken && apiPeruConfig !== null) { // Check if config is loaded but token is missing
+  useEffect(() => {
+    if (!APIPERU_TOKEN || APIPERU_TOKEN.includes("YOUR_") || APIPERU_TOKEN.trim() === "") {
+      setApiTokenMissing(true);
       toast({
-        title: "Configuración Requerida",
-        description: "El token para APIPeru no está configurado en el sistema. La búsqueda de RUC/DNI y la creación de clientes están deshabilitadas. Por favor, configure el token en Ajustes > Integraciones.",
+        title: "Configuración APIPeru Requerida",
+        description: "El token para APIPeru no está configurado en tus variables de entorno (.env.local). La búsqueda de RUC/DNI y creación de clientes con validación API están deshabilitadas. Por favor, configura NEXT_PUBLIC_APIPERU_TOKEN.",
         variant: "destructive",
-        duration: Infinity,
+        duration: Infinity, 
       });
+    } else {
+      setApiTokenMissing(false);
     }
-  }, [apiPeruConfig, toast]);
+  }, [toast]);
+
 
   const fetchClients = useCallback(async () => {
     setIsLoadingClients(true);
@@ -162,9 +163,10 @@ export default function CreateInvoicePage() {
   useEffect(() => {
     const subscription = form.watch((value, { name, type }) => {
       if (type !== 'change') return;
+      
+      const selectedClientId = value.clientId;
 
       if (name === 'clientId') {
-        const selectedClientId = value.clientId;
         if (selectedClientId) {
           const client = clients.find(c => c.id === selectedClientId);
           if (client) {
@@ -183,9 +185,9 @@ export default function CreateInvoicePage() {
             }
           }
         } else { 
-          form.setValue('documentType', undefined, { shouldValidate: true });
-          form.setValue('ruc', '', { shouldValidate: true });
-          form.setValue('dni', '', { shouldValidate: true });
+            form.setValue('documentType', undefined, { shouldValidate: true });
+            form.setValue('ruc', '', { shouldValidate: true });
+            form.setValue('dni', '', { shouldValidate: true });
         }
       } else if (name === 'documentType') {
         const newDocumentType = value.documentType;
@@ -193,9 +195,9 @@ export default function CreateInvoicePage() {
           form.setValue('dni', '', { shouldValidate: true });
         } else if (newDocumentType === 'boleta') {
           form.setValue('ruc', '', { shouldValidate: true });
-        } else { 
-          form.setValue('ruc', '', { shouldValidate: true });
-          form.setValue('dni', '', { shouldValidate: true });
+        } else if (newDocumentType === undefined && !selectedClientId){ // Only clear RUC/DNI if type is cleared AND no client is selected
+            form.setValue('ruc', '', { shouldValidate: true });
+            form.setValue('dni', '', { shouldValidate: true });
         }
       }
     });
@@ -232,7 +234,7 @@ export default function CreateInvoicePage() {
 
   const handleFormSubmit: SubmitHandler<InvoiceFormData> = async (data, event) => {
     if (apiTokenMissing && (data.documentType === 'factura' || data.documentType === 'boleta')) {
-      toast({ title: "Operación Bloqueada", description: "No se pueden crear comprobantes con RUC/DNI hasta que se configure el token de APIPeru en Ajustes > Integraciones.", variant: "destructive", duration: 7000 });
+      toast({ title: "Operación Bloqueada", description: "No se pueden crear comprobantes con RUC/DNI hasta que se configure el token de APIPeru en .env.local.", variant: "destructive", duration: 7000 });
       return;
     }
     setIsSubmitting(true);
@@ -289,7 +291,7 @@ export default function CreateInvoicePage() {
 
   const handleSearchApi = async (type: 'ruc' | 'dni', value: string | undefined) => {
     if (apiTokenMissing) {
-        toast({ title: "Token Requerido", description: "Configure el token de APIPeru en Ajustes > Integraciones.", variant: "destructive"});
+        toast({ title: "Token APIPeru Faltante", description: "La búsqueda está deshabilitada. Configure NEXT_PUBLIC_APIPERU_TOKEN en .env.local.", variant: "destructive"});
         return;
     }
     if (!value || (type === 'ruc' && value.length !== 11) || (type === 'dni' && value.length !== 8)) {
@@ -347,8 +349,8 @@ export default function CreateInvoicePage() {
   };
   
   const handleAddClientClick = () => {
-    if (apiTokenMissing) {
-        toast({ title: "Token Requerido", description: "La creación de clientes está deshabilitada hasta que se configure el token de APIPeru en Ajustes > Integraciones.", variant: "destructive" });
+    if (apiTokenMissing) { // Check if token is missing for creating clients too (as API might be used within that flow)
+        toast({ title: "Token APIPeru Faltante", description: "La creación de clientes está deshabilitada. Configure NEXT_PUBLIC_APIPERU_TOKEN en .env.local.", variant: "destructive" });
         return;
     }
     setIsQuickClientModalOpen(true);
@@ -366,9 +368,9 @@ export default function CreateInvoicePage() {
     
     form.setValue('clientId', clientId, { shouldValidate: true }); 
 
-    if (clientDocType === 'ruc' && clientDocNumber && documentTypeFormValue === 'factura') {
+    if (clientDocType === 'ruc' && clientDocNumber && form.getValues('documentType') === 'factura') {
         form.setValue('ruc', clientDocNumber, {shouldValidate: true});
-    } else if (clientDocType === 'dni' && clientDocNumber && documentTypeFormValue === 'boleta') {
+    } else if (clientDocType === 'dni' && clientDocNumber && form.getValues('documentType') === 'boleta') {
         form.setValue('dni', clientDocNumber, {shouldValidate: true});
     }
 
@@ -390,6 +392,16 @@ export default function CreateInvoicePage() {
 
   return (
     <div className="space-y-6">
+       {apiTokenMissing && (
+         <Alert variant="destructive" className="bg-destructive/10 border-destructive/30 text-destructive">
+           <AlertTriangle className="h-5 w-5 text-destructive" />
+           <AlertTitle>Token de APIPeru Faltante</AlertTitle>
+           <AlertDescription>
+             La funcionalidad de búsqueda de RUC/DNI está deshabilitada. Por favor, configure la variable
+             `NEXT_PUBLIC_APIPERU_TOKEN` en su archivo `.env.local` y reinicie el servidor.
+           </AlertDescription>
+         </Alert>
+       )}
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleFormSubmit)}>
           <Card className="bg-card text-card-foreground border-border">
@@ -621,4 +633,3 @@ export default function CreateInvoicePage() {
     
 
     
-

@@ -20,10 +20,10 @@ import {
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Search } from 'lucide-react';
-import { useAuth } from '@/contexts/auth-context'; // Import useAuth
+import { Loader2, Search, AlertTriangle } from 'lucide-react'; // Added AlertTriangle
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'; // Added Alert components
 
-// const APIPERU_TOKEN = process.env.NEXT_PUBLIC_APIPERU_TOKEN; // Replaced by context
+const APIPERU_TOKEN = process.env.NEXT_PUBLIC_APIPERU_TOKEN;
 
 const clientSchema = z.object({
   name: z.string().min(2, { message: "Client name must be at least 2 characters." }),
@@ -85,13 +85,9 @@ const documentTypes = [
 
 export function ClientFormModal({ isOpen, onClose, onSubmit, clientData }: ClientFormModalProps) {
   const { toast } = useToast();
-  const { apiPeruConfig } = useAuth(); // Use apiPeruConfig from context
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
   const [isSearchingApi, setIsSearchingApi] = useState(false);
-  // const [apiTokenMissing, setApiTokenMissing] = useState(false); // Replaced by apiPeruConfig check
-
-  const APIPERU_TOKEN = apiPeruConfig?.apiToken;
-  const apiTokenMissing = !APIPERU_TOKEN;
+  const [apiTokenMissing, setApiTokenMissing] = useState(false);
 
   const form = useForm<ClientFormData>({
     resolver: zodResolver(clientSchema),
@@ -112,15 +108,20 @@ export function ClientFormModal({ isOpen, onClose, onSubmit, clientData }: Clien
   const watchedDocumentNumber = form.watch("documentNumber");
 
   useEffect(() => {
-    if (!apiPeruConfig?.apiToken && apiPeruConfig !== null && isOpen) { // Check if config is loaded but token is missing, and modal is open
-      toast({
-        title: "Token APIPeru Faltante",
-        description: "La búsqueda de RUC/DNI está deshabilitada. Configure el token en Ajustes > Integraciones.",
-        variant: "destructive",
-        duration: 7000,
-      });
+    if (!APIPERU_TOKEN || APIPERU_TOKEN.includes("YOUR_") || APIPERU_TOKEN.trim() === "") {
+      setApiTokenMissing(true);
+      if (isOpen) { // Only show toast if modal is open to avoid spamming
+        toast({
+          title: "Token APIPeru Faltante",
+          description: "La búsqueda de RUC/DNI está deshabilitada. Configure NEXT_PUBLIC_APIPERU_TOKEN en .env.local.",
+          variant: "destructive",
+          duration: 7000,
+        });
+      }
+    } else {
+      setApiTokenMissing(false);
     }
-  }, [apiPeruConfig, toast, isOpen]);
+  }, [toast, isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -142,7 +143,7 @@ export function ClientFormModal({ isOpen, onClose, onSubmit, clientData }: Clien
 
   const handleSearchDocumentApi = async () => {
     if (apiTokenMissing) {
-        toast({ title: "Token Requerido", description: "Configure el token de APIPeru en Ajustes > Integraciones.", variant: "destructive"});
+        toast({ title: "Token APIPeru Faltante", description: "La búsqueda está deshabilitada. Configure NEXT_PUBLIC_APIPERU_TOKEN en .env.local.", variant: "destructive"});
         return;
     }
     const docType = form.getValues("documentType");
@@ -213,6 +214,15 @@ export function ClientFormModal({ isOpen, onClose, onSubmit, clientData }: Clien
             {clientData ? 'Update the details of the client.' : 'Fill in the details for the new client.'}
           </DialogDescription>
         </DialogHeader>
+        {apiTokenMissing && isOpen && ( // Show alert inside the modal if token is missing and modal is open
+          <Alert variant="destructive" className="my-4 bg-destructive/10 border-destructive/30 text-destructive">
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+            <AlertTitle>Token de APIPeru no configurado</AlertTitle>
+            <AlertDescription>
+              La búsqueda de RUC/DNI está deshabilitada. Por favor, configure `NEXT_PUBLIC_APIPERU_TOKEN` en su archivo `.env.local`.
+            </AlertDescription>
+          </Alert>
+        )}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
             <FormField

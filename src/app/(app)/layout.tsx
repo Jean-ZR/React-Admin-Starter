@@ -20,7 +20,7 @@ import {
   AlertTriangle,
   ChevronUp,
   FileText as FileTextIcon, 
-  Share2 // New icon for Integrations
+  // Share2 // Reverted: Removed Share2 icon
 } from 'lucide-react';
 import {
   Accordion,
@@ -120,7 +120,7 @@ const getNavigationModules = (lang: string | null | undefined): NavModule[] => [
             { labelKey: 'settings_account', href: '/settings/account', id: 'settings-account' },
             { labelKey: 'settings_users', href: '/settings/users', id: 'settings-users' },
             { labelKey: 'settings_notifications', href: '/settings/notifications', id: 'settings-notifications' },
-            { labelKey: 'settings_integrations', href: '/settings/integrations', id: 'settings-integrations' }, // New
+            // { labelKey: 'settings_integrations', href: '/settings/integrations', id: 'settings-integrations' }, // Reverted
             { labelKey: 'settings_logs', href: '/settings/logs', id: 'settings-logs' },
         ]
       },

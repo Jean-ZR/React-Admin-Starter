@@ -19,8 +19,7 @@ import {
   LogOut,
   AlertTriangle,
   ChevronUp,
-  FileText as FileTextIcon, 
-  // Share2 // Reverted: Removed Share2 icon
+  FileText as FileTextIcon,
 } from 'lucide-react';
 import {
   Accordion,
@@ -120,7 +119,6 @@ const getNavigationModules = (lang: string | null | undefined): NavModule[] => [
             { labelKey: 'settings_account', href: '/settings/account', id: 'settings-account' },
             { labelKey: 'settings_users', href: '/settings/users', id: 'settings-users' },
             { labelKey: 'settings_notifications', href: '/settings/notifications', id: 'settings-notifications' },
-            // { labelKey: 'settings_integrations', href: '/settings/integrations', id: 'settings-integrations' }, // Reverted
             { labelKey: 'settings_logs', href: '/settings/logs', id: 'settings-logs' },
         ]
       },
@@ -153,19 +151,21 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                 const matchingSubItem = item.subItems.find(sub => pathname === sub.href || pathname.startsWith(sub.href + "/"));
                 if (matchingSubItem) {
                     newActiveSubId = matchingSubItem.id;
-                    newActiveAccordionId = item.id;
+                    newActiveAccordionId = item.id; // This is an accordion item
                     itemFound = true;
                     break;
                 } else if (pathname === item.href || pathname.startsWith(item.href + "/")) {
+                    // Parent of accordion group matched, select first subitem and open accordion
                     newActiveSubId = item.subItems[0].id; 
                     newActiveAccordionId = item.id;
                     itemFound = true;
                     break;
                 }
             } else {
+                // This is a direct link, not an accordion
                 if (pathname === item.href || pathname.startsWith(item.href + "/")) {
                     newActiveSubId = item.id;
-                    newActiveAccordionId = undefined; 
+                    newActiveAccordionId = undefined; // Not an accordion
                     itemFound = true;
                     break;
                 }
@@ -176,12 +176,18 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
     if (!itemFound && (pathname === '/dashboard' || pathname === '/')) {
         newActiveSubId = 'dashboard';
         newActiveAccordionId = undefined;
+        itemFound = true; 
     }
 
     setActiveSubItemId(newActiveSubId);
     
-    if (newActiveAccordionId !== activeAccordionValue) {
+    if (itemFound) {
+      if (newActiveAccordionId !== activeAccordionValue) {
         setActiveAccordionValue(newActiveAccordionId);
+      }
+    } else if (activeAccordionValue !== undefined) {
+      // If no item was found but an accordion was open, close it
+      setActiveAccordionValue(undefined);
     }
 
   }, [pathname, navigationModules, activeAccordionValue]); 
@@ -286,6 +292,10 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                                 ? 'text-sidebar-primary font-medium bg-sidebar-accent/60'
                                 : 'text-sidebar-foreground hover:text-sidebar-primary hover:bg-sidebar-accent/30'}
                             `}
+                             onClick={() => {
+                                setActiveSubItemId(subItem.id);
+                                // No need to set activeAccordionValue here, it's handled by Accordion's onValueChange or useEffect
+                            }}
                           >
                             {getTranslation(languagePreference, subItem.labelKey)}
                           </Link>
@@ -303,13 +313,12 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                           : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}
                       `}
                       onClick={() => {
-                        if (activeAccordionValue !== undefined) setActiveAccordionValue(undefined); 
+                        setActiveAccordionValue(undefined); // Close accordion if a non-accordion item is clicked
                         setActiveSubItemId(item.id);
                       }}
                     >
                       <item.icon className={`mr-3 ${activeSubItemId === item.id ? 'text-sidebar-accent-foreground' : 'text-muted-foreground group-hover:text-sidebar-foreground'}`} size={20} />
                       <span className="flex-1">{getTranslation(languagePreference, item.labelKey)}</span>
-                      
                     </Link>
                   )
                 ))}
@@ -322,7 +331,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
               <DropdownMenuTrigger asChild>
                 <div className="flex items-center p-2 rounded-lg hover:bg-sidebar-accent/50 cursor-pointer group">
                     <Avatar className="h-10 w-10 mr-3">
-                       <AvatarImage src={user?.photoURL || undefined} alt={displayName || user?.email || "User"} data-ai-hint="person avatar"/>
+                       <AvatarImage src={user?.photoURL || undefined} alt={displayName || user?.email || "User"} data-ai-hint="person avatar" />
                        <AvatarFallback className="bg-sidebar-primary/20 text-sidebar-primary font-semibold">
                          {getInitials(displayName, user?.email)}
                        </AvatarFallback>
@@ -389,3 +398,4 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return <AppLayoutContent>{children}</AppLayoutContent>;
 }
 
+    

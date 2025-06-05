@@ -100,7 +100,7 @@ const padNumber = (num: number, size: number): string => {
 
 export default function CreateInvoicePage() {
   const { toast } = useToast();
-  const { user: currentUser } = useAuth(); 
+  const { user: currentUser, isFirebaseConfigured } = useAuth(); 
   const router = useRouter();
   
   const [clients, setClients] = useState<ClientForSelect[]>([]);
@@ -114,7 +114,7 @@ export default function CreateInvoicePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSearchingRuc, setIsSearchingRuc] = useState(false);
   const [isSearchingDni, setIsSearchingDni] = useState(false);
-  const [apiTokenMissing, setApiTokenMissing] = useState(false); 
+  const [backendConfigIssue, setBackendConfigIssue] = useState(false); 
   
   const [isQuickClientModalOpen, setIsQuickClientModalOpen] = useState(false);
   const [quickClientPrefill, setQuickClientPrefill] = useState<Partial<QuickClientFormData> | undefined>(undefined);
@@ -146,20 +146,36 @@ export default function CreateInvoicePage() {
   const dniValue = form.watch("dni");
 
   useEffect(() => {
+    if (!isFirebaseConfigured) {
+        setBackendConfigIssue(true);
+        toast({
+            title: "Configuración de Backend Requerida",
+            description: "La funcionalidad completa de facturación (incluyendo carga de datos) está limitada hasta que Firebase esté correctamente configurado.",
+            variant: "destructive",
+            duration: Infinity,
+        });
+    } else {
+        setBackendConfigIssue(false);
+    }
+    
     if (!APIPERU_TOKEN || APIPERU_TOKEN.includes("YOUR_") || APIPERU_TOKEN.trim() === "") {
-      setApiTokenMissing(true);
+      setBackendConfigIssue(true); // Also use this state for API token issues for simplicity of alert
       toast({
         title: "Configuración APIPeru Requerida",
         description: "El token para APIPeru no está configurado. La búsqueda de RUC/DNI y validación están deshabilitadas.",
         variant: "destructive",
         duration: Infinity, 
       });
-    } else {
-      setApiTokenMissing(false);
+    } else if (isFirebaseConfigured) { // Only reset if firebase is ok
+        setBackendConfigIssue(false);
     }
-  }, [toast]);
+  }, [toast, isFirebaseConfigured]);
 
   const fetchClientsCb = useCallback(async () => {
+    if (!isFirebaseConfigured) {
+        setIsLoadingClients(false);
+        return;
+    }
     setIsLoadingClients(true);
     try {
       const clientsQuery = query(collection(db, 'clients'), orderBy('name'));
@@ -176,9 +192,13 @@ export default function CreateInvoicePage() {
     } finally {
       setIsLoadingClients(false);
     }
-  }, [toast]);
+  }, [toast, isFirebaseConfigured]);
 
   const fetchEstablishmentsCb = useCallback(async () => {
+    if (!isFirebaseConfigured) {
+        setIsLoadingEstablishments(false);
+        return;
+    }
     setIsLoadingEstablishments(true);
     try {
       const estQuery = query(collection(db, 'establishments'), orderBy('isMain', 'desc'), orderBy('code'));
@@ -190,20 +210,28 @@ export default function CreateInvoicePage() {
       }));
       setEstablishments(fetchedEstablishments);
       if (fetchedEstablishments.length > 0) {
-        // Pre-select the first one (usually the main one)
         form.setValue('establishmentId', fetchedEstablishments[0].id, { shouldValidate: true });
+      } else {
+        toast({
+            title: "Acción Requerida",
+            description: "No se encontraron establecimientos. Por favor, crea al menos un establecimiento en la configuración.",
+            variant: "destructive",
+            duration: 7000
+        });
       }
     } catch (error) {
       toast({ title: "Error", description: "No se pudieron cargar los establecimientos.", variant: "destructive" });
     } finally {
       setIsLoadingEstablishments(false);
     }
-  }, [toast, form]);
+  }, [toast, form, isFirebaseConfigured]);
 
   useEffect(() => {
-    fetchClientsCb();
-    fetchEstablishmentsCb();
-  }, [fetchClientsCb, fetchEstablishmentsCb]);
+    if (isFirebaseConfigured) {
+        fetchClientsCb();
+        fetchEstablishmentsCb();
+    }
+  }, [fetchClientsCb, fetchEstablishmentsCb, isFirebaseConfigured]);
 
   useEffect(() => {
     const selectedClientId = watchedClientId;
@@ -219,69 +247,67 @@ export default function CreateInvoicePage() {
           form.setValue('dni', client.documentNumber, { shouldValidate: true });
           form.setValue('ruc', '', { shouldValidate: true });
         } else {
-          // Keep current documentType or let user choose, but clear specific doc numbers
-          // form.setValue('documentType', undefined); // Or keep if already set by user
           form.setValue('ruc', '', { shouldValidate: true });
           form.setValue('dni', '', { shouldValidate: true });
         }
       }
-    } else { // No client selected
-        // Don't clear documentType if it was manually set by user, but clear RUC/DNI
+    } else { 
         form.setValue('ruc', '', { shouldValidate: true });
         form.setValue('dni', '', { shouldValidate: true });
     }
   }, [watchedClientId, clients, form]);
   
   useEffect(() => {
-    // This effect is for when documentType is changed manually by user or by client selection
     const currentDocType = watchedDocumentType;
     if (currentDocType === 'factura') {
-      form.setValue('dni', '', { shouldValidate: true }); // Clear DNI if Factura
+      form.setValue('dni', '', { shouldValidate: true }); 
     } else if (currentDocType === 'boleta') {
-      form.setValue('ruc', '', { shouldValidate: true }); // Clear RUC if Boleta
+      form.setValue('ruc', '', { shouldValidate: true }); 
     }
   }, [watchedDocumentType, form]);
 
 
   useEffect(() => {
     const fetchSeriesForEstablishment = async () => {
-      if (watchedEstablishmentId && watchedDocumentType) {
-        setIsLoadingSeries(true);
-        setAvailableSeries([]); // Clear previous series
-        form.setValue('seriesId', '', {shouldValidate: true}); // Clear selected series
-        try {
-          const seriesQuery = query(
-            collection(db, 'documentSeries'),
-            where('establishmentId', '==', watchedEstablishmentId),
-            where('documentType', '==', watchedDocumentType),
-            orderBy('isDefault', 'desc'), // Show default first
-            orderBy('seriesNumber', 'asc')
-          );
-          const querySnapshot = await getDocs(seriesQuery);
-          const fetchedSeries = querySnapshot.docs.map(doc => doc.data() as SeriesForSelect);
-          setAvailableSeries(fetchedSeries);
-
-          if (fetchedSeries.length > 0) {
-            const defaultSeries = fetchedSeries.find(s => s.isDefault) || fetchedSeries[0];
-            form.setValue('seriesId', defaultSeries.id, { shouldValidate: true });
-          } else {
-             toast({ title: "Sin Series", description: `No hay series de tipo '${watchedDocumentType}' para este establecimiento.`, variant: "destructive", duration: 5000 });
-          }
-        } catch (error) {
-          toast({ title: "Error Series", description: "No se pudieron cargar las series.", variant: "destructive" });
-        } finally {
-          setIsLoadingSeries(false);
-        }
-      } else {
+      if (!isFirebaseConfigured || !watchedEstablishmentId || !watchedDocumentType) {
         setAvailableSeries([]);
         form.setValue('seriesId', '', {shouldValidate: true});
+        setIsLoadingSeries(false);
+        return;
+      }
+      setIsLoadingSeries(true);
+      setAvailableSeries([]); 
+      form.setValue('seriesId', '', {shouldValidate: true}); 
+      try {
+        const seriesQuery = query(
+          collection(db, 'documentSeries'),
+          where('establishmentId', '==', watchedEstablishmentId),
+          where('documentType', '==', watchedDocumentType),
+          orderBy('isDefault', 'desc'), 
+          orderBy('seriesNumber', 'asc')
+        );
+        const querySnapshot = await getDocs(seriesQuery);
+        const fetchedSeries = querySnapshot.docs.map(doc => doc.data() as SeriesForSelect);
+        setAvailableSeries(fetchedSeries);
+
+        if (fetchedSeries.length > 0) {
+          const defaultSeries = fetchedSeries.find(s => s.isDefault) || fetchedSeries[0];
+          form.setValue('seriesId', defaultSeries.id, { shouldValidate: true });
+        } else {
+            toast({ title: "Sin Series", description: `No hay series de tipo '${watchedDocumentType}' para este establecimiento.`, variant: "destructive", duration: 5000 });
+        }
+      } catch (error) {
+        toast({ title: "Error Series", description: "No se pudieron cargar las series.", variant: "destructive" });
+      } finally {
+        setIsLoadingSeries(false);
       }
     };
     fetchSeriesForEstablishment();
-  }, [watchedEstablishmentId, watchedDocumentType, form, toast]);
+  }, [watchedEstablishmentId, watchedDocumentType, form, toast, isFirebaseConfigured]);
 
 
   const getNextInvoiceNumber = async (seriesDocId: string): Promise<{ fullInvoiceNumber: string, sequence: number, seriesPrefix: string }> => {
+    if (!isFirebaseConfigured) throw new Error("Firebase no configurado.");
     const seriesRef = doc(db, "documentSeries", seriesDocId);
     try {
       const result = await runTransaction(db, async (transaction) => {
@@ -292,7 +318,7 @@ export default function CreateInvoicePage() {
         const seriesData = seriesSnap.data();
         const currentLastNumber = seriesData.currentCorrelative || 0;
         const newSequence = currentLastNumber + 1;
-        const seriesPrefix = seriesData.seriesNumber; // e.g., "F001"
+        const seriesPrefix = seriesData.seriesNumber; 
         
         transaction.update(seriesRef, { currentCorrelative: newSequence, updatedAt: serverTimestamp() });
         
@@ -312,8 +338,8 @@ export default function CreateInvoicePage() {
 
 
   const handleFormSubmit: SubmitHandler<InvoiceFormData> = async (data, event) => {
-    if (apiTokenMissing && (data.documentType === 'factura' || data.documentType === 'boleta')) {
-      toast({ title: "Operación Bloqueada", description: "Configure el token de APIPeru.", variant: "destructive", duration: 7000 });
+    if (backendConfigIssue) { // Check if there is any backend config issue (Firebase or APIPeru token)
+      toast({ title: "Operación Bloqueada", description: "Resuelve los problemas de configuración de backend.", variant: "destructive", duration: 7000 });
       return;
     }
     setIsSubmitting(true);
@@ -336,7 +362,7 @@ export default function CreateInvoicePage() {
           sequenceNumber: sequence,
           seriesUsed: seriesPrefix,
           establishmentId: data.establishmentId,
-          establishmentInfo: { code: selectedEstablishment.code, tradeName: selectedEstablishment.tradeName }, // Denormalize
+          establishmentInfo: { code: selectedEstablishment.code, tradeName: selectedEstablishment.tradeName }, 
           seriesId: data.seriesId,
           clientId: selectedClient.id,
           clientName: selectedClient.name,
@@ -365,7 +391,7 @@ export default function CreateInvoicePage() {
         setIsGeneratedModalOpen(true);
 
     } catch (error) {
-      if (!toast.toasts.find(t => t.title === "Error Correlativo")) { // Avoid double toast for correlative error
+      if (!toast.toasts.find(t => t.title === "Error Correlativo")) { 
           toast({ title: "Error", description: "No se pudo guardar el comprobante.", variant: "destructive" });
       }
     } finally {
@@ -374,10 +400,15 @@ export default function CreateInvoicePage() {
   };
 
   const handleSearchApi = async (type: 'ruc' | 'dni', value: string | undefined) => {
-    if (apiTokenMissing) {
+    if (backendConfigIssue) { // Check general backend config issue first
+        toast({ title: "Configuración Incompleta", description: "Resuelve los problemas de configuración del backend antes de buscar.", variant: "destructive"});
+        return;
+    }
+    if (!APIPERU_TOKEN || APIPERU_TOKEN.includes("YOUR_") || APIPERU_TOKEN.trim() === "") { // Specific check for APIPeru token
         toast({ title: "Token APIPeru Faltante", description: "Configure NEXT_PUBLIC_APIPERU_TOKEN.", variant: "destructive"});
         return;
     }
+
     if (!value || (type === 'ruc' && value.length !== 11) || (type === 'dni' && value.length !== 8)) {
         toast({ title: "Entrada Inválida", description: `Ingresa un ${type.toUpperCase()} válido.`, variant: "destructive"});
         return;
@@ -422,8 +453,8 @@ export default function CreateInvoicePage() {
   };
   
   const handleAddClientClick = () => {
-    if (apiTokenMissing) {
-        toast({ title: "Token APIPeru Faltante", description: "Configure NEXT_PUBLIC_APIPERU_TOKEN.", variant: "destructive" });
+    if (backendConfigIssue) {
+        toast({ title: "Configuración Requerida", description: "Asegúrate que Firebase y el token APIPeru estén configurados.", variant: "destructive" });
         return;
     }
     setIsQuickClientModalOpen(true);
@@ -441,10 +472,9 @@ export default function CreateInvoicePage() {
   
   const handleModalNewInvoice = () => {
     form.reset();
-    setAvailableSeries([]); // Reset series dropdown
+    setAvailableSeries([]); 
     setGeneratedInvoiceData(null);
     setIsGeneratedModalOpen(false);
-    // Optionally re-select default establishment if any
     if (establishments.length > 0) {
         form.setValue('establishmentId', establishments[0].id, { shouldValidate: true });
     }
@@ -458,11 +488,11 @@ export default function CreateInvoicePage() {
 
   return (
     <div className="space-y-6">
-       {apiTokenMissing && (
+       {backendConfigIssue && (
          <Alert variant="destructive" className="bg-destructive/10 border-destructive/30 text-destructive">
            <AlertTriangle className="h-5 w-5 text-destructive" />
-           <AlertTitle>Token de APIPeru Faltante</AlertTitle>
-           <AlertDescription>Funcionalidad limitada. Configure `NEXT_PUBLIC_APIPERU_TOKEN`.</AlertDescription>
+           <AlertTitle>Configuración de Backend Incompleta</AlertTitle>
+           <AlertDescription>Algunas funcionalidades pueden estar limitadas. Verifica la configuración de Firebase y el token de APIPeru.</AlertDescription>
          </Alert>
        )}
       <Form {...form}>
@@ -481,10 +511,10 @@ export default function CreateInvoicePage() {
                     <FormItem>
                       <FormLabel>Cliente *</FormLabel>
                        <div className="flex items-center gap-2">
-                          <Select onValueChange={field.onChange} value={field.value || ''} disabled={isLoadingClients}>
+                          <Select onValueChange={field.onChange} value={field.value || ''} disabled={isLoadingClients || backendConfigIssue}>
                             <FormControl>
                               <SelectTrigger className="bg-background border-input flex-1">
-                                <SelectValue placeholder={isLoadingClients ? "Cargando..." : "Seleccionar cliente"} />
+                                <SelectValue placeholder={isLoadingClients ? "Cargando clientes..." : (clients.length === 0 ? "No hay clientes disponibles" : "Seleccionar cliente")} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent className="bg-popover text-popover-foreground border-border">
@@ -492,7 +522,7 @@ export default function CreateInvoicePage() {
                               {clients.map(client => ( <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem> ))}
                             </SelectContent>
                           </Select>
-                          <Button type="button" variant="outline" size="icon" onClick={handleAddClientClick} className="shrink-0 border-input" disabled={apiTokenMissing}>
+                          <Button type="button" variant="outline" size="icon" onClick={handleAddClientClick} className="shrink-0 border-input" disabled={backendConfigIssue}>
                             <UserPlus className="h-4 w-4" /><span className="sr-only">Añadir Cliente</span>
                           </Button>
                        </div>
@@ -506,10 +536,10 @@ export default function CreateInvoicePage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Establecimiento Emisor *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || ''} disabled={isLoadingEstablishments}>
+                      <Select onValueChange={field.onChange} value={field.value || ''} disabled={isLoadingEstablishments || backendConfigIssue || establishments.length === 0}>
                         <FormControl>
                           <SelectTrigger className="bg-background border-input">
-                            <SelectValue placeholder={isLoadingEstablishments ? "Cargando..." : "Seleccionar establecimiento"} />
+                            <SelectValue placeholder={isLoadingEstablishments ? "Cargando establecimientos..." : (establishments.length === 0 ? "No hay establecimientos" : "Seleccionar establecimiento")} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent className="bg-popover text-popover-foreground border-border">
@@ -530,7 +560,7 @@ export default function CreateInvoicePage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tipo de Comprobante *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || ''}>
+                      <Select onValueChange={field.onChange} value={field.value || ''} disabled={backendConfigIssue}>
                         <FormControl>
                           <SelectTrigger className="bg-background border-input">
                             <SelectValue placeholder="Seleccionar tipo" />
@@ -554,7 +584,7 @@ export default function CreateInvoicePage() {
                       <Select 
                         onValueChange={field.onChange} 
                         value={field.value || ''} 
-                        disabled={isLoadingSeries || !watchedEstablishmentId || !watchedDocumentType || availableSeries.length === 0}
+                        disabled={isLoadingSeries || !watchedEstablishmentId || !watchedDocumentType || availableSeries.length === 0 || backendConfigIssue}
                       >
                         <FormControl>
                           <SelectTrigger className="bg-background border-input">
@@ -562,6 +592,7 @@ export default function CreateInvoicePage() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent className="bg-popover text-popover-foreground border-border">
+                           {!isLoadingSeries && availableSeries.length === 0 && <SelectItem value="no-series" disabled>No hay series</SelectItem>}
                           {availableSeries.map(series => ( <SelectItem key={series.id} value={series.id}>{series.seriesNumber}</SelectItem> ))}
                         </SelectContent>
                       </Select>
@@ -576,8 +607,8 @@ export default function CreateInvoicePage() {
                     <FormItem>
                       <FormLabel>RUC (11 dígitos) *</FormLabel>
                       <div className="flex items-center gap-2">
-                        <FormControl><Input placeholder="Ingrese RUC" {...field} value={field.value || ''} className="bg-background border-input flex-1" maxLength={11} /></FormControl>
-                        <Button type="button" variant="outline" size="icon" onClick={() => handleSearchApi('ruc', rucValue)} disabled={isSearchingRuc || !rucValue || rucValue.length !== 11 || apiTokenMissing} className="border-input">
+                        <FormControl><Input placeholder="Ingrese RUC" {...field} value={field.value || ''} className="bg-background border-input flex-1" maxLength={11} disabled={backendConfigIssue}/></FormControl>
+                        <Button type="button" variant="outline" size="icon" onClick={() => handleSearchApi('ruc', rucValue)} disabled={isSearchingRuc || !rucValue || rucValue.length !== 11 || backendConfigIssue} className="border-input">
                           {isSearchingRuc ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}<span className="sr-only">Buscar RUC</span>
                         </Button>
                       </div><FormMessage />
@@ -589,8 +620,8 @@ export default function CreateInvoicePage() {
                     <FormItem>
                       <FormLabel>DNI (8 dígitos) *</FormLabel>
                        <div className="flex items-center gap-2">
-                          <FormControl><Input placeholder="Ingrese DNI" {...field} value={field.value || ''} className="bg-background border-input flex-1" maxLength={8} /></FormControl>
-                          <Button type="button" variant="outline" size="icon" onClick={() => handleSearchApi('dni', dniValue)} disabled={isSearchingDni || !dniValue || dniValue.length !== 8 || apiTokenMissing} className="border-input">
+                          <FormControl><Input placeholder="Ingrese DNI" {...field} value={field.value || ''} className="bg-background border-input flex-1" maxLength={8} disabled={backendConfigIssue}/></FormControl>
+                          <Button type="button" variant="outline" size="icon" onClick={() => handleSearchApi('dni', dniValue)} disabled={isSearchingDni || !dniValue || dniValue.length !== 8 || backendConfigIssue} className="border-input">
                             {isSearchingDni ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}<span className="sr-only">Buscar DNI</span>
                           </Button>
                        </div><FormMessage />
@@ -602,14 +633,14 @@ export default function CreateInvoicePage() {
                 <FormField control={form.control} name="issueDate" render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>Fecha de Emisión *</FormLabel>
-                      <DatePicker value={field.value} onSelect={field.onChange} className="bg-background border-input" />
+                      <DatePicker value={field.value} onSelect={field.onChange} className="bg-background border-input" disabled={backendConfigIssue}/>
                       <FormMessage />
                     </FormItem>)}
                 />
                 <FormField control={form.control} name="dueDate" render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>Fecha de Vencimiento *</FormLabel>
-                      <DatePicker value={field.value} onSelect={field.onChange} className="bg-background border-input" />
+                      <DatePicker value={field.value} onSelect={field.onChange} className="bg-background border-input" disabled={backendConfigIssue}/>
                       <FormMessage />
                     </FormItem>)}
                 />
@@ -617,7 +648,7 @@ export default function CreateInvoicePage() {
               <FormField control={form.control} name="itemsDescription" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Descripción de Ítems/Servicios *</FormLabel>
-                    <FormControl><Textarea placeholder="Detalle de los productos o servicios..." {...field} rows={4} className="bg-background border-input" /></FormControl>
+                    <FormControl><Textarea placeholder="Detalle de los productos o servicios..." {...field} rows={4} className="bg-background border-input" disabled={backendConfigIssue}/></FormControl>
                     <FormMessage />
                   </FormItem>)}
               />
@@ -625,25 +656,25 @@ export default function CreateInvoicePage() {
                 <FormField control={form.control} name="notes" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Notas Adicionales</FormLabel>
-                      <FormControl><Textarea placeholder="Términos de pago, etc." {...field} value={field.value || ''} rows={3} className="bg-background border-input"/></FormControl>
+                      <FormControl><Textarea placeholder="Términos de pago, etc." {...field} value={field.value || ''} rows={3} className="bg-background border-input" disabled={backendConfigIssue}/></FormControl>
                       <FormMessage />
                     </FormItem>)}
                 />
                 <FormField control={form.control} name="totalAmount" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Monto Total (S/) *</FormLabel>
-                      <FormControl><Input type="number" placeholder="0.00" step="0.01" {...field} value={field.value === null || field.value === undefined ? '' : String(field.value)} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} className="bg-background border-input" /></FormControl>
+                      <FormControl><Input type="number" placeholder="0.00" step="0.01" {...field} value={field.value === null || field.value === undefined ? '' : String(field.value)} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} className="bg-background border-input" disabled={backendConfigIssue}/></FormControl>
                       <FormMessage />
                     </FormItem>)}
                 />
               </div>
             </CardContent>
             <CardFooter className="flex justify-end gap-2 border-t border-border pt-6">
-              <Button type="button" variant="outline" onClick={() => form.reset()} disabled={isSubmitting || isSearchingRuc || isSearchingDni || (apiTokenMissing && (watchedDocumentType === "factura" || watchedDocumentType === "boleta"))} className="border-input">Limpiar</Button>
-              <Button type="submit" variant="secondary" name="saveDraft" disabled={isSubmitting || isLoadingSeries || isSearchingRuc || isSearchingDni || (apiTokenMissing && (watchedDocumentType === "factura" || watchedDocumentType === "boleta"))}>
+              <Button type="button" variant="outline" onClick={() => form.reset()} disabled={isSubmitting || isSearchingRuc || isSearchingDni || backendConfigIssue} className="border-input">Limpiar</Button>
+              <Button type="submit" variant="secondary" name="saveDraft" disabled={isSubmitting || isLoadingSeries || isSearchingRuc || isSearchingDni || backendConfigIssue}>
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Guardar Borrador
               </Button>
-              <Button type="submit" name="generateAndSend" disabled={isSubmitting || isLoadingSeries || isSearchingRuc || isSearchingDni || (apiTokenMissing && (watchedDocumentType === "factura" || watchedDocumentType === "boleta"))}>
+              <Button type="submit" name="generateAndSend" disabled={isSubmitting || isLoadingSeries || isSearchingRuc || isSearchingDni || backendConfigIssue}>
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}Generar y Enviar
               </Button>
             </CardFooter>

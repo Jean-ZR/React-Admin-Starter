@@ -47,7 +47,8 @@ export interface TranslationSet {
   settings_users: string;
   settings_notifications: string;
   settings_logs: string;
-  settings_establishments: string; // Nueva clave para Establecimientos
+  settings_establishments: string; 
+  settings_series: string; // Nueva clave para Series de Comprobantes
 
   page_title_dashboard: string;
   page_subtitle_dashboard: string;
@@ -97,8 +98,10 @@ export interface TranslationSet {
   page_subtitle_settings_notifications: string;
   page_title_settings_logs: string;
   page_subtitle_settings_logs: string;
-  page_title_settings_establishments: string; // Nueva clave para título de página de Establecimientos
-  page_subtitle_settings_establishments: string; // Nueva clave para subtítulo de página de Establecimientos
+  page_title_settings_establishments: string; 
+  page_subtitle_settings_establishments: string; 
+  page_title_settings_series: string; // Nueva clave para título de página de Series
+  page_subtitle_settings_series: string; // Nueva clave para subtítulo de página de Series
   page_title_profile: string;
   page_subtitle_profile: string;
 }
@@ -148,7 +151,8 @@ export const translations: Translations = {
     settings_users: 'User Management',
     settings_notifications: 'Notifications',
     settings_logs: 'System Logs',
-    settings_establishments: 'Establishments', // Traducción EN
+    settings_establishments: 'Establishments', 
+    settings_series: 'Document Series', // EN Translation for Series
 
     page_title_dashboard: 'Dashboard',
     page_subtitle_dashboard: 'Management Overview',
@@ -198,8 +202,10 @@ export const translations: Translations = {
     page_subtitle_settings_notifications: 'Alerts and notices',
     page_title_settings_logs: 'System Logs',
     page_subtitle_settings_logs: 'Activity and events',
-    page_title_settings_establishments: 'Establishment Management', // Traducción EN
-    page_subtitle_settings_establishments: 'Configure your company branches or points of sale', // Traducción EN
+    page_title_settings_establishments: 'Establishment Management', 
+    page_subtitle_settings_establishments: 'Configure your company branches or points of sale', 
+    page_title_settings_series: 'Document Series Management', // EN Translation for Series page title
+    page_subtitle_settings_series: 'Configure numbering series for your documents per establishment', // EN Translation for Series page subtitle
     page_title_profile: 'User Profile',
     page_subtitle_profile: 'Manage your personal information',
   },
@@ -243,8 +249,9 @@ export const translations: Translations = {
     settings_users: 'Gestión de Usuarios',
     settings_notifications: 'Notificaciones',
     settings_logs: 'Registros del Sistema',
-    settings_establishments: 'Establecimientos', // Traducción ES
-    
+    settings_establishments: 'Establecimientos', 
+    settings_series: 'Series de Comprobantes', // ES Translation for Series
+
     page_title_dashboard: 'Panel de Control',
     page_subtitle_dashboard: 'Resumen de gestión',
     page_title_assets_list: 'Lista de Activos',
@@ -293,8 +300,10 @@ export const translations: Translations = {
     page_subtitle_settings_notifications: 'Alertas y avisos',
     page_title_settings_logs: 'Registros del Sistema',
     page_subtitle_settings_logs: 'Actividad y eventos',
-    page_title_settings_establishments: 'Gestión de Establecimientos', // Traducción ES
-    page_subtitle_settings_establishments: 'Configura las sucursales o puntos de venta de tu empresa', // Traducción ES
+    page_title_settings_establishments: 'Gestión de Establecimientos', 
+    page_subtitle_settings_establishments: 'Configura las sucursales o puntos de venta de tu empresa', 
+    page_title_settings_series: 'Gestión de Series de Comprobantes', // ES Translation for Series page title
+    page_subtitle_settings_series: 'Configura las series de numeración para tus documentos por establecimiento', // ES Translation for Series page subtitle
     page_title_profile: 'Perfil de Usuario',
     page_subtitle_profile: 'Gestiona tu información personal',
   }
@@ -340,3 +349,4 @@ export interface NavModule {
   }>;
 }
 
+    

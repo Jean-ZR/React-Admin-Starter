@@ -35,7 +35,6 @@ import {
 } from 'firebase/firestore';
 import { SeriesFormModal, type SeriesFormData, type Series, type EstablishmentForSelect } from '@/components/settings/series-form-modal';
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
-// Removed format from date-fns as timestamps are not directly formatted in this table yet.
 
 export default function DocumentSeriesPage() {
   const { user: currentUser, role: currentUserRole, isFirebaseConfigured } = useAuth();
@@ -55,11 +54,11 @@ export default function DocumentSeriesPage() {
 
   const fetchEstablishments = useCallback(async () => {
     if (!isAdmin || !isFirebaseConfigured) {
-        // No need to fetch if not admin or firebase not configured
-        // isLoading for series will handle the display if this list is empty
-        setEstablishments([]); // Ensure it's empty if not fetched
-        return;
+      setEstablishments([]);
+      // setIsLoading(false); // isLoading will be handled by series fetch logic primarily
+      return;
     }
+    // setIsLoading(true); // Let initial state handle this, or series fetch can set initial true
     try {
       const estSnapshot = await getDocs(query(collection(db, 'establishments'), orderBy('code')));
       const estData = estSnapshot.docs.map(doc => ({
@@ -71,34 +70,37 @@ export default function DocumentSeriesPage() {
     } catch (error) {
       console.error("Error fetching establishments for series page:", error);
       toast({ title: "Error", description: "No se pudieron cargar los establecimientos de referencia.", variant: "destructive" });
-      setEstablishments([]); // Set to empty on error
-    }
+      setEstablishments([]);
+    } 
+    // setIsLoading(false); // Series fetch will handle overall loading state if needed
   }, [isAdmin, isFirebaseConfigured, toast]);
 
-
+  useEffect(() => {
+    fetchEstablishments();
+  }, [fetchEstablishments]);
+  
   const fetchSeries = useCallback(() => {
     if (!isAdmin || !isFirebaseConfigured) {
       setIsLoading(false);
-       if(isAdmin && !isFirebaseConfigured) {
-          toast({title: "Servicio No Disponible", description: "La gestión de series no está disponible ya que Firebase no está configurado.", variant: "destructive"});
-      } else if (!isAdmin && isFirebaseConfigured) {
-          toast({title: "Acceso Denegado", description: "No tienes permiso para ver las series.", variant: "destructive"});
-      }
       setSeriesList([]);
       return () => {}; 
     }
-    setIsLoading(true);
+    // Only proceed if establishments might be available or if it's the initial load.
+    // The establishments dependency in the useEffect below will ensure this runs when establishments are ready.
+    
+    setIsLoading(true); // Set loading for series fetching.
     const seriesCollectionRef = collection(db, 'documentSeries');
     const q = query(seriesCollectionRef, orderBy('establishmentId'), orderBy('documentType'), orderBy('seriesNumber'));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const seriesData = snapshot.docs.map(docSnapshot => {
         const data = docSnapshot.data();
+        // Use the `establishments` state variable here for mapping names
         const est = establishments.find(e => e.id === data.establishmentId);
         return {
             id: docSnapshot.id,
             ...data,
-            establishmentName: est ? `${est.code} - ${est.tradeName}` : data.establishmentId, // Fallback to ID if name not found
+            establishmentName: est ? `${est.code} - ${est.tradeName}` : data.establishmentId,
             createdAt: data.createdAt,
             updatedAt: data.updatedAt,
         } as Series;
@@ -112,22 +114,24 @@ export default function DocumentSeriesPage() {
     });
 
     return unsubscribe;
-  }, [isAdmin, isFirebaseConfigured, toast, establishments]);
-
-  useEffect(() => {
-    fetchEstablishments();
-  }, [fetchEstablishments]);
+  }, [isAdmin, isFirebaseConfigured, toast, establishments]); // `establishments` is a key dependency here
   
   useEffect(() => {
-    // Fetch series once establishments are loaded or if the initial fetch attempt for establishments is done
-    // (isLoading for establishments would be false in that case)
-    // This dependency on `establishments` ensures names are available for display.
-    if (!isLoading || establishments.length > 0) {
-        const unsubscribe = fetchSeries();
-        return () => unsubscribe();
+    // This effect fetches series. It runs when `fetchSeries` function instance changes.
+    // `fetchSeries` changes when its dependencies (`isAdmin`, `isFirebaseConfigured`, `toast`, `establishments`) change.
+    // The most frequent meaningful change here will be `establishments`.
+    if (isAdmin && isFirebaseConfigured) {
+      // If establishments are not yet loaded, fetchSeries might still run but could internally wait or handle empty establishments.
+      // Or, we can add a check: if (establishments.length > 0 || initialLoad) { ... }
+      // For now, relying on fetchSeries being robust or establishments being populated.
+      const unsubscribe = fetchSeries();
+      return () => unsubscribe();
+    } else {
+      // Conditions not met for fetching (e.g., not admin), ensure loading is false and list is empty.
+      setIsLoading(false);
+      setSeriesList([]);
     }
-  }, [fetchSeries, establishments, isLoading]);
-
+  }, [fetchSeries, isAdmin, isFirebaseConfigured]); // Removed `establishments` and `isLoading` from here as fetchSeries depends on establishments
 
   const handleAddSeries = () => {
     if (!isAdmin) return;
@@ -174,7 +178,6 @@ export default function DocumentSeriesPage() {
     const batch = writeBatch(db);
 
     try {
-      // If setting this series as default, unset others for the same establishment and document type
       if (data.isDefault) {
         const q = query(
             collection(db, "documentSeries"), 
@@ -184,19 +187,19 @@ export default function DocumentSeriesPage() {
         );
         const querySnapshot = await getDocs(q);
         querySnapshot.forEach((docSnap) => {
-          if (docSnap.id !== id) { // Don't unset the current one if it's an update
+          if (docSnap.id !== id) { 
             batch.update(doc(db, "documentSeries", docSnap.id), { isDefault: false });
           }
         });
       }
       
-      if (id) { // Editing existing series
+      if (id) { 
         const seriesDocRef = doc(db, 'documentSeries', id);
         batch.update(seriesDocRef, { ...data, updatedAt: serverTimestamp() });
         await batch.commit();
         toast({ title: "Éxito", description: "Serie actualizada." });
-      } else { // Adding new series
-        const newSeriesRef = doc(collection(db, 'documentSeries')); // Auto-generate ID
+      } else { 
+        const newSeriesRef = doc(collection(db, 'documentSeries')); 
         batch.set(newSeriesRef, { ...data, currentCorrelative: data.currentCorrelative || 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
         await batch.commit();
         toast({ title: "Éxito", description: "Nueva serie añadida." });
@@ -366,4 +369,6 @@ export default function DocumentSeriesPage() {
     </div>
   );
 }
+    
+
     

@@ -20,7 +20,7 @@ import {
   AlertTriangle,
   ChevronUp,
   FileText as FileTextIcon,
-  Share2, // Assuming this was for a reverted feature, can be removed if not used elsewhere
+  Store, // Importado para Establecimientos
 } from 'lucide-react';
 import {
   Accordion,
@@ -120,8 +120,8 @@ const getNavigationModules = (lang: string | null | undefined): NavModule[] => [
             { labelKey: 'settings_account', href: '/settings/account', id: 'settings-account' },
             { labelKey: 'settings_users', href: '/settings/users', id: 'settings-users' },
             { labelKey: 'settings_notifications', href: '/settings/notifications', id: 'settings-notifications' },
+            { labelKey: 'settings_establishments', href: '/settings/establishments', id: 'settings-establishments', icon: Store },
             { labelKey: 'settings_logs', href: '/settings/logs', id: 'settings-logs' },
-            // { labelKey: 'settings_integrations', href: '/settings/integrations', id: 'settings-integrations' }, // Reverted
         ]
       },
       { icon: HelpCircle, labelKey: 'support', id: 'support', href: '/dashboard' }, 
@@ -149,7 +149,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
     for (const modGroup of navigationModules) {
         if (itemFound) break;
         for (const item of modGroup.items) {
-            if (item.subItems && item.subItems.length > 0) { // This is an accordion item
+            if (item.subItems && item.subItems.length > 0) { 
                 const matchingSubItem = item.subItems.find(sub => pathname === sub.href || pathname.startsWith(sub.href + "/"));
                 if (matchingSubItem) {
                     newActiveSubId = matchingSubItem.id;
@@ -162,7 +162,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                     itemFound = true;
                     break;
                 }
-            } else { // This is a direct link, not an accordion
+            } else { 
                 if (pathname === item.href || pathname.startsWith(item.href + "/")) {
                     newActiveSubId = item.id;
                     newActiveAccordionId = undefined; 
@@ -181,13 +181,13 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
 
     setActiveSubItemId(newActiveSubId);
     
-    // This effect primarily syncs the accordion state with the URL (e.g., on page load or browser back/forward).
-    // Direct user clicks on AccordionTriggers are handled by the onValueChange prop of the Accordion component itself.
-    if (newActiveAccordionId !== activeAccordionValue) {
+    if (itemFound && newActiveAccordionId !== undefined && newActiveAccordionId !== activeAccordionValue) {
         setActiveAccordionValue(newActiveAccordionId);
+    } else if (!itemFound && activeAccordionValue !== undefined) {
+        setActiveAccordionValue(undefined); 
     }
     
-  }, [pathname, navigationModules, setActiveSubItemId, setActiveAccordionValue]); // Removed activeAccordionValue from here for previous attempt, re-added setter for eslint
+  }, [pathname, navigationModules, activeAccordionValue]);
 
 
   if (!isFirebaseConfigured && !loading) {
@@ -292,17 +292,14 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                             `}
                              onClick={() => {
                                 setActiveSubItemId(subItem.id);
-                                // When a sub-item is clicked, its parent accordion should be the active one.
-                                // The Accordion's onValueChange handles clicks on triggers.
-                                // Here, we ensure if navigating via sub-item click, the parent accordion is marked as active.
-                                // However, the useEffect reacting to pathname change should ideally handle this.
-                                // Let's ensure this click doesn't incorrectly close an already open accordion due to this.
+                                // Ensure parent accordion stays open if already open, or opens if not.
+                                // The Accordion's onValueChange also handles clicks on triggers.
                                 if (activeAccordionValue !== item.id) {
-                                  // This might be redundant if useEffect is robust, but ensures the parent is open.
-                                  // setActiveAccordionValue(item.id); // Let useEffect handle this based on pathname
+                                   // setActiveAccordionValue(item.id); // Let useEffect handle based on pathname
                                 }
                             }}
                           >
+                            {subItem.icon && <subItem.icon className="mr-2 h-4 w-4 text-muted-foreground" />} {/* Icon for sub-item */}
                             {getTranslation(languagePreference, subItem.labelKey)}
                           </Link>
                         ))}
@@ -403,5 +400,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
 export default function AppLayout({ children }: { children: ReactNode }) {
   return <AppLayoutContent>{children}</AppLayoutContent>;
 }
+
+    
 
     

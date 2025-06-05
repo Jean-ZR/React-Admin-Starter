@@ -1,3 +1,4 @@
+
 // src/components/invoicing/invoice-pdf-template.tsx
 'use client';
 import React from 'react';
@@ -45,11 +46,12 @@ interface DocumentData {
     payments: Payment[];
   };
   company: {
-    name: string;
-    number: string; // RUC
+    name: string; // Razón Social Principal
+    number: string; // RUC Principal
     logo?: string | null;
   };
-  establishment: {
+  establishment: { // Datos del establecimiento emisor
+    tradeName?: string; // Nombre comercial del establecimiento
     address: string;
     district?: { description?: string };
     province?: { description?: string };
@@ -66,33 +68,32 @@ interface DocumentData {
     province?: { description?: string };
     department?: { description?: string };
   };
-  invoice?: { // For credit notes/debit notes, etc.
+  invoice?: { 
     date_of_due?: Date | string;
   } | null;
-  document_base?: any | null; // For credit/debit notes
-  accounts?: any[]; // Bank accounts, etc.
+  document_base?: any | null; 
+  accounts?: any[]; 
 }
 
 interface InvoiceTemplateProps {
-  documentData?: Partial<DocumentData>; // Make it partial to allow merging with mock
+  documentData?: Partial<DocumentData>; 
 }
 
 const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ documentData = {} }) => {
-  // Mock data para demostración - reemplaza con tus datos reales
   const mockData: DocumentData = {
     document: {
       series: 'F001',
       number: 123,
       date_of_issue: new Date(),
       time_of_issue: '10:30:00',
-      state_type: { id: '01' }, // '01' Activo, '11' Anulado
+      state_type: { id: '01' }, 
       document_type: { description: 'FACTURA ELECTRÓNICA' },
       total: 1000.00,
       total_igv: 180.00,
       total_taxed: 820.00,
       currency_type: { symbol: 'S/', description: 'SOLES' },
       hash: 'ABC123DEF456GHI789JKL012MNO345PQR678STU901VWX234YZA567BCD890EFG123',
-      qr: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==', // Placeholder small transparent PNG
+      qr: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==',
       items: [
         {
           item: { internal_id: 'PROD001', description: 'Producto de ejemplo 1', unit_type_id: 'NIU' },
@@ -100,53 +101,44 @@ const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ documentData = {} }) 
           unit_price: 410.00,
           total: 820.00
         },
-        {
-          item: { internal_id: 'SERV002', description: 'Servicio de Consultoría X', unit_type_id: 'ZZ' },
-          quantity: 10,
-          unit_price: 18.00, // Assuming total_taxed 820 + 180 for IGV makes total 1000. So (1000-820)/1.18 if this service is also taxed
-          // Let's adjust for simplicity: total_igv comes from document.total - document.total_taxed
-          // So, if only the first item is taxed, then total_igv = 820 * 0.18 = 147.6. The mock data implies total_igv is based on overall.
-          // Let's assume the items passed already have correct totals.
-          total: 0 // This should be calculated or provided if items are mixed
-        }
       ],
       legends: [
         { code: '1000', value: 'MIL CON 00/100' }
       ],
       additional_information: ['Información adicional del documento de prueba.'],
-      payment_condition_id: '01', // '01' Contado, '02' Credito
+      payment_condition_id: '01', 
       payments: []
     },
-    company: {
-      name: 'MI EMPRESA S.A.C.',
-      number: '20123456789',
-      logo: null // 'https://placehold.co/150x50.png?text=MiLogo' // Placeholder logo URL
+    company: { // Razón Social Principal
+      name: 'MI EMPRESA PRINCIPAL S.A.C.',
+      number: '20123456789', // RUC Principal
+      logo: null 
     },
-    establishment: {
-      address: 'Av. Principal 123, Urb. Empresarial',
+    establishment: { // Establecimiento Emisor específico
+      tradeName: 'Sucursal Centro Cívico', // Nombre comercial de la sucursal
+      address: 'Av. Principal 123, Urb. Empresarial, Tienda L-10',
       district: { description: 'Lima' },
       province: { description: 'Lima' },
       department: { description: 'Lima' },
       telephone: '01-234-5678 ext. 101',
-      email: 'contacto@miempresa.com'
+      email: 'suc.centrocivico@miempresa.com'
     },
     customer: {
       name: 'Cliente Ejemplo S.R.L.',
-      number: '20987654321', // Example RUC
+      number: '20987654321', 
       address: 'Jr. Cliente 456, Oficina 201',
-      identity_document_type: { description: 'RUC' }, // Could be DNI, etc.
+      identity_document_type: { description: 'RUC' }, 
       district: { description: 'San Isidro' },
       province: { description: 'Lima' },
       department: { description: 'Lima' }
     },
-    invoice: { // Example for date_of_due if payment condition is credit
+    invoice: { 
         date_of_due: new Date(new Date().setDate(new Date().getDate() + 30))
     }, 
     document_base: null,
     accounts: []
   };
 
-  // Deep merge documentData into mockData, especially for nested objects
   const mergeDeep = (target: any, source: any) => {
     const output = { ...target };
     if (isObject(target) && isObject(source)) {
@@ -179,7 +171,7 @@ const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ documentData = {} }) 
     if (!date) return 'N/A';
     try {
       const d = (date instanceof Date) ? date : new Date(date);
-      if (isNaN(d.getTime())) return 'Invalid Date'; // Check if date is valid
+      if (isNaN(d.getTime())) return 'Invalid Date'; 
       return d.toISOString().split('T')[0];
     } catch (e) {
         return 'Invalid Date';
@@ -187,12 +179,7 @@ const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ documentData = {} }) 
   };
 
   return (
-    // A4 size: 210mm x 297mm. Tailwind classes for approximation.
-    // Using max-w-4xl (896px) which is wider than A4 portrait.
-    // Typical A4 at 96dpi is ~794px wide. Let's use a more contained width for screen.
-    // For html2canvas, the actual rendered size matters.
     <div className="w-[210mm] min-h-[297mm] bg-white p-[15mm] text-[10px] leading-normal font-sans text-black" style={{ fontFamily: 'Arial, sans-serif'}}>
-      {/* Marca de agua para documentos anulados */}
       {data.document.state_type.id === '11' && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
           <div className="text-red-500 text-7xl font-bold opacity-20 rotate-[-30deg] tracking-wider" style={{ letterSpacing: '0.1em'}}>
@@ -201,7 +188,6 @@ const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ documentData = {} }) 
         </div>
       )}
 
-      {/* Encabezado */}
       <table className="w-full mb-4 border-collapse">
         <tbody>
           <tr>
@@ -217,6 +203,9 @@ const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ documentData = {} }) 
             <td className="w-[40%] align-top px-2">
               <h4 className="font-bold text-base leading-tight">{data.company.name}</h4>
               <h5 className="font-medium text-xs leading-tight">RUC {data.company.number}</h5>
+              {data.establishment.tradeName && data.establishment.tradeName !== data.company.name && (
+                <h6 className="font-semibold text-[9px] leading-tight mt-0.5">PUNTO DE EMISIÓN: {data.establishment.tradeName}</h6>
+              )}
               <div className="text-[8px] mt-0.5 leading-snug uppercase">
                 {data.establishment.address}
                 {data.establishment.district && `, ${data.establishment.district.description}`}
@@ -224,7 +213,7 @@ const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ documentData = {} }) 
                 {data.establishment.department && `- ${data.establishment.department.description}`}
               </div>
               {data.establishment.telephone && (
-                <div className="text-[8px] leading-snug">Central telefónica: {data.establishment.telephone}</div>
+                <div className="text-[8px] leading-snug">Teléfono: {data.establishment.telephone}</div>
               )}
               {data.establishment.email && (
                 <div className="text-[8px] leading-snug">Email: {data.establishment.email}</div>
@@ -241,7 +230,6 @@ const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ documentData = {} }) 
         </tbody>
       </table>
 
-      {/* Información del documento */}
       <div className="mb-4">
         <table className="w-full text-[9px] border-collapse">
           <tbody>
@@ -283,7 +271,6 @@ const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ documentData = {} }) 
         </table>
       </div>
 
-      {/* Tabla de items */}
       <div className="mb-4">
         <table className="w-full border-collapse text-[9px]">
           <thead className="bg-gray-100">
@@ -314,7 +301,6 @@ const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ documentData = {} }) 
               </tr>
             ))}
             
-            {/* Fill empty rows if less than, e.g., 10 items */}
             {Array.from({ length: Math.max(0, 10 - data.document.items.length) }).map((_, i) => (
                 <tr key={`empty-${i}`}>
                     <td className="border border-gray-300 py-1 px-1 h-[20px]">&nbsp;</td>
@@ -329,7 +315,6 @@ const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ documentData = {} }) 
           </tbody>
         </table>
         
-        {/* Totales Section */}
         <table className="w-full mt-[-1px] border-collapse text-[9px]">
             <tbody>
                 {data.document.total_taxed > 0 && (
@@ -338,7 +323,6 @@ const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ documentData = {} }) 
                     <td className="w-[25%] text-right py-1 px-1 border border-gray-300">{formatCurrency(data.document.total_taxed)}</td>
                 </tr>
                 )}
-                {/* Add other operations like Inafectas, Exoneradas if needed */}
                 <tr>
                     <td className="text-right py-1 px-1 border border-gray-300 font-semibold">IGV: {data.document.currency_type.symbol}</td>
                     <td className="text-right py-1 px-1 border border-gray-300">{formatCurrency(data.document.total_igv)}</td>
@@ -351,12 +335,10 @@ const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ documentData = {} }) 
         </table>
       </div>
 
-      {/* Pie del documento */}
       <table className="w-full text-[9px] border-collapse mt-2">
         <tbody>
           <tr>
             <td className="w-[65%] align-top pr-2">
-              {/* Leyendas */}
               {data.document.legends.map((legend, index) => (
                 <div key={index} className="mb-0.5">
                   {legend.code === "1000" ? (
@@ -369,7 +351,6 @@ const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ documentData = {} }) 
                 </div>
               ))}
 
-              {/* Información adicional */}
               {data.document.additional_information.length > 0 && (
                 <div className="mt-1">
                   <strong className="text-[8px]">Información adicional:</strong>
@@ -384,7 +365,7 @@ const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ documentData = {} }) 
                 <img 
                   src={`data:image/png;base64,${data.document.qr}`} 
                   alt="QR Code"
-                  className="mx-auto mb-1 w-[80px] h-[80px]" // Fixed size for QR
+                  className="mx-auto mb-1 w-[80px] h-[80px]"
                 />
               )}
               {data.document.hash && <p className="text-[7px] break-all">Código Hash: {data.document.hash}</p>}
@@ -393,12 +374,10 @@ const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ documentData = {} }) 
         </tbody>
       </table>
       
-      {/* Condición de pago */}
       <div className="mt-2 text-[9px]">
         <p><strong>CONDICIÓN DE PAGO: {data.document.payment_condition_id === '01' ? 'CONTADO' : 'CRÉDITO'}</strong></p>
       </div>
 
-      {/* Pagos (if Contado and payments exist) */}
       {data.document.payment_condition_id === '01' && data.document.payments && data.document.payments.length > 0 && (
         <div className="mt-1 text-[9px]">
           <p><strong>PAGOS:</strong></p>
@@ -418,3 +397,4 @@ const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ documentData = {} }) 
 };
 
 export default InvoiceTemplate;
+

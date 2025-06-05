@@ -20,7 +20,8 @@ import {
   AlertTriangle,
   ChevronUp,
   FileText as FileTextIcon,
-  Store, // Importado para Establecimientos
+  Store,
+  ClipboardList, // Importado para Series
 } from 'lucide-react';
 import {
   Accordion,
@@ -121,6 +122,7 @@ const getNavigationModules = (lang: string | null | undefined): NavModule[] => [
             { labelKey: 'settings_users', href: '/settings/users', id: 'settings-users' },
             { labelKey: 'settings_notifications', href: '/settings/notifications', id: 'settings-notifications' },
             { labelKey: 'settings_establishments', href: '/settings/establishments', id: 'settings-establishments', icon: Store },
+            { labelKey: 'settings_series', href: '/settings/series', id: 'settings-series', icon: ClipboardList }, // Nueva entrada
             { labelKey: 'settings_logs', href: '/settings/logs', id: 'settings-logs' },
         ]
       },
@@ -157,6 +159,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                     itemFound = true;
                     break;
                 } else if (pathname === item.href || pathname.startsWith(item.href + "/")) {
+                    // If the main item's href matches, default to its first sub-item.
                     newActiveSubId = item.subItems[0].id; 
                     newActiveAccordionId = item.id;
                     itemFound = true;
@@ -181,13 +184,18 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
 
     setActiveSubItemId(newActiveSubId);
     
-    if (itemFound && newActiveAccordionId !== undefined && newActiveAccordionId !== activeAccordionValue) {
+    // Only update accordion if a relevant item was found and the accordion isn't already the one needed
+    // This prevents closing an accordion that the user might have opened manually if the new page is outside it.
+    if (itemFound && newActiveAccordionId !== undefined ) {
         setActiveAccordionValue(newActiveAccordionId);
-    } else if (!itemFound && activeAccordionValue !== undefined) {
-        setActiveAccordionValue(undefined); 
+    } else if (itemFound && newActiveAccordionId === undefined) {
+         // If the found item has no accordion (like Dashboard), ensure any open accordion is closed.
+         // This check (activeAccordionValue !== undefined) prevents unnecessary updates if no accordion was open.
+        if(activeAccordionValue !== undefined) setActiveAccordionValue(undefined);
     }
+    // If no item is found (e.g., a 404 page or a page not in nav), we don't change the accordion state.
     
-  }, [pathname, navigationModules, activeAccordionValue]);
+  }, [pathname, navigationModules]);
 
 
   if (!isFirebaseConfigured && !loading) {
@@ -293,7 +301,6 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                              onClick={() => {
                                 setActiveSubItemId(subItem.id);
                                 // Ensure parent accordion stays open if already open, or opens if not.
-                                // The Accordion's onValueChange also handles clicks on triggers.
                                 if (activeAccordionValue !== item.id) {
                                    // setActiveAccordionValue(item.id); // Let useEffect handle based on pathname
                                 }
@@ -400,7 +407,3 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
 export default function AppLayout({ children }: { children: ReactNode }) {
   return <AppLayoutContent>{children}</AppLayoutContent>;
 }
-
-    
-
-    

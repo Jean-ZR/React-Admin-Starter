@@ -21,7 +21,8 @@ import {
   ChevronUp,
   FileText as FileTextIcon,
   Store,
-  ClipboardList, // Importado para Series
+  ClipboardList,
+  MessageSquare, // Added for notification items
 } from 'lucide-react';
 import {
   Accordion,
@@ -36,6 +37,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuGroup, // Added for grouping items
 } from "@/components/ui/dropdown-menu";
 
 import { useAuth } from '@/contexts/auth-context';
@@ -122,13 +124,21 @@ const getNavigationModules = (lang: string | null | undefined): NavModule[] => [
             { labelKey: 'settings_users', href: '/settings/users', id: 'settings-users' },
             { labelKey: 'settings_notifications', href: '/settings/notifications', id: 'settings-notifications' },
             { labelKey: 'settings_establishments', href: '/settings/establishments', id: 'settings-establishments', icon: Store },
-            { labelKey: 'settings_series', href: '/settings/series', id: 'settings-series', icon: ClipboardList }, // Nueva entrada
+            { labelKey: 'settings_series', href: '/settings/series', id: 'settings-series', icon: ClipboardList }, 
             { labelKey: 'settings_logs', href: '/settings/logs', id: 'settings-logs' },
         ]
       },
       { icon: HelpCircle, labelKey: 'support', id: 'support', href: '/dashboard' }, 
     ],
   },
+];
+
+// Sample notification data (replace with real data fetching later)
+const sampleNotifications = [
+  { id: '1', title: 'Nuevo Activo Añadido', description: 'Laptop Pro X1 ha sido registrada.', time: 'Hace 5 min', icon: Truck, href: '/assets/list' },
+  { id: '2', title: 'Cliente Actualizado', description: 'Alpha Corp ahora está "Activo".', time: 'Hace 1 hora', icon: Users, href: '/clients/directory' },
+  { id: '3', title: 'Alerta de Stock Bajo', description: 'Item "SKU123" tiene solo 2 unidades.', time: 'Hace 3 horas', icon: Package, href: '/inventory/alerts' },
+  { id: '4', title: 'Mantenimiento Programado', description: 'Servidor principal mañana a las 2 AM.', time: 'Hace 1 día', icon: Wrench, href: '/services/scheduling' },
 ];
 
 
@@ -159,7 +169,6 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                     itemFound = true;
                     break;
                 } else if (pathname === item.href || pathname.startsWith(item.href + "/")) {
-                    // If the main item's href matches, default to its first sub-item.
                     newActiveSubId = item.subItems[0].id; 
                     newActiveAccordionId = item.id;
                     itemFound = true;
@@ -184,18 +193,13 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
 
     setActiveSubItemId(newActiveSubId);
     
-    // Only update accordion if a relevant item was found and the accordion isn't already the one needed
-    // This prevents closing an accordion that the user might have opened manually if the new page is outside it.
     if (itemFound && newActiveAccordionId !== undefined ) {
         setActiveAccordionValue(newActiveAccordionId);
     } else if (itemFound && newActiveAccordionId === undefined) {
-         // If the found item has no accordion (like Dashboard), ensure any open accordion is closed.
-         // This check (activeAccordionValue !== undefined) prevents unnecessary updates if no accordion was open.
         if(activeAccordionValue !== undefined) setActiveAccordionValue(undefined);
     }
-    // If no item is found (e.g., a 404 page or a page not in nav), we don't change the accordion state.
     
-  }, [pathname, navigationModules]);
+  }, [pathname, navigationModules, activeAccordionValue]);
 
 
   if (!isFirebaseConfigured && !loading) {
@@ -300,13 +304,9 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                             `}
                              onClick={() => {
                                 setActiveSubItemId(subItem.id);
-                                // Ensure parent accordion stays open if already open, or opens if not.
-                                if (activeAccordionValue !== item.id) {
-                                   // setActiveAccordionValue(item.id); // Let useEffect handle based on pathname
-                                }
                             }}
                           >
-                            {subItem.icon && <subItem.icon className="mr-2 h-4 w-4 text-muted-foreground" />} {/* Icon for sub-item */}
+                            {subItem.icon && <subItem.icon className="mr-2 h-4 w-4 text-muted-foreground" />} 
                             {getTranslation(languagePreference, subItem.labelKey)}
                           </Link>
                         ))}
@@ -388,12 +388,59 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
             <p className="text-sm sm:text-base text-muted-foreground">{currentPageInfo.subtitle}</p>
           </div>
           <div className="flex items-center space-x-4 sm:space-x-6">
-            <div className="relative cursor-pointer group">
-              <BellIcon className="text-muted-foreground group-hover:text-primary transition-colors" size={24} />
-              <span className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground text-[10px] font-semibold rounded-full w-4 h-4 flex items-center justify-center ring-2 ring-card">
-                3
-              </span>
-            </div>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <div className="relative cursor-pointer group">
+                        <BellIcon className="text-muted-foreground group-hover:text-primary transition-colors" size={24} />
+                        {sampleNotifications.length > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground text-[10px] font-semibold rounded-full w-4 h-4 flex items-center justify-center ring-2 ring-card">
+                            {sampleNotifications.length}
+                        </span>
+                        )}
+                    </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-80 sm:w-96 bg-popover text-popover-foreground border-border shadow-lg" sideOffset={10}>
+                    <DropdownMenuLabel className="flex justify-between items-center">
+                        <span>Notificaciones</span>
+                        {sampleNotifications.length > 0 && (
+                            <Link href="/settings/notifications" className="text-xs text-primary hover:underline">
+                                Ver Todas
+                            </Link>
+                        )}
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator className="bg-border"/>
+                    {sampleNotifications.length > 0 ? (
+                    <DropdownMenuGroup className="max-h-80 overflow-y-auto">
+                    {sampleNotifications.map(notification => (
+                        <DropdownMenuItem key={notification.id} asChild className="cursor-pointer hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">
+                        <Link href={notification.href || '#'}>
+                            <div className="flex items-start gap-3 py-2">
+                            <notification.icon className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
+                            <div className="flex-1">
+                                <p className="text-sm font-medium text-foreground leading-snug">{notification.title}</p>
+                                <p className="text-xs text-muted-foreground leading-snug">{notification.description}</p>
+                                <p className="text-xs text-muted-foreground/70 mt-0.5">{notification.time}</p>
+                            </div>
+                            </div>
+                        </Link>
+                        </DropdownMenuItem>
+                    ))}
+                    </DropdownMenuGroup>
+                    ) : (
+                        <DropdownMenuItem disabled className="text-center text-muted-foreground py-4">
+                            No tienes notificaciones nuevas.
+                        </DropdownMenuItem>
+                    )}
+                    {sampleNotifications.length > 0 && (
+                        <>
+                        <DropdownMenuSeparator className="bg-border"/>
+                        <DropdownMenuItem className="flex justify-center py-2 text-sm text-primary hover:underline cursor-pointer hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">
+                            <Link href="/settings/notifications">Marcar todas como leídas (Conceptual)</Link>
+                        </DropdownMenuItem>
+                        </>
+                    )}
+                </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
         <div className="flex-1 min-h-0 p-6 sm:p-8 overflow-auto">
@@ -407,3 +454,6 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
 export default function AppLayout({ children }: { children: ReactNode }) {
   return <AppLayoutContent>{children}</AppLayoutContent>;
 }
+
+
+    

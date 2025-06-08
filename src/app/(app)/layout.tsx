@@ -22,7 +22,7 @@ import {
   FileText as FileTextIcon,
   Store,
   ClipboardList,
-  MessageSquare, // Added for notification items
+  MessageSquare, 
 } from 'lucide-react';
 import {
   Accordion,
@@ -37,7 +37,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuGroup, // Added for grouping items
+  DropdownMenuGroup, 
 } from "@/components/ui/dropdown-menu";
 
 import { useAuth } from '@/contexts/auth-context';
@@ -46,6 +46,9 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { getTranslation, getPageTitleInfo, type TranslationSet, type NavModule, type NavSubItem } from '@/lib/translations';
+import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale'; 
+import type { Timestamp } from 'firebase/firestore';
 
 
 const getNavigationModules = (lang: string | null | undefined): NavModule[] => [
@@ -133,12 +136,29 @@ const getNavigationModules = (lang: string | null | undefined): NavModule[] => [
   },
 ];
 
-// Sample notification data (replace with real data fetching later)
-const sampleNotifications = [
-  { id: '1', title: 'Nuevo Activo Añadido', description: 'Laptop Pro X1 ha sido registrada.', time: 'Hace 5 min', icon: Truck, href: '/assets/list' },
-  { id: '2', title: 'Cliente Actualizado', description: 'Alpha Corp ahora está "Activo".', time: 'Hace 1 hora', icon: Users, href: '/clients/directory' },
-  { id: '3', title: 'Alerta de Stock Bajo', description: 'Item "SKU123" tiene solo 2 unidades.', time: 'Hace 3 horas', icon: Package, href: '/inventory/alerts' },
-  { id: '4', title: 'Mantenimiento Programado', description: 'Servidor principal mañana a las 2 AM.', time: 'Hace 1 día', icon: Wrench, href: '/services/scheduling' },
+interface AppNotification {
+  id: string;
+  title: string;
+  description: string;
+  timestamp: Date; // Using Date for simplicity in sample, Firestore uses Timestamp
+  read: boolean;
+  href?: string;
+  iconName?: keyof typeof iconMap; // Use keys of iconMap for type safety
+}
+
+const iconMap = {
+  Truck,
+  Users,
+  Package,
+  Wrench,
+  MessageSquare, // Default icon if specific one not found
+};
+
+const sampleNotificationsData = [
+  { title: 'Nuevo Activo Añadido', description: 'Laptop Pro X1 ha sido registrada.', timeAgo: '5 minutes ago', icon: 'Truck', href: '/assets/list' },
+  { title: 'Cliente Actualizado', description: 'Alpha Corp ahora está "Activo".', timeAgo: '1 hour ago', icon: 'Users', href: '/clients/directory' },
+  { title: 'Alerta de Stock Bajo', description: 'Item "SKU123" tiene solo 2 unidades.', timeAgo: '3 hours ago', icon: 'Package', href: '/inventory/alerts' },
+  { title: 'Mantenimiento Programado', description: 'Servidor principal mañana a las 2 AM.', timeAgo: '1 day ago', icon: 'Wrench', href: '/services/scheduling' },
 ];
 
 
@@ -152,6 +172,9 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
   const [activeSubItemId, setActiveSubItemId] = useState<string | null>(null);
   const [activeAccordionValue, setActiveAccordionValue] = useState<string | undefined>(undefined);
   
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+
 
   useEffect(() => {
     let newActiveSubId: string | null = null;
@@ -200,6 +223,25 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
     }
     
   }, [pathname, navigationModules, activeAccordionValue]);
+
+  // Simulate fetching notifications and calculating unread count
+  useEffect(() => {
+    // This effect now runs only once on mount due to the empty dependency array []
+    const now = new Date();
+    const processedNotifications: AppNotification[] = sampleNotificationsData.map((n, index) => ({
+      id: String(index + 1),
+      title: n.title,
+      description: n.description,
+      timestamp: new Date(now.getTime() - (index * 60 * 60 * 1000 + (index * 5 * 60 * 1000))), // Simulate different past times
+      read: false, // Assume all sample notifications are unread initially
+      href: n.href,
+      iconName: n.icon as keyof typeof iconMap,
+    }));
+
+    setNotifications(processedNotifications);
+    const currentUnreadCount = processedNotifications.filter(n => !n.read).length;
+    setUnreadCount(currentUnreadCount);
+  }, []); // Empty dependency array ensures this runs only once on mount
 
 
   if (!isFirebaseConfigured && !loading) {
@@ -392,9 +434,9 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                 <DropdownMenuTrigger asChild>
                     <div className="relative cursor-pointer group">
                         <BellIcon className="text-muted-foreground group-hover:text-primary transition-colors" size={24} />
-                        {sampleNotifications.length > 0 && (
+                        {unreadCount > 0 && (
                         <span className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground text-[10px] font-semibold rounded-full w-4 h-4 flex items-center justify-center ring-2 ring-card">
-                            {sampleNotifications.length}
+                            {unreadCount}
                         </span>
                         )}
                     </div>
@@ -402,36 +444,40 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                 <DropdownMenuContent align="end" className="w-80 sm:w-96 bg-popover text-popover-foreground border-border shadow-lg" sideOffset={10}>
                     <DropdownMenuLabel className="flex justify-between items-center">
                         <span>Notificaciones</span>
-                        {sampleNotifications.length > 0 && (
+                        {notifications.length > 0 && (
                             <Link href="/settings/notifications" className="text-xs text-primary hover:underline">
                                 Ver Todas
                             </Link>
                         )}
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator className="bg-border"/>
-                    {sampleNotifications.length > 0 ? (
+                    {notifications.length > 0 ? (
                     <DropdownMenuGroup className="max-h-80 overflow-y-auto">
-                    {sampleNotifications.map(notification => (
-                        <DropdownMenuItem key={notification.id} asChild className="cursor-pointer hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">
-                        <Link href={notification.href || '#'}>
-                            <div className="flex items-start gap-3 py-2">
-                            <notification.icon className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
-                            <div className="flex-1">
-                                <p className="text-sm font-medium text-foreground leading-snug">{notification.title}</p>
-                                <p className="text-xs text-muted-foreground leading-snug">{notification.description}</p>
-                                <p className="text-xs text-muted-foreground/70 mt-0.5">{notification.time}</p>
-                            </div>
-                            </div>
-                        </Link>
-                        </DropdownMenuItem>
-                    ))}
+                    {notifications.map(notification => {
+                        const IconComponent = notification.iconName ? iconMap[notification.iconName] : iconMap.MessageSquare;
+                        const timeAgo = formatDistanceToNow(new Date(notification.timestamp), { addSuffix: true, locale: languagePreference === 'es' ? es : undefined });
+                        return (
+                            <DropdownMenuItem key={notification.id} asChild className="cursor-pointer hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">
+                            <Link href={notification.href || '#'}>
+                                <div className="flex items-start gap-3 py-2">
+                                <IconComponent className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
+                                <div className="flex-1">
+                                    <p className="text-sm font-medium text-foreground leading-snug">{notification.title}</p>
+                                    <p className="text-xs text-muted-foreground leading-snug">{notification.description}</p>
+                                    <p className="text-xs text-muted-foreground/70 mt-0.5">{timeAgo}</p>
+                                </div>
+                                </div>
+                            </Link>
+                            </DropdownMenuItem>
+                        );
+                    })}
                     </DropdownMenuGroup>
                     ) : (
                         <DropdownMenuItem disabled className="text-center text-muted-foreground py-4">
                             No tienes notificaciones nuevas.
                         </DropdownMenuItem>
                     )}
-                    {sampleNotifications.length > 0 && (
+                    {notifications.length > 0 && (
                         <>
                         <DropdownMenuSeparator className="bg-border"/>
                         <DropdownMenuItem className="flex justify-center py-2 text-sm text-primary hover:underline cursor-pointer hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">

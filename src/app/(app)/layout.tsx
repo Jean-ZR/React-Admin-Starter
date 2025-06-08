@@ -455,5 +455,3 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return <AppLayoutContent>{children}</AppLayoutContent>;
 }
 
-
-    

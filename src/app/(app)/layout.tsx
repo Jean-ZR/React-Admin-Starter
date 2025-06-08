@@ -140,10 +140,10 @@ interface AppNotification {
   id: string;
   title: string;
   description: string;
-  timestamp: Date; // Using Date for simplicity in sample, Firestore uses Timestamp
+  timestamp: Date; 
   read: boolean;
   href?: string;
-  iconName?: keyof typeof iconMap; // Use keys of iconMap for type safety
+  iconName?: keyof typeof iconMap; 
 }
 
 const iconMap = {
@@ -151,7 +151,7 @@ const iconMap = {
   Users,
   Package,
   Wrench,
-  MessageSquare, // Default icon if specific one not found
+  MessageSquare, 
 };
 
 const sampleNotificationsData = [
@@ -174,7 +174,6 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
   
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
-
 
   useEffect(() => {
     let newActiveSubId: string | null = null;
@@ -224,24 +223,36 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
     
   }, [pathname, navigationModules, activeAccordionValue]);
 
-  // Simulate fetching notifications and calculating unread count
   useEffect(() => {
-    // This effect now runs only once on mount due to the empty dependency array []
     const now = new Date();
     const processedNotifications: AppNotification[] = sampleNotificationsData.map((n, index) => ({
       id: String(index + 1),
       title: n.title,
       description: n.description,
-      timestamp: new Date(now.getTime() - (index * 60 * 60 * 1000 + (index * 5 * 60 * 1000))), // Simulate different past times
-      read: false, // Assume all sample notifications are unread initially
+      timestamp: new Date(now.getTime() - (index * 60 * 60 * 1000 + (index * 5 * 60 * 1000))), 
+      read: false, 
       href: n.href,
       iconName: n.icon as keyof typeof iconMap,
     }));
 
     setNotifications(processedNotifications);
-    const currentUnreadCount = processedNotifications.filter(n => !n.read).length;
-    setUnreadCount(currentUnreadCount);
-  }, []); // Empty dependency array ensures this runs only once on mount
+    setUnreadCount(processedNotifications.filter(n => !n.read).length);
+  }, []);
+
+
+  const handleMarkAsRead = (notificationId?: string | 'all') => {
+    setNotifications(prevNotifications => {
+      const newNotifications = prevNotifications.map(n => {
+        if (notificationId === 'all' || n.id === notificationId) {
+          return { ...n, read: true };
+        }
+        return n;
+      });
+      setUnreadCount(newNotifications.filter(n => !n.read).length);
+      return newNotifications;
+    });
+    // In a real app, you'd also update Firestore here
+  };
 
 
   if (!isFirebaseConfigured && !loading) {
@@ -457,12 +468,17 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                         const IconComponent = notification.iconName ? iconMap[notification.iconName] : iconMap.MessageSquare;
                         const timeAgo = formatDistanceToNow(new Date(notification.timestamp), { addSuffix: true, locale: languagePreference === 'es' ? es : undefined });
                         return (
-                            <DropdownMenuItem key={notification.id} asChild className="cursor-pointer hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">
+                            <DropdownMenuItem 
+                                key={notification.id} 
+                                asChild 
+                                className={`cursor-pointer hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground ${notification.read ? 'opacity-60' : ''}`}
+                                onSelect={() => handleMarkAsRead(notification.id)}
+                            >
                             <Link href={notification.href || '#'}>
                                 <div className="flex items-start gap-3 py-2">
                                 <IconComponent className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
                                 <div className="flex-1">
-                                    <p className="text-sm font-medium text-foreground leading-snug">{notification.title}</p>
+                                    <p className={`text-sm font-medium leading-snug ${notification.read ? 'text-muted-foreground' : 'text-foreground'}`}>{notification.title}</p>
                                     <p className="text-xs text-muted-foreground leading-snug">{notification.description}</p>
                                     <p className="text-xs text-muted-foreground/70 mt-0.5">{timeAgo}</p>
                                 </div>
@@ -480,8 +496,12 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                     {notifications.length > 0 && (
                         <>
                         <DropdownMenuSeparator className="bg-border"/>
-                        <DropdownMenuItem className="flex justify-center py-2 text-sm text-primary hover:underline cursor-pointer hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground">
-                            <Link href="/settings/notifications">Marcar todas como leídas (Conceptual)</Link>
+                        <DropdownMenuItem 
+                            onSelect={() => handleMarkAsRead('all')}
+                            className="flex justify-center py-2 text-sm text-primary hover:underline cursor-pointer hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground"
+                            disabled={unreadCount === 0}
+                        >
+                            Marcar todas como leídas
                         </DropdownMenuItem>
                         </>
                     )}
@@ -501,3 +521,5 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return <AppLayoutContent>{children}</AppLayoutContent>;
 }
 
+
+    

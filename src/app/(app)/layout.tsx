@@ -2,7 +2,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react'; // Added useRef
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -48,7 +48,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { getTranslation, getPageTitleInfo, type TranslationSet, type NavModule, type NavSubItem } from '@/lib/translations';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale'; 
-import { Timestamp } from 'firebase/firestore'; // Added Timestamp import
+import { Timestamp } from 'firebase/firestore';
 
 
 const getNavigationModules = (lang: string | null | undefined): NavModule[] => [
@@ -195,6 +195,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
             itemFound = true;
             break;
           } else if (currentPathname === item.href || currentPathname.startsWith(item.href + "/")) {
+            // If path matches parent but not a sub-item directly, select first sub-item of that parent
             newActiveSubId = item.subItems[0].id;
             newActiveAccordionIdFromPath = item.id;
             itemFound = true;
@@ -203,27 +204,28 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
         } else {
           if (currentPathname === item.href || currentPathname.startsWith(item.href + "/")) {
             newActiveSubId = item.id;
-            newActiveAccordionIdFromPath = undefined;
+            newActiveAccordionIdFromPath = undefined; // No accordion for items without sub-items
             itemFound = true;
             break;
           }
         }
       }
     }
-
+    
     if (!itemFound && (currentPathname === '/dashboard' || currentPathname === '/')) {
-      newActiveSubId = 'dashboard';
-      newActiveAccordionIdFromPath = undefined;
+        newActiveSubId = 'dashboard'; // 'dashboard' is the ID for the Dashboard link
+        newActiveAccordionIdFromPath = undefined; // Dashboard is not in an accordion
     }
+
 
     if (activeSubItemId !== newActiveSubId) {
       setActiveSubItemId(newActiveSubId);
     }
     
-    if (hasPathChanged) {
-      if (activeAccordionValue !== newActiveAccordionIdFromPath) {
-        setActiveAccordionValue(newActiveAccordionIdFromPath);
-      }
+    if (hasPathChanged) { // Only change accordion if path truly changed
+        if(activeAccordionValue !== newActiveAccordionIdFromPath) {
+            setActiveAccordionValue(newActiveAccordionIdFromPath);
+        }
     }
     
     prevPathnameRef.current = currentPathname;
@@ -469,18 +471,24 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                                 key={notification.id} 
                                 asChild 
                                 className={`cursor-pointer hover:!bg-accent hover:!text-accent-foreground focus:!bg-accent focus:!text-accent-foreground ${notification.read ? 'opacity-60' : ''}`}
-                                onSelect={() => handleMarkAsRead(notification.id)}
+                                onSelect={(e) => {
+                                    e.preventDefault(); // Prevent default link navigation if we are handling it
+                                    handleMarkAsRead(notification.id);
+                                    // If href exists, navigate after marking as read
+                                    if (notification.href) {
+                                        router.push(notification.href);
+                                    }
+                                }}
                             >
-                            <Link href={notification.href || '#'}>
-                                <div className="flex items-start gap-3 py-2">
+                            {/* Wrap content in a div or span if direct Link behavior is not desired here, or use Link directly if onSelect handles preventDefault */}
+                            <div className="flex items-start gap-3 py-2 w-full">
                                 <IconComponent className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
                                 <div className="flex-1">
                                     <p className={`text-sm font-medium leading-snug ${notification.read ? 'text-muted-foreground' : 'text-foreground'}`}>{notification.title}</p>
                                     <p className="text-xs text-muted-foreground leading-snug">{notification.description}</p>
                                     <p className="text-xs text-muted-foreground/70 mt-0.5">{timeAgo}</p>
                                 </div>
-                                </div>
-                            </Link>
+                            </div>
                             </DropdownMenuItem>
                         );
                     })}
@@ -517,4 +525,5 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
 export default function AppLayout({ children }: { children: ReactNode }) {
   return <AppLayoutContent>{children}</AppLayoutContent>;
 }
+
 

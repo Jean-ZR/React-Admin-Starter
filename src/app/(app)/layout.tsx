@@ -2,7 +2,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'; // Added useRef
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -140,7 +140,7 @@ interface AppNotification {
   id: string;
   title: string;
   description: string;
-  timestamp: Date; 
+  timestamp: Timestamp; // Changed to Firestore Timestamp
   read: boolean;
   href?: string;
   iconName?: keyof typeof iconMap; 
@@ -154,11 +154,12 @@ const iconMap = {
   MessageSquare, 
 };
 
-const sampleNotificationsData = [
-  { title: 'Nuevo Activo Añadido', description: 'Laptop Pro X1 ha sido registrada.', timeAgo: '5 minutes ago', icon: 'Truck', href: '/assets/list' },
-  { title: 'Cliente Actualizado', description: 'Alpha Corp ahora está "Activo".', timeAgo: '1 hour ago', icon: 'Users', href: '/clients/directory' },
-  { title: 'Alerta de Stock Bajo', description: 'Item "SKU123" tiene solo 2 unidades.', timeAgo: '3 hours ago', icon: 'Package', href: '/inventory/alerts' },
-  { title: 'Mantenimiento Programado', description: 'Servidor principal mañana a las 2 AM.', timeAgo: '1 day ago', icon: 'Wrench', href: '/services/scheduling' },
+// Sample data remains, but now with Firestore Timestamp
+const sampleNotificationsData: Omit<AppNotification, 'id' | 'timestamp' | 'read'>[] = [
+  { title: 'Nuevo Activo Añadido', description: 'Laptop Pro X1 ha sido registrada.', iconName: 'Truck', href: '/assets/list' },
+  { title: 'Cliente Actualizado', description: 'Alpha Corp ahora está "Activo".', iconName: 'Users', href: '/clients/directory' },
+  { title: 'Alerta de Stock Bajo', description: 'Item "SKU123" tiene solo 2 unidades.', iconName: 'Package', href: '/inventory/alerts' },
+  { title: 'Mantenimiento Programado', description: 'Servidor principal mañana a las 2 AM.', iconName: 'Wrench', href: '/services/scheduling' },
 ];
 
 
@@ -166,6 +167,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
   const { user, loading, logout, role, displayName, isFirebaseConfigured, languagePreference } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const prevPathnameRef = useRef<string | null>(null); // Ref to store previous pathname
 
   const navigationModules = useMemo(() => getNavigationModules(languagePreference), [languagePreference]);
 
@@ -175,64 +177,74 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
 
+  // Effect to determine active sidebar item and accordion based on pathname
   useEffect(() => {
+    const currentPathname = pathname;
+    const hasPathChanged = prevPathnameRef.current !== currentPathname;
+
     let newActiveSubId: string | null = null;
-    let newActiveAccordionId: string | undefined = undefined;
+    let newActiveAccordionIdFromPath: string | undefined = undefined;
     let itemFound = false;
 
     for (const modGroup of navigationModules) {
-        if (itemFound) break;
-        for (const item of modGroup.items) {
-            if (item.subItems && item.subItems.length > 0) { 
-                const matchingSubItem = item.subItems.find(sub => pathname === sub.href || pathname.startsWith(sub.href + "/"));
-                if (matchingSubItem) {
-                    newActiveSubId = matchingSubItem.id;
-                    newActiveAccordionId = item.id; 
-                    itemFound = true;
-                    break;
-                } else if (pathname === item.href || pathname.startsWith(item.href + "/")) {
-                    newActiveSubId = item.subItems[0].id; 
-                    newActiveAccordionId = item.id;
-                    itemFound = true;
-                    break;
-                }
-            } else { 
-                if (pathname === item.href || pathname.startsWith(item.href + "/")) {
-                    newActiveSubId = item.id;
-                    newActiveAccordionId = undefined; 
-                    itemFound = true;
-                    break;
-                }
-            }
+      if (itemFound) break;
+      for (const item of modGroup.items) {
+        if (item.subItems && item.subItems.length > 0) {
+          const matchingSubItem = item.subItems.find(sub => currentPathname === sub.href || currentPathname.startsWith(sub.href + "/"));
+          if (matchingSubItem) {
+            newActiveSubId = matchingSubItem.id;
+            newActiveAccordionIdFromPath = item.id;
+            itemFound = true;
+            break;
+          } else if (currentPathname === item.href || currentPathname.startsWith(item.href + "/")) {
+            newActiveSubId = item.subItems[0].id;
+            newActiveAccordionIdFromPath = item.id;
+            itemFound = true;
+            break;
+          }
+        } else {
+          if (currentPathname === item.href || currentPathname.startsWith(item.href + "/")) {
+            newActiveSubId = item.id;
+            newActiveAccordionIdFromPath = undefined;
+            itemFound = true;
+            break;
+          }
         }
-    }
-    
-    if (!itemFound && (pathname === '/dashboard' || pathname === '/')) {
-        newActiveSubId = 'dashboard';
-        newActiveAccordionId = undefined;
-        itemFound = true; 
+      }
     }
 
-    setActiveSubItemId(newActiveSubId);
-    
-    if (itemFound && newActiveAccordionId !== undefined ) {
-        setActiveAccordionValue(newActiveAccordionId);
-    } else if (itemFound && newActiveAccordionId === undefined) {
-        if(activeAccordionValue !== undefined) setActiveAccordionValue(undefined);
+    if (!itemFound && (currentPathname === '/dashboard' || currentPathname === '/')) {
+      newActiveSubId = 'dashboard';
+      newActiveAccordionIdFromPath = undefined;
+    }
+
+    if (activeSubItemId !== newActiveSubId) {
+      setActiveSubItemId(newActiveSubId);
+    }
+
+    // Only update accordion value if the path has actually changed
+    // and the new path implies a different accordion should be open.
+    // User clicks on accordion triggers will be handled by Accordion's onValueChange.
+    if (hasPathChanged) {
+      if (activeAccordionValue !== newActiveAccordionIdFromPath) {
+        setActiveAccordionValue(newActiveAccordionIdFromPath);
+      }
     }
     
-  }, [pathname, navigationModules, activeAccordionValue]);
+    prevPathnameRef.current = currentPathname;
+  }, [pathname, navigationModules, activeSubItemId, activeAccordionValue]); // activeSubItemId and activeAccordionValue kept for comparison before setting
 
+  // Effect for sample notifications (runs once)
   useEffect(() => {
     const now = new Date();
     const processedNotifications: AppNotification[] = sampleNotificationsData.map((n, index) => ({
       id: String(index + 1),
       title: n.title,
       description: n.description,
-      timestamp: new Date(now.getTime() - (index * 60 * 60 * 1000 + (index * 5 * 60 * 1000))), 
+      timestamp: Timestamp.fromDate(new Date(now.getTime() - (index * 60 * 60 * 1000 + (index * 5 * 60 * 1000)))), 
       read: false, 
       href: n.href,
-      iconName: n.icon as keyof typeof iconMap,
+      iconName: n.iconName as keyof typeof iconMap,
     }));
 
     setNotifications(processedNotifications);
@@ -251,9 +263,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
       setUnreadCount(newNotifications.filter(n => !n.read).length);
       return newNotifications;
     });
-    // In a real app, you'd also update Firestore here
   };
-
 
   if (!isFirebaseConfigured && !loading) {
     return (
@@ -356,7 +366,9 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                                 : 'text-sidebar-foreground hover:text-sidebar-primary hover:bg-sidebar-accent/30'}
                             `}
                              onClick={() => {
-                                setActiveSubItemId(subItem.id);
+                                // When a sub-item is clicked, the path changes,
+                                // which should trigger the useEffect to update activeSubItemId and activeAccordionValue.
+                                // No need to call setActiveSubItemId here directly if useEffect handles it.
                             }}
                           >
                             {subItem.icon && <subItem.icon className="mr-2 h-4 w-4 text-muted-foreground" />} 
@@ -376,8 +388,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                           : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}
                       `}
                       onClick={() => {
-                        setActiveAccordionValue(undefined); 
-                        setActiveSubItemId(item.id);
+                        // Path will change, useEffect will handle accordion and sub-item state.
                       }}
                     >
                       <item.icon className={`mr-3 ${activeSubItemId === item.id ? 'text-sidebar-accent-foreground' : 'text-muted-foreground group-hover:text-sidebar-foreground'}`} size={20} />
@@ -466,7 +477,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                     <DropdownMenuGroup className="max-h-80 overflow-y-auto">
                     {notifications.map(notification => {
                         const IconComponent = notification.iconName ? iconMap[notification.iconName] : iconMap.MessageSquare;
-                        const timeAgo = formatDistanceToNow(new Date(notification.timestamp), { addSuffix: true, locale: languagePreference === 'es' ? es : undefined });
+                        const timeAgo = formatDistanceToNow(notification.timestamp.toDate(), { addSuffix: true, locale: languagePreference === 'es' ? es : undefined });
                         return (
                             <DropdownMenuItem 
                                 key={notification.id} 
@@ -521,5 +532,3 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return <AppLayoutContent>{children}</AppLayoutContent>;
 }
 
-
-    

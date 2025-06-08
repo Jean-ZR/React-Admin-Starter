@@ -48,7 +48,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { getTranslation, getPageTitleInfo, type TranslationSet, type NavModule, type NavSubItem } from '@/lib/translations';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale'; 
-import type { Timestamp } from 'firebase/firestore';
+import { Timestamp } from 'firebase/firestore'; // Added Timestamp import
 
 
 const getNavigationModules = (lang: string | null | undefined): NavModule[] => [
@@ -140,7 +140,7 @@ interface AppNotification {
   id: string;
   title: string;
   description: string;
-  timestamp: Timestamp; // Changed to Firestore Timestamp
+  timestamp: Timestamp; 
   read: boolean;
   href?: string;
   iconName?: keyof typeof iconMap; 
@@ -154,7 +154,6 @@ const iconMap = {
   MessageSquare, 
 };
 
-// Sample data remains, but now with Firestore Timestamp
 const sampleNotificationsData: Omit<AppNotification, 'id' | 'timestamp' | 'read'>[] = [
   { title: 'Nuevo Activo Añadido', description: 'Laptop Pro X1 ha sido registrada.', iconName: 'Truck', href: '/assets/list' },
   { title: 'Cliente Actualizado', description: 'Alpha Corp ahora está "Activo".', iconName: 'Users', href: '/clients/directory' },
@@ -167,7 +166,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
   const { user, loading, logout, role, displayName, isFirebaseConfigured, languagePreference } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const prevPathnameRef = useRef<string | null>(null); // Ref to store previous pathname
+  const prevPathnameRef = useRef<string | null>(null); 
 
   const navigationModules = useMemo(() => getNavigationModules(languagePreference), [languagePreference]);
 
@@ -177,7 +176,6 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
 
-  // Effect to determine active sidebar item and accordion based on pathname
   useEffect(() => {
     const currentPathname = pathname;
     const hasPathChanged = prevPathnameRef.current !== currentPathname;
@@ -221,10 +219,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
     if (activeSubItemId !== newActiveSubId) {
       setActiveSubItemId(newActiveSubId);
     }
-
-    // Only update accordion value if the path has actually changed
-    // and the new path implies a different accordion should be open.
-    // User clicks on accordion triggers will be handled by Accordion's onValueChange.
+    
     if (hasPathChanged) {
       if (activeAccordionValue !== newActiveAccordionIdFromPath) {
         setActiveAccordionValue(newActiveAccordionIdFromPath);
@@ -232,9 +227,8 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
     }
     
     prevPathnameRef.current = currentPathname;
-  }, [pathname, navigationModules, activeSubItemId, activeAccordionValue]); // activeSubItemId and activeAccordionValue kept for comparison before setting
+  }, [pathname, navigationModules, activeSubItemId, activeAccordionValue]); 
 
-  // Effect for sample notifications (runs once)
   useEffect(() => {
     const now = new Date();
     const processedNotifications: AppNotification[] = sampleNotificationsData.map((n, index) => ({
@@ -365,11 +359,6 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                                 ? 'text-sidebar-primary font-medium bg-sidebar-accent/60'
                                 : 'text-sidebar-foreground hover:text-sidebar-primary hover:bg-sidebar-accent/30'}
                             `}
-                             onClick={() => {
-                                // When a sub-item is clicked, the path changes,
-                                // which should trigger the useEffect to update activeSubItemId and activeAccordionValue.
-                                // No need to call setActiveSubItemId here directly if useEffect handles it.
-                            }}
                           >
                             {subItem.icon && <subItem.icon className="mr-2 h-4 w-4 text-muted-foreground" />} 
                             {getTranslation(languagePreference, subItem.labelKey)}
@@ -387,9 +376,6 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                           ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
                           : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}
                       `}
-                      onClick={() => {
-                        // Path will change, useEffect will handle accordion and sub-item state.
-                      }}
                     >
                       <item.icon className={`mr-3 ${activeSubItemId === item.id ? 'text-sidebar-accent-foreground' : 'text-muted-foreground group-hover:text-sidebar-foreground'}`} size={20} />
                       <span className="flex-1">{getTranslation(languagePreference, item.labelKey)}</span>
@@ -477,7 +463,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
                     <DropdownMenuGroup className="max-h-80 overflow-y-auto">
                     {notifications.map(notification => {
                         const IconComponent = notification.iconName ? iconMap[notification.iconName] : iconMap.MessageSquare;
-                        const timeAgo = formatDistanceToNow(notification.timestamp.toDate(), { addSuffix: true, locale: languagePreference === 'es' ? es : undefined });
+                        const timeAgo = notification.timestamp?.toDate ? formatDistanceToNow(notification.timestamp.toDate(), { addSuffix: true, locale: languagePreference === 'es' ? es : undefined }) : 'Hace un momento';
                         return (
                             <DropdownMenuItem 
                                 key={notification.id} 
